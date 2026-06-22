@@ -134,7 +134,7 @@ function Section({ title, children }: any) {
   );
 }
 
-function Inp({ label, value, onChange, type="text", required, placeholder, className="" }: any) {
+function Inp({ label, value, onChange, type="text", required, placeholder, className="" }: { label: string; value: string; onChange: (v: string) => void; type?: string; required?: boolean; placeholder?: string; className?: string }) {
   return (
     <label className={`block ${className}`}>
       <span className="block text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-1.5">{label}{required && " *"}</span>
@@ -145,13 +145,13 @@ function Inp({ label, value, onChange, type="text", required, placeholder, class
   );
 }
 
-function Sel({ label, value, onChange, options }: any) {
+function Sel({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: string[] }) {
   return (
     <label className="block">
       <span className="block text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-1.5">{label}</span>
       <select value={value} onChange={(e)=>onChange(e.target.value)}
         className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm focus:border-gold outline-none">
-        {options.map((o: string) => <option key={o} value={o}>{o}</option>)}
+        {options.map((o) => <option key={o} value={o}>{o}</option>)}
       </select>
     </label>
   );

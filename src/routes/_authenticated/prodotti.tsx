@@ -125,7 +125,7 @@ function ProductsPage() {
   );
 }
 
-function Inp({ label, value, onChange, type = "text", step }: any) {
+function Inp({ label, value, onChange, type = "text", step }: { label: string; value: string; onChange: (v: string) => void; type?: string; step?: string }) {
   return (
     <label className="block">
       <span className="block text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-1.5">{label}</span>
@@ -135,13 +135,13 @@ function Inp({ label, value, onChange, type = "text", step }: any) {
   );
 }
 
-function Sel({ label, value, onChange, options }: any) {
+function Sel({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: { v: string; l: string }[] }) {
   return (
     <label className="block">
       <span className="block text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-1.5">{label}</span>
       <select value={value} onChange={(e) => onChange(e.target.value)}
         className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm focus:border-gold outline-none">
-        {options.map((o: any) => <option key={o.v} value={o.v}>{o.l}</option>)}
+        {options.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
       </select>
     </label>
   );

@@ -9,38 +9,162 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedProdottiRouteImport } from './routes/_authenticated/prodotti'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedCollaboratoriRouteImport } from './routes/_authenticated/collaboratori'
+import { Route as AuthenticatedCassaRouteImport } from './routes/_authenticated/cassa'
+import { Route as AuthenticatedSociIndexRouteImport } from './routes/_authenticated/soci.index'
+import { Route as AuthenticatedSociNuovoRouteImport } from './routes/_authenticated/soci.nuovo'
+import { Route as AuthenticatedSociIdRouteImport } from './routes/_authenticated/soci.$id'
 
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedProdottiRoute = AuthenticatedProdottiRouteImport.update({
+  id: '/prodotti',
+  path: '/prodotti',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCollaboratoriRoute =
+  AuthenticatedCollaboratoriRouteImport.update({
+    id: '/collaboratori',
+    path: '/collaboratori',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCassaRoute = AuthenticatedCassaRouteImport.update({
+  id: '/cassa',
+  path: '/cassa',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSociIndexRoute = AuthenticatedSociIndexRouteImport.update({
+  id: '/soci/',
+  path: '/soci/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSociNuovoRoute = AuthenticatedSociNuovoRouteImport.update({
+  id: '/soci/nuovo',
+  path: '/soci/nuovo',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSociIdRoute = AuthenticatedSociIdRouteImport.update({
+  id: '/soci/$id',
+  path: '/soci/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/cassa': typeof AuthenticatedCassaRoute
+  '/collaboratori': typeof AuthenticatedCollaboratoriRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/prodotti': typeof AuthenticatedProdottiRoute
+  '/soci/$id': typeof AuthenticatedSociIdRoute
+  '/soci/nuovo': typeof AuthenticatedSociNuovoRoute
+  '/soci/': typeof AuthenticatedSociIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/cassa': typeof AuthenticatedCassaRoute
+  '/collaboratori': typeof AuthenticatedCollaboratoriRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/prodotti': typeof AuthenticatedProdottiRoute
+  '/soci/$id': typeof AuthenticatedSociIdRoute
+  '/soci/nuovo': typeof AuthenticatedSociNuovoRoute
+  '/soci': typeof AuthenticatedSociIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_authenticated/cassa': typeof AuthenticatedCassaRoute
+  '/_authenticated/collaboratori': typeof AuthenticatedCollaboratoriRoute
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/prodotti': typeof AuthenticatedProdottiRoute
+  '/_authenticated/soci/$id': typeof AuthenticatedSociIdRoute
+  '/_authenticated/soci/nuovo': typeof AuthenticatedSociNuovoRoute
+  '/_authenticated/soci/': typeof AuthenticatedSociIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/cassa'
+    | '/collaboratori'
+    | '/dashboard'
+    | '/prodotti'
+    | '/soci/$id'
+    | '/soci/nuovo'
+    | '/soci/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/cassa'
+    | '/collaboratori'
+    | '/dashboard'
+    | '/prodotti'
+    | '/soci/$id'
+    | '/soci/nuovo'
+    | '/soci'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/cassa'
+    | '/_authenticated/collaboratori'
+    | '/_authenticated/dashboard'
+    | '/_authenticated/prodotti'
+    | '/_authenticated/soci/$id'
+    | '/_authenticated/soci/nuovo'
+    | '/_authenticated/soci/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +172,85 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/prodotti': {
+      id: '/_authenticated/prodotti'
+      path: '/prodotti'
+      fullPath: '/prodotti'
+      preLoaderRoute: typeof AuthenticatedProdottiRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/collaboratori': {
+      id: '/_authenticated/collaboratori'
+      path: '/collaboratori'
+      fullPath: '/collaboratori'
+      preLoaderRoute: typeof AuthenticatedCollaboratoriRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/cassa': {
+      id: '/_authenticated/cassa'
+      path: '/cassa'
+      fullPath: '/cassa'
+      preLoaderRoute: typeof AuthenticatedCassaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/soci/': {
+      id: '/_authenticated/soci/'
+      path: '/soci'
+      fullPath: '/soci/'
+      preLoaderRoute: typeof AuthenticatedSociIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/soci/nuovo': {
+      id: '/_authenticated/soci/nuovo'
+      path: '/soci/nuovo'
+      fullPath: '/soci/nuovo'
+      preLoaderRoute: typeof AuthenticatedSociNuovoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/soci/$id': {
+      id: '/_authenticated/soci/$id'
+      path: '/soci/$id'
+      fullPath: '/soci/$id'
+      preLoaderRoute: typeof AuthenticatedSociIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedCassaRoute: typeof AuthenticatedCassaRoute
+  AuthenticatedCollaboratoriRoute: typeof AuthenticatedCollaboratoriRoute
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedProdottiRoute: typeof AuthenticatedProdottiRoute
+  AuthenticatedSociIdRoute: typeof AuthenticatedSociIdRoute
+  AuthenticatedSociNuovoRoute: typeof AuthenticatedSociNuovoRoute
+  AuthenticatedSociIndexRoute: typeof AuthenticatedSociIndexRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedCassaRoute: AuthenticatedCassaRoute,
+  AuthenticatedCollaboratoriRoute: AuthenticatedCollaboratoriRoute,
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedProdottiRoute: AuthenticatedProdottiRoute,
+  AuthenticatedSociIdRoute: AuthenticatedSociIdRoute,
+  AuthenticatedSociNuovoRoute: AuthenticatedSociNuovoRoute,
+  AuthenticatedSociIndexRoute: AuthenticatedSociIndexRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

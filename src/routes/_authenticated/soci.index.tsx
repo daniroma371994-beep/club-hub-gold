@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Plus, QrCode, Search } from "lucide-react";
 import { useState } from "react";
 
-export const Route = createFileRoute("/_authenticated/soci")({
+export const Route = createFileRoute("/_authenticated/soci/")({
   component: SociList,
 });
 

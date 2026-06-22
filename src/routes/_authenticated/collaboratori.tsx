@@ -32,7 +32,7 @@ function Collabs() {
     queryKey: ["collabs"],
     enabled: isAdmin,
     queryFn: async () => {
-      const { data: roles, error } = await supabase.from("user_roles").select("user_id, role, permissions, created_at");
+      const { data: roles, error } = await supabase.from("user_roles").select("id, user_id, role, permissions, created_at");
       if (error) throw error;
       const ids = roles!.map(r => r.user_id);
       const { data: profs } = await supabase.from("profiles").select("id, full_name").in("id", ids);
@@ -139,7 +139,7 @@ function Collabs() {
   );
 }
 
-function Inp({ label, value, onChange, type="text" }: any) {
+function Inp({ label, value, onChange, type="text" }: { label: string; value: string; onChange: (v: string) => void; type?: string }) {
   return (
     <label className="block">
       <span className="block text-[10px] uppercase tracking-[0.3em] text-gold-muted mb-1.5">{label}</span>
