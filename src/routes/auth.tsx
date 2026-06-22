@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import logoAsset from "@/assets/meduza-logo.png.asset.json";
+import logoUrl from "@/assets/meduza-logo.png";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
@@ -49,13 +49,13 @@ function AuthPage() {
   return (
     <div className="relative min-h-screen flex items-center justify-center px-4 overflow-hidden">
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <img src={logoAsset.url} alt="" className="w-[min(110vh,110vw)] opacity-[0.08]" />
+        <img src={logoUrl} alt="" className="w-[min(110vh,110vw)] opacity-[0.08]" />
         <div className="absolute inset-0 bg-gradient-to-b from-background/30 to-background/80" />
       </div>
 
       <div className="relative z-10 w-full max-w-md">
         <div className="text-center mb-8">
-          <img src={logoAsset.url} alt="Meduza" className="w-28 h-28 mx-auto mb-4" />
+          <img src={logoUrl} alt="Meduza" className="w-28 h-28 mx-auto mb-4" />
           <h1 className="font-display text-3xl text-gradient-gold tracking-[0.4em]">MEDUZA</h1>
           <div className="text-xs uppercase tracking-[0.5em] text-gold-muted mt-1">XXIII · Club</div>
         </div>

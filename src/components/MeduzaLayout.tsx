@@ -2,7 +2,7 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Users, Package, ScanLine, ShieldCheck, LogOut, LayoutDashboard, UserCog } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import logoAsset from "@/assets/meduza-logo.png.asset.json";
+import logoUrl from "@/assets/meduza-logo.png";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
@@ -34,7 +34,7 @@ export function MeduzaLayout({ children, title }: { children: ReactNode; title?:
         className="pointer-events-none fixed inset-0 flex items-center justify-center overflow-hidden"
       >
         <img
-          src={logoAsset.url}
+          src={logoUrl}
           alt=""
           className="w-[min(120vh,120vw)] max-w-none opacity-[0.06] select-none"
         />
@@ -44,7 +44,7 @@ export function MeduzaLayout({ children, title }: { children: ReactNode; title?:
       {/* Sidebar */}
       <aside className="relative z-10 hidden md:flex w-64 flex-col border-r border-gold/30 bg-card/70 backdrop-blur-sm">
         <div className="px-6 py-6 border-b border-gold/20 flex flex-col items-center text-center">
-          <img src={logoAsset.url} alt="Meduza" className="w-20 h-20 object-contain" />
+          <img src={logoUrl} alt="Meduza" className="w-20 h-20 object-contain" />
           <div className="mt-2 font-display text-lg text-gradient-gold tracking-[0.3em]">MEDUZA</div>
           <div className="text-[10px] uppercase tracking-[0.4em] text-gold-muted">XXIII Club</div>
         </div>
@@ -89,7 +89,7 @@ export function MeduzaLayout({ children, title }: { children: ReactNode; title?:
       {/* Mobile top bar */}
       <header className="md:hidden fixed top-0 inset-x-0 z-20 flex items-center justify-between px-4 h-14 bg-card/90 backdrop-blur border-b border-gold/30">
         <div className="flex items-center gap-2">
-          <img src={logoAsset.url} alt="" className="w-8 h-8" />
+          <img src={logoUrl} alt="" className="w-8 h-8" />
           <span className="font-display tracking-[0.3em] text-gold text-sm">MEDUZA</span>
         </div>
         <button onClick={signOut} className="text-gold-muted text-xs uppercase tracking-widest">Esci</button>
