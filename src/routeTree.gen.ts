@@ -18,6 +18,8 @@ import { Route as AuthenticatedCollaboratoriRouteImport } from './routes/_authen
 import { Route as AuthenticatedCassaRouteImport } from './routes/_authenticated/cassa'
 import { Route as AuthenticatedSociIndexRouteImport } from './routes/_authenticated/soci.index'
 import { Route as AuthenticatedSociNuovoRouteImport } from './routes/_authenticated/soci.nuovo'
+import { Route as AuthenticatedSociGestisciRouteImport } from './routes/_authenticated/soci.gestisci'
+import { Route as AuthenticatedSociElencoRouteImport } from './routes/_authenticated/soci.elenco'
 import { Route as AuthenticatedSociIdRouteImport } from './routes/_authenticated/soci.$id'
 
 const AuthRoute = AuthRouteImport.update({
@@ -65,6 +67,17 @@ const AuthenticatedSociNuovoRoute = AuthenticatedSociNuovoRouteImport.update({
   path: '/soci/nuovo',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSociGestisciRoute =
+  AuthenticatedSociGestisciRouteImport.update({
+    id: '/soci/gestisci',
+    path: '/soci/gestisci',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSociElencoRoute = AuthenticatedSociElencoRouteImport.update({
+  id: '/soci/elenco',
+  path: '/soci/elenco',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedSociIdRoute = AuthenticatedSociIdRouteImport.update({
   id: '/soci/$id',
   path: '/soci/$id',
@@ -79,6 +92,8 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/prodotti': typeof AuthenticatedProdottiRoute
   '/soci/$id': typeof AuthenticatedSociIdRoute
+  '/soci/elenco': typeof AuthenticatedSociElencoRoute
+  '/soci/gestisci': typeof AuthenticatedSociGestisciRoute
   '/soci/nuovo': typeof AuthenticatedSociNuovoRoute
   '/soci/': typeof AuthenticatedSociIndexRoute
 }
@@ -90,6 +105,8 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/prodotti': typeof AuthenticatedProdottiRoute
   '/soci/$id': typeof AuthenticatedSociIdRoute
+  '/soci/elenco': typeof AuthenticatedSociElencoRoute
+  '/soci/gestisci': typeof AuthenticatedSociGestisciRoute
   '/soci/nuovo': typeof AuthenticatedSociNuovoRoute
   '/soci': typeof AuthenticatedSociIndexRoute
 }
@@ -103,6 +120,8 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/prodotti': typeof AuthenticatedProdottiRoute
   '/_authenticated/soci/$id': typeof AuthenticatedSociIdRoute
+  '/_authenticated/soci/elenco': typeof AuthenticatedSociElencoRoute
+  '/_authenticated/soci/gestisci': typeof AuthenticatedSociGestisciRoute
   '/_authenticated/soci/nuovo': typeof AuthenticatedSociNuovoRoute
   '/_authenticated/soci/': typeof AuthenticatedSociIndexRoute
 }
@@ -116,6 +135,8 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/prodotti'
     | '/soci/$id'
+    | '/soci/elenco'
+    | '/soci/gestisci'
     | '/soci/nuovo'
     | '/soci/'
   fileRoutesByTo: FileRoutesByTo
@@ -127,6 +148,8 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/prodotti'
     | '/soci/$id'
+    | '/soci/elenco'
+    | '/soci/gestisci'
     | '/soci/nuovo'
     | '/soci'
   id:
@@ -139,6 +162,8 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/prodotti'
     | '/_authenticated/soci/$id'
+    | '/_authenticated/soci/elenco'
+    | '/_authenticated/soci/gestisci'
     | '/_authenticated/soci/nuovo'
     | '/_authenticated/soci/'
   fileRoutesById: FileRoutesById
@@ -214,6 +239,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSociNuovoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/soci/gestisci': {
+      id: '/_authenticated/soci/gestisci'
+      path: '/soci/gestisci'
+      fullPath: '/soci/gestisci'
+      preLoaderRoute: typeof AuthenticatedSociGestisciRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/soci/elenco': {
+      id: '/_authenticated/soci/elenco'
+      path: '/soci/elenco'
+      fullPath: '/soci/elenco'
+      preLoaderRoute: typeof AuthenticatedSociElencoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/soci/$id': {
       id: '/_authenticated/soci/$id'
       path: '/soci/$id'
@@ -230,6 +269,8 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedProdottiRoute: typeof AuthenticatedProdottiRoute
   AuthenticatedSociIdRoute: typeof AuthenticatedSociIdRoute
+  AuthenticatedSociElencoRoute: typeof AuthenticatedSociElencoRoute
+  AuthenticatedSociGestisciRoute: typeof AuthenticatedSociGestisciRoute
   AuthenticatedSociNuovoRoute: typeof AuthenticatedSociNuovoRoute
   AuthenticatedSociIndexRoute: typeof AuthenticatedSociIndexRoute
 }
@@ -240,6 +281,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedProdottiRoute: AuthenticatedProdottiRoute,
   AuthenticatedSociIdRoute: AuthenticatedSociIdRoute,
+  AuthenticatedSociElencoRoute: AuthenticatedSociElencoRoute,
+  AuthenticatedSociGestisciRoute: AuthenticatedSociGestisciRoute,
   AuthenticatedSociNuovoRoute: AuthenticatedSociNuovoRoute,
   AuthenticatedSociIndexRoute: AuthenticatedSociIndexRoute,
 }
