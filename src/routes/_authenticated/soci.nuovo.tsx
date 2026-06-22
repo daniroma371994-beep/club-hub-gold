@@ -35,18 +35,24 @@ function NewSocio() {
   }
 
   async function uploadPhoto(file: File) {
+    if (file.size > 800_000) {
+      toast.error("Foto troppo grande (max 800KB). Comprimila prima di caricarla.");
+      return;
+    }
     setUploading(true);
     try {
-      const ext = file.name.split(".").pop();
-      const path = `${crypto.randomUUID()}.${ext}`;
-      const { error } = await supabase.storage.from("member-photos").upload(path, file, { upsert: false });
-      if (error) throw error;
-      const { data } = supabase.storage.from("member-photos").getPublicUrl(path);
-      setField("photo_url", data.publicUrl);
-      toast.success("Foto caricata");
+      const reader = new FileReader();
+      reader.onload = () => {
+        setField("photo_url", reader.result as string);
+        toast.success("Foto caricata");
+        setUploading(false);
+      };
+      reader.onerror = () => { toast.error("Errore lettura file"); setUploading(false); };
+      reader.readAsDataURL(file);
     } catch (e: any) {
       toast.error(e.message);
-    } finally { setUploading(false); }
+      setUploading(false);
+    }
   }
 
   async function submit(e: React.FormEvent) {
