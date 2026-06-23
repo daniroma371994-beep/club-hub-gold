@@ -33,7 +33,7 @@ export const transcribeVoice = createServerFn({ method: "POST" })
     if (buf.byteLength > 25 * 1024 * 1024) throw new Error("Audio troppo lungo: ripeti più corto.");
     const { ext } = extToFormat(data.mime);
     const form = new FormData();
-    form.append("model", "openai/gpt-4o-mini-transcribe");
+    form.append("model", "openai/gpt-4o-transcribe");
     form.append("language", data.language ?? "it");
     form.append(
       "prompt",

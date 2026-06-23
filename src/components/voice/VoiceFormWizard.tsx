@@ -18,6 +18,47 @@ const MAX_RECORD_MS = 18000;
 const MIN_SPEECH_MS = 350;
 const MIN_AUDIO_BYTES = 1200;
 
+let warmedStream: MediaStream | null = null;
+let warmupPromise: Promise<MediaStream> | null = null;
+
+const micConstraints: MediaStreamConstraints = {
+  audio: {
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
+  },
+};
+
+export function warmUpVoiceForm() {
+  try {
+    if (window.speechSynthesis) {
+      const unlock = new SpeechSynthesisUtterance(" ");
+      unlock.lang = "it-IT";
+      unlock.volume = 0;
+      window.speechSynthesis.speak(unlock);
+    }
+  } catch {
+    // speech unlock is best-effort
+  }
+
+  try {
+    const live = warmedStream?.getAudioTracks().some((track) => track.readyState === "live");
+    if (warmedStream && live) return Promise.resolve(warmedStream);
+    if (!warmupPromise) {
+      warmupPromise = navigator.mediaDevices.getUserMedia(micConstraints).then((stream) => {
+        warmedStream = stream;
+        return stream;
+      }).catch((error) => {
+        warmupPromise = null;
+        throw error;
+      });
+    }
+    return warmupPromise;
+  } catch (error) {
+    return Promise.reject(error);
+  }
+}
+
 const unitWords: Record<string, number> = {
   zero: 0,
   un: 1,
@@ -319,13 +360,7 @@ export function VoiceFormWizard({
     const mime = mimeForRecording();
     if (!mime) throw new Error("Questo browser non registra un formato audio supportato.");
 
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      },
-    });
+    const stream = await warmUpVoiceForm();
     streamRef.current = stream;
     return stream;
   }, []);
