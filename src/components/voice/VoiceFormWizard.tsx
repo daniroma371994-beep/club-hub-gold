@@ -709,38 +709,32 @@ export function VoiceFormWizard({
               )}
             </div>
 
-            {!started ? (
-              <div className="grid gap-2">
-                <button
-                  type="button"
-                  onClick={startWizard}
-                  className="w-full bg-gradient-gold text-primary-foreground py-3 rounded-md font-display uppercase tracking-[0.3em] text-xs"
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {fields.map((item, itemIndex) => (
+                <div
+                  key={item.key}
+                  className={
+                    "rounded-xl border px-3 py-2 min-h-14 " +
+                    (itemIndex < idx
+                      ? "border-gold/40 bg-gold/10 text-gold"
+                      : itemIndex === idx
+                        ? "border-gold/70 bg-input text-foreground"
+                        : "border-border bg-input/40 text-muted-foreground")
+                  }
                 >
-                  Avvia modalità sicura campo per campo
-                </button>
-                <button
-                  type="button"
-                  onClick={startWizard}
-                  className="w-full border border-gold/50 text-gold py-2.5 rounded-md font-display uppercase tracking-[0.25em] text-[10px]"
-                >
-                  Prova automatico continuo
-                </button>
-              </div>
-            ) : error ? (
+                  <div className="text-[9px] uppercase tracking-[0.2em]">{itemIndex + 1}</div>
+                  <div className="text-xs font-display uppercase tracking-wider leading-tight mt-1">{item.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {error ? (
               <button
                 type="button"
                 onClick={startWizard}
                 className="w-full bg-gradient-gold text-primary-foreground py-3 rounded-md font-display uppercase tracking-[0.3em] text-xs"
               >
                 Riprova microfono
-              </button>
-            ) : false && phase === "waiting" ? (
-              <button
-                type="button"
-                onClick={startWizard}
-                className="w-full bg-gradient-gold text-primary-foreground py-3 rounded-md font-display uppercase tracking-[0.3em] text-xs"
-              >
-                Registra questo campo
               </button>
             ) : (
               <div className="rounded-md border border-gold/20 bg-input/50 px-3 py-2 text-center text-[11px] text-muted-foreground">
