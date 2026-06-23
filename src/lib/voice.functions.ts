@@ -69,6 +69,7 @@ const IntentSchema = z.object({
     "confirm_order",
     "renew_plan",
     "cancel",
+    "fill_current_form",
     "unknown",
   ]),
   target: z.string().optional(),
@@ -83,6 +84,7 @@ const IntentSchema = z.object({
   quantity: z.number().optional(),
   unit: z.enum(["g", "pz"]).optional(),
   speak: z.string().optional(),
+  form_fields: z.record(z.string()).optional(),
 });
 
 const ParseInput = z.object({
