@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Mic, MicOff, SkipForward, X, Check, RotateCcw, Loader2, Square } from "lucide-react";
+import { Mic, SkipForward, X, Check, RotateCcw, Loader2, Square } from "lucide-react";
 import { toast } from "sonner";
 import { transcribeVoice } from "@/lib/voice.functions";
 
