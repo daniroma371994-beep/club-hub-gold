@@ -119,14 +119,14 @@ Reglas:
 - Nunca inventes nombres de productos o planes que no aparecen en las listas. Si no hay match razonable, usa unknown.
 - En "speak" pon SIEMPRE una confirmación corta en español de lo que vas a hacer (ej. "Añadiendo 2 gramos de Amnesia"). Máximo 15 palabras.`;
 
-    const { experimental_output } = await generateText({
+    const { experimental_output: output } = await generateText({
       model: gateway("google/gemini-3-flash-preview"),
       experimental_output: Output.object({ schema: IntentSchema }),
       system,
       prompt: `Texto del usuario: """${data.text}"""`,
     });
 
-    return experimental_output;
+    return output;
   });
 
 export type VoiceIntent = z.infer<typeof IntentSchema>;
