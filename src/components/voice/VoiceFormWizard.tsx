@@ -314,9 +314,16 @@ export function VoiceFormWizard({
   const runRef = useRef(0);
   const cancelledRef = useRef(false);
   const resolvedSpeechRef = useRef(false);
+  const onChangeRef = useRef(onChange);
+  const onCloseRef = useRef(onClose);
 
   const field = fields[idx];
   const finished = idx >= fields.length;
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+    onCloseRef.current = onClose;
+  }, [onChange, onClose]);
 
   const blob2b64 = useCallback(
     (blob: Blob) =>
@@ -459,7 +466,7 @@ export function VoiceFormWizard({
           if (command === "cancel") {
             await speak("Chiudo la compilazione vocale.");
             releaseEverything();
-            onClose();
+            onCloseRef.current();
             return;
           }
           if (command === "skip") {
@@ -484,7 +491,7 @@ export function VoiceFormWizard({
           }
 
           setHeard(normalized);
-          onChange(currentField.key, normalized);
+          onChangeRef.current(currentField.key, normalized);
           setPhase("confirming");
           await speak(normalized.length > 45 ? "Ho scritto il campo." : `Ho scritto: ${normalized}.`);
           if (!cancelledRef.current && runRef.current === runId) setIdx((value) => value + 1);
@@ -549,7 +556,7 @@ export function VoiceFormWizard({
       rafRef.current = requestAnimationFrame(tick);
       maxTimerRef.current = window.setTimeout(stopRecorder, MAX_RECORD_MS);
     },
-    [blob2b64, cleanupRecording, ensureMic, onChange, onClose, releaseEverything, retrySameField, speak, transcribe],
+    [blob2b64, cleanupRecording, ensureMic, releaseEverything, retrySameField, speak, transcribe],
   );
 
   useEffect(() => {
@@ -562,7 +569,7 @@ export function VoiceFormWizard({
       (async () => {
         await speak("Compilazione completata.");
         if (!cancelledRef.current && runRef.current === runId) {
-          closeTimerRef.current = window.setTimeout(onClose, 900);
+          closeTimerRef.current = window.setTimeout(() => onCloseRef.current(), 900);
         }
       })();
       return () => {
@@ -604,13 +611,13 @@ export function VoiceFormWizard({
         // ignore speech cleanup errors
       }
     };
-  }, [cleanupRecording, cycle, fields, finished, idx, ensureMic, onClose, speak, startRecording]);
+  }, [cleanupRecording, cycle, fields, finished, idx, ensureMic, speak, startRecording]);
 
   useEffect(() => () => releaseEverything(), [releaseEverything]);
 
   const close = () => {
     releaseEverything();
-    onClose();
+    onCloseRef.current();
   };
 
   const meter = Math.min(1, level * 18);
