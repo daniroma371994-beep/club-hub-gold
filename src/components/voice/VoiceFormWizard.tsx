@@ -509,7 +509,6 @@ export function VoiceFormWizard({
           }
           if (command === "skip") {
             setPhase("confirming");
-            await speak("Salto questo campo.");
             if (!cancelledRef.current && runRef.current === runId) setIdx((value) => value + 1);
             return;
           }
