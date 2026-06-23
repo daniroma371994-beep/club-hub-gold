@@ -42,6 +42,7 @@ function NewSocio() {
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   function setField<K extends keyof typeof empty>(k: K, v: string) {
     setForm((f) => ({ ...f, [k]: v }));
