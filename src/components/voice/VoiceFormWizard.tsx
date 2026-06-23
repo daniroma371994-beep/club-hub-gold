@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Mic, MicOff, SkipForward, X, Check, RotateCcw } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { Mic, SkipForward, X, Check, RotateCcw, Loader2, Square } from "lucide-react";
 import { toast } from "sonner";
+import { transcribeVoice } from "@/lib/voice.functions";
 
 export type WizardField = {
   key: string;
@@ -12,31 +14,37 @@ export type WizardField = {
 function normalize(text: string, type?: WizardField["type"]): string {
   let t = text.trim();
   if (!t) return "";
-  // Strip trailing punctuation
   t = t.replace(/[.,;!?]+$/g, "").trim();
 
   if (type === "email") {
-    t = t.toLowerCase()
-      .replace(/\s+arroba\s+/g, "@")
+    return t.toLowerCase()
       .replace(/\s+chiocciola\s+/g, "@")
       .replace(/\s+at\s+/g, "@")
+      .replace(/\s+arroba\s+/g, "@")
       .replace(/\s+punto\s+/g, ".")
       .replace(/\s+dot\s+/g, ".")
       .replace(/\s+/g, "");
-    return t;
   }
-  if (type === "phone" || type === "number") {
+  if (type === "phone") {
     const map: Record<string, string> = {
       zero: "0", uno: "1", due: "2", tre: "3", quattro: "4",
       cinque: "5", sei: "6", sette: "7", otto: "8", nove: "9",
     };
     const tokens = t.toLowerCase().split(/[\s-]+/);
     const digits = tokens.map((w) => map[w] ?? w).join("");
-    const onlyDigits = digits.replace(/[^\d+]/g, "");
-    return onlyDigits || t;
+    return digits.replace(/[^\d+]/g, "") || t;
+  }
+  if (type === "number") {
+    const map: Record<string, string> = {
+      zero: "0", uno: "1", due: "2", tre: "3", quattro: "4",
+      cinque: "5", sei: "6", sette: "7", otto: "8", nove: "9", dieci: "10",
+    };
+    const tokens = t.toLowerCase().split(/[\s-]+/);
+    const out = tokens.map((w) => map[w] ?? w).join("");
+    const num = out.replace(/[^\d.,]/g, "").replace(",", ".");
+    return num || t;
   }
   if (type === "date") {
-    // Try to parse "12 marzo 1990" / "12/03/1990"
     const months: Record<string, string> = {
       gennaio: "01", febbraio: "02", marzo: "03", aprile: "04", maggio: "05",
       giugno: "06", luglio: "07", agosto: "08", settembre: "09",
@@ -60,9 +68,10 @@ function normalize(text: string, type?: WizardField["type"]): string {
     }
     return t;
   }
-  // Capitalize first letter for names
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
+
+type Phase = "intro" | "ready" | "recording" | "transcribing" | "preview";
 
 export function VoiceFormWizard({
   fields,
@@ -73,198 +82,139 @@ export function VoiceFormWizard({
   onChange: (key: string, value: string) => void;
   onClose: () => void;
 }) {
+  const transcribe = useServerFn(transcribeVoice);
   const [idx, setIdx] = useState(0);
-  const [listening, setListening] = useState(false);
-  const [interim, setInterim] = useState("");
-  const [captured, setCaptured] = useState("");
-  const [speaking, setSpeaking] = useState(false);
+  const [phase, setPhase] = useState<Phase>("intro");
+  const [transcript, setTranscript] = useState("");
+  const [editing, setEditing] = useState("");
 
-  const srRef = useRef<any>(null);
-  const supported = typeof window !== "undefined" &&
-    !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const field = fields[idx];
   const done = idx >= fields.length;
 
-  const speak = useCallback((text: string, then?: () => void) => {
+  const blob2b64 = (blob: Blob) =>
+    new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve((r.result as string).split(",")[1] ?? "");
+      r.onerror = () => reject(r.error);
+      r.readAsDataURL(blob);
+    });
+
+  const cleanupStream = useCallback(() => {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    recorderRef.current = null;
+  }, []);
+
+  const speakPrompt = useCallback((text: string) => {
     try {
+      window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
       u.lang = "it-IT";
       u.rate = 1.05;
-      setSpeaking(true);
-      u.onend = () => { setSpeaking(false); then?.(); };
-      u.onerror = () => { setSpeaking(false); then?.(); };
-      window.speechSynthesis.cancel();
       window.speechSynthesis.speak(u);
-    } catch {
-      setSpeaking(false);
-      then?.();
-    }
+    } catch {}
   }, []);
 
-  const capturedRef = useRef("");
-  const idxRef = useRef(idx);
-  idxRef.current = idx;
-
-  // Trigger words that confirm/advance; "ripeti" clears; "salta" skips
-  const OK_RE = /\b(ok|okay|okey|avanti|prossimo|prossima|conferma|vai|fatto)\b/i;
-  const REPEAT_RE = /\b(ripeti|rifai|cancella|ricomincia)\b/i;
-  const SKIP_RE = /\b(salta|saltare|vuoto|niente)\b/i;
-
-  const stopListening = useCallback(() => {
-    try { srRef.current?.stop(); } catch {}
-    setListening(false);
-  }, []);
-
-  const advance = useCallback((value: string) => {
-    const f = fields[idxRef.current];
-    if (!f) return;
-    const normalized = normalize(value, f.type);
-    if (!normalized) {
-      toast.message("Niente da salvare, parla o salta");
-      return;
-    }
-    onChange(f.key, normalized);
-    toast.success(`${f.label}: ${normalized}`);
-    capturedRef.current = "";
-    setCaptured("");
-    setInterim("");
-    setIdx((i) => i + 1);
-  }, [fields, onChange]);
-
-  const startListening = useCallback(() => {
-    const f = fields[idxRef.current];
-    if (!f) return;
-    const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) return toast.error("Voce non supportata. Usa Chrome.");
-    try { srRef.current?.stop(); } catch {}
-    const sr = new SR();
-    sr.lang = "it-IT";
-    sr.continuous = true;
-    sr.interimResults = true;
-    sr.onstart = () => setListening(true);
-    sr.onresult = (ev: any) => {
-      let iStr = "", fStr = "";
-      for (let i = ev.resultIndex; i < ev.results.length; i++) {
-        const t = ev.results[i][0].transcript;
-        if (ev.results[i].isFinal) fStr += t; else iStr += t;
-      }
-      setInterim(iStr);
-      if (!fStr) return;
-
-      // Check triggers in the final chunk
-      if (SKIP_RE.test(fStr)) {
-        capturedRef.current = "";
-        setCaptured("");
-        setInterim("");
-        try { sr.stop(); } catch {}
-        setIdx((i) => i + 1);
-        return;
-      }
-      if (REPEAT_RE.test(fStr)) {
-        capturedRef.current = "";
-        setCaptured("");
-        setInterim("");
-        return;
-      }
-      if (OK_RE.test(fStr)) {
-        // Remove trigger word from final chunk, append remainder to captured
-        const cleaned = fStr.replace(OK_RE, " ").replace(/\s+/g, " ").trim();
-        if (cleaned) {
-          capturedRef.current = (capturedRef.current + " " + cleaned).trim();
-          setCaptured(capturedRef.current);
-        }
-        try { sr.stop(); } catch {}
-        advance(capturedRef.current);
-        return;
-      }
-      capturedRef.current = (capturedRef.current + " " + fStr).trim();
-      setCaptured(capturedRef.current);
-    };
-    sr.onerror = (e: any) => {
-      setListening(false);
-      if (e.error === "not-allowed") toast.error("Microfono bloccato");
-      else if (e.error === "no-speech") {
-        // restart silently
-        setTimeout(() => { if (!done) startListening(); }, 400);
-      } else if (e.error !== "aborted") toast.error(`Errore: ${e.error}`);
-    };
-    sr.onend = () => {
-      setListening(false);
-      // Auto-restart unless intentionally stopped / advanced / done
-      if (!done && idxRef.current === idx) {
-        // Only restart if no advance happened (captured wasn't cleared by advance)
-        // Use setTimeout so React state has time to flush
-        setTimeout(() => {
-          if (idxRef.current === idx && !done) {
-            try { sr.start(); } catch {}
-          }
-        }, 200);
-      }
-    };
-    srRef.current = sr;
-    try { sr.start(); } catch { setListening(false); }
-  }, [fields, advance, done, idx]);
-
-  // When moving to a new field, announce it then start listening
+  // Announce a new field
   useEffect(() => {
     if (done) {
-      speak("Compilazione completata");
+      speakPrompt("Compilazione completata");
       return;
     }
-    capturedRef.current = "";
-    setCaptured("");
-    setInterim("");
-    const prompt = field.hint
-      ? `${field.label}. ${field.hint}. Di ok quando hai finito.`
-      : `${field.label}. Di ok quando hai finito.`;
-    speak(prompt, () => startListening());
+    setTranscript("");
+    setEditing("");
+    setPhase("intro");
+    const prompt = field.hint ? `${field.label}. ${field.hint}` : field.label;
+    speakPrompt(prompt);
+    const t = setTimeout(() => setPhase("ready"), 50);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx]);
 
   useEffect(() => () => {
-    try { srRef.current?.stop(); } catch {}
-    window.speechSynthesis.cancel();
+    try { recorderRef.current?.stop(); } catch {}
+    cleanupStream();
+    try { window.speechSynthesis.cancel(); } catch {}
+  }, [cleanupStream]);
+
+  const startRecording = useCallback(async () => {
+    try {
+      window.speechSynthesis.cancel();
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      const mime = ["audio/webm", "audio/mp4"].find((m) => MediaRecorder.isTypeSupported(m)) ?? "";
+      const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+      recorderRef.current = rec;
+      chunksRef.current = [];
+      rec.ondataavailable = (e) => e.data.size > 0 && chunksRef.current.push(e.data);
+      rec.onstop = async () => {
+        const blob = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" });
+        cleanupStream();
+        if (blob.size < 1500) {
+          toast.error("Audio troppo corto, riprova");
+          setPhase("ready");
+          return;
+        }
+        setPhase("transcribing");
+        try {
+          const audioBase64 = await blob2b64(blob);
+          const { text } = await transcribe({
+            data: { audioBase64, mime: blob.type || "audio/webm", language: "it" },
+          });
+          if (!text) {
+            toast.error("Non ho capito, riprova");
+            setPhase("ready");
+            return;
+          }
+          const norm = normalize(text, field?.type);
+          setTranscript(norm);
+          setEditing(norm);
+          setPhase("preview");
+        } catch (e: any) {
+          toast.error(e.message ?? "Errore trascrizione");
+          setPhase("ready");
+        }
+      };
+      rec.start();
+      setPhase("recording");
+    } catch {
+      toast.error("Microfono non disponibile");
+      setPhase("ready");
+    }
+  }, [cleanupStream, transcribe, field]);
+
+  const stopRecording = useCallback(() => {
+    try { recorderRef.current?.stop(); } catch {}
   }, []);
 
-
-
   const confirm = () => {
-    stopListening();
-    const value = capturedRef.current || interim;
+    if (!field) return;
+    const value = editing.trim();
     if (!value) {
-      toast.message("Niente da salvare, ripeti o salta");
+      toast.message("Vuoto, riprova o salta");
+      setPhase("ready");
       return;
     }
-    advance(value);
+    onChange(field.key, value);
+    toast.success(`${field.label}: ${value}`);
+    setIdx((i) => i + 1);
   };
 
   const skip = () => {
-    stopListening();
-    capturedRef.current = "";
-    setCaptured("");
-    setInterim("");
+    try { recorderRef.current?.stop(); } catch {}
+    cleanupStream();
     setIdx((i) => i + 1);
   };
-  const repeat = () => {
-    stopListening();
-    capturedRef.current = "";
-    setCaptured("");
-    setInterim("");
-    startListening();
-  };
 
-  if (!supported) {
-    return (
-      <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-        <div className="bg-card border border-gold/40 rounded-xl p-6 max-w-sm text-center space-y-4">
-          <MicOff className="w-10 h-10 text-gold mx-auto" />
-          <p className="text-sm">Il tuo browser non supporta la dettatura. Usa Chrome su Android o desktop.</p>
-          <button onClick={onClose} className="px-4 py-2 border border-gold text-gold rounded-md text-xs uppercase tracking-widest">Chiudi</button>
-        </div>
-      </div>
-    );
-  }
+  const repeat = () => {
+    setTranscript("");
+    setEditing("");
+    setPhase("ready");
+  };
 
   return (
     <div className="fixed inset-0 bg-black/85 backdrop-blur z-50 flex items-end md:items-center justify-center p-0 md:p-4">
@@ -273,7 +223,15 @@ export function VoiceFormWizard({
           <span className="text-[10px] font-display uppercase tracking-[0.3em] text-gold-muted">
             Dettatura {Math.min(idx + 1, fields.length)} / {fields.length}
           </span>
-          <button onClick={() => { stopListening(); window.speechSynthesis.cancel(); onClose(); }} className="text-gold-muted hover:text-gold">
+          <button
+            onClick={() => {
+              try { recorderRef.current?.stop(); } catch {}
+              cleanupStream();
+              window.speechSynthesis.cancel();
+              onClose();
+            }}
+            className="text-gold-muted hover:text-gold"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -295,42 +253,65 @@ export function VoiceFormWizard({
               {field.hint && <div className="text-xs text-muted-foreground mt-1">{field.hint}</div>}
             </div>
 
-            <div className="bg-input border border-border rounded-md px-3 py-4 min-h-[4rem]">
-              <div className="text-[9px] uppercase tracking-widest text-gold-muted mb-1">Stai dicendo</div>
-              <div className="text-base text-foreground leading-snug">
-                {captured}
-                {interim && <span className="text-gold-muted italic"> {interim}</span>}
-                {!captured && !interim && (
-                  <span className="text-muted-foreground italic text-sm">
-                    {speaking ? "…" : listening ? "Parla ora…" : "In attesa"}
-                  </span>
-                )}
-              </div>
+            <div className="bg-input border border-border rounded-md min-h-[5rem] p-3">
+              {phase === "preview" ? (
+                <>
+                  <div className="text-[9px] uppercase tracking-widest text-gold-muted mb-1">Trascrizione (modificabile)</div>
+                  <input
+                    autoFocus
+                    value={editing}
+                    onChange={(e) => setEditing(e.target.value)}
+                    className="w-full bg-transparent text-base text-foreground focus:outline-none"
+                  />
+                </>
+              ) : (
+                <>
+                  <div className="text-[9px] uppercase tracking-widest text-gold-muted mb-1">Stato</div>
+                  <div className="text-base text-foreground">
+                    {phase === "intro" && <span className="italic text-muted-foreground">Sto leggendo il campo…</span>}
+                    {phase === "ready" && <span className="italic text-muted-foreground">Premi il microfono e parla</span>}
+                    {phase === "recording" && <span className="text-destructive flex items-center gap-2"><span className="w-2 h-2 bg-destructive rounded-full animate-pulse" /> Registrazione in corso…</span>}
+                    {phase === "transcribing" && <span className="text-gold flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Trascrizione AI…</span>}
+                  </div>
+                </>
+              )}
             </div>
 
-            <div className="flex items-center justify-center">
-              <button
-                onClick={listening ? stopListening : startListening}
-                disabled={speaking}
-                className={
-                  "w-16 h-16 rounded-full border-2 flex items-center justify-center transition " +
-                  (listening
-                    ? "bg-destructive border-destructive text-white animate-pulse"
-                    : "bg-gradient-gold border-gold text-primary-foreground")
-                }
-              >
-                <Mic className="w-7 h-7" />
-              </button>
-            </div>
+            {/* Mic / Stop button */}
+            {phase !== "preview" && (
+              <div className="flex items-center justify-center">
+                <button
+                  onClick={phase === "recording" ? stopRecording : startRecording}
+                  disabled={phase === "transcribing" || phase === "intro"}
+                  className={
+                    "w-20 h-20 rounded-full border-2 flex items-center justify-center transition shadow-xl " +
+                    (phase === "recording"
+                      ? "bg-destructive border-destructive text-white animate-pulse"
+                      : phase === "transcribing"
+                        ? "bg-card border-gold/40 text-gold"
+                        : "bg-gradient-gold border-gold text-primary-foreground")
+                  }
+                >
+                  {phase === "transcribing" ? <Loader2 className="w-8 h-8 animate-spin" />
+                    : phase === "recording" ? <Square className="w-8 h-8" />
+                    : <Mic className="w-8 h-8" />}
+                </button>
+              </div>
+            )}
+            {phase !== "preview" && (
+              <div className="text-center text-[10px] uppercase tracking-widest text-gold-muted">
+                {phase === "recording" ? "Premi per fermare" : "Premi per parlare"}
+              </div>
+            )}
 
             <div className="grid grid-cols-3 gap-2">
-              <button onClick={repeat} className="px-3 py-2.5 border border-gold/40 text-gold rounded-md text-[10px] uppercase tracking-widest flex items-center justify-center gap-1">
+              <button onClick={repeat} disabled={phase === "transcribing" || phase === "recording"} className="px-3 py-2.5 border border-gold/40 text-gold rounded-md text-[10px] uppercase tracking-widest flex items-center justify-center gap-1 disabled:opacity-40">
                 <RotateCcw className="w-3 h-3" /> Ripeti
               </button>
               <button onClick={skip} className="px-3 py-2.5 border border-border text-muted-foreground rounded-md text-[10px] uppercase tracking-widest flex items-center justify-center gap-1">
                 <SkipForward className="w-3 h-3" /> Salta
               </button>
-              <button onClick={confirm} disabled={!captured && !interim} className="px-3 py-2.5 bg-gradient-gold text-primary-foreground rounded-md text-[10px] uppercase tracking-widest flex items-center justify-center gap-1 disabled:opacity-40">
+              <button onClick={confirm} disabled={phase !== "preview"} className="px-3 py-2.5 bg-gradient-gold text-primary-foreground rounded-md text-[10px] uppercase tracking-widest flex items-center justify-center gap-1 disabled:opacity-40">
                 <Check className="w-3 h-3" /> OK
               </button>
             </div>
