@@ -1,15 +1,15 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
-import { Mic, MicOff, Loader2, X } from "lucide-react";
+import { Loader2, Mic, X } from "lucide-react";
 import { toast } from "sonner";
-import { parseVoiceIntent, type VoiceIntent } from "@/lib/voice.functions";
+import { parseVoiceIntent, transcribeVoice, type VoiceIntent } from "@/lib/voice.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { voiceBus } from "./voice-bus";
 import { cn } from "@/lib/utils";
 
-type State = "idle" | "listening" | "thinking" | "executing";
+type State = "idle" | "listening" | "transcribing" | "thinking" | "executing";
 
 const ROUTE_MAP: Record<string, string> = {
   dashboard: "/dashboard",
@@ -22,32 +22,78 @@ const ROUTE_MAP: Record<string, string> = {
   colaboradores: "/collaboratori",
 };
 
+const SILENCE_MS = 3000;
+const MAX_RECORD_MS = 16000;
+const MIN_AUDIO_BYTES = 1200;
+
+function mimeForRecording() {
+  return ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"].find((mime) => MediaRecorder.isTypeSupported(mime));
+}
+
+function blobToBase64(blob: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve((reader.result as string).split(",")[1] ?? "");
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+function speak(text: string) {
+  try {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "it-IT";
+    utterance.rate = 0.95;
+    window.speechSynthesis.speak(utterance);
+  } catch {
+    // best effort
+  }
+}
+
 export function VoiceAssistant() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const route = useRouterState({ select: (s) => s.location.pathname });
   const parseIntent = useServerFn(parseVoiceIntent);
+  const transcribe = useServerFn(transcribeVoice);
 
   const [state, setState] = useState<State>("idle");
-  const [interim, setInterim] = useState("");
+  const [level, setLevel] = useState(0);
   const [finalText, setFinalText] = useState("");
   const [lastSpoken, setLastSpoken] = useState("");
-  const [supported, setSupported] = useState(true);
 
-  const srRef = useRef<any>(null);
-  const stoppingRef = useRef(false);
-  const interimRef = useRef("");
-  const finalRef = useRef("");
+  const streamRef = useRef<MediaStream | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const maxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const runRef = useRef(0);
 
-  useEffect(() => {
-    const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) setSupported(false);
+  const cleanup = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+    if (maxTimerRef.current) clearTimeout(maxTimerRef.current);
+    maxTimerRef.current = null;
+    try { audioCtxRef.current?.close(); } catch {}
+    audioCtxRef.current = null;
+    try {
+      if (recorderRef.current?.state === "recording") recorderRef.current.stop();
+    } catch {}
+    recorderRef.current = null;
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    setLevel(0);
   }, []);
 
   const executeIntent = useCallback(
     async (intent: VoiceIntent) => {
       setState("executing");
-      if (intent.speak) setLastSpoken(intent.speak);
+      if (intent.speak) {
+        setLastSpoken(intent.speak);
+        speak(intent.speak);
+      }
       const { action } = intent;
       try {
         if (action === "navigate" && intent.target) {
@@ -56,10 +102,7 @@ export function VoiceAssistant() {
           await nav({ to });
           toast.success(intent.speak ?? `Apro ${intent.target}`);
         } else if (action === "create_member") {
-          if (!intent.first_name || !intent.last_name) {
-            toast.error("Mancano nome o cognome");
-            return;
-          }
+          if (!intent.first_name || !intent.last_name) return toast.error("Mancano nome o cognome");
           const { data: u } = await supabase.auth.getUser();
           const cardNumber = `V${Date.now().toString().slice(-6)}`;
           const { data, error } = await supabase
@@ -114,6 +157,10 @@ export function VoiceAssistant() {
             return;
           }
           await voiceBus.handlers.renewPlan?.(intent.query);
+        } else if (action === "fill_current_form") {
+          if (!intent.form_fields || Object.keys(intent.form_fields).length === 0) return toast.error("Dimmi i campi da compilare");
+          const handled = await voiceBus.handlers.fillCurrentForm?.(intent.form_fields);
+          if (!handled) toast.error("Apri un modulo e riprova");
         } else if (action === "cancel") {
           toast.message(intent.speak ?? "Annullato");
         } else {
@@ -121,7 +168,7 @@ export function VoiceAssistant() {
         }
         qc.invalidateQueries();
       } catch (e: any) {
-        toast.error(e.message ?? "Error");
+        toast.error(e.message ?? "Errore");
       } finally {
         setState("idle");
       }
@@ -129,103 +176,131 @@ export function VoiceAssistant() {
     [nav, route, qc],
   );
 
-  useEffect(() => {
-    voiceBus.setReplayer((i) => executeIntent(i));
-    return () => voiceBus.setReplayer(null);
-  }, [executeIntent]);
-
-  const handleFinal = useCallback(
+  const handleText = useCallback(
     async (text: string) => {
+      setFinalText(text);
       setState("thinking");
       try {
         const [{ data: prods }, { data: plansData }] = await Promise.all([
           supabase.from("products").select("id, name").eq("active", true),
           supabase.from("membership_plans").select("id, name, duration_days").eq("active", true),
         ]);
-        const intent = await parseIntent({
-          data: { text, route, products: prods ?? [], plans: plansData ?? [] },
-        });
+        const intent = await parseIntent({ data: { text, route, products: prods ?? [], plans: plansData ?? [] } });
         await executeIntent(intent);
       } catch (e: any) {
         toast.error(e.message ?? "Errore durante l'elaborazione");
         setState("idle");
       }
     },
-    [parseIntent, route, executeIntent],
+    [executeIntent, parseIntent, route],
   );
 
   const stop = useCallback(() => {
-    stoppingRef.current = true;
-    try { srRef.current?.stop(); } catch {}
-  }, []);
+    runRef.current += 1;
+    cleanup();
+    setState("idle");
+  }, [cleanup]);
 
-  const start = useCallback(() => {
-    const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) {
-      toast.error("Il browser non supporta il comando vocale. Usa Chrome.");
-      return;
-    }
-    try { srRef.current?.stop(); } catch {}
-    stoppingRef.current = false;
-    setInterim("");
+  const start = useCallback(async () => {
+    if (state !== "idle") return;
+    const mime = mimeForRecording();
+    if (!mime) return toast.error("Questo browser non supporta il formato audio.");
+    const runId = ++runRef.current;
     setFinalText("");
-    interimRef.current = "";
-    finalRef.current = "";
-    const sr = new SR();
-    sr.lang = "it-IT";
-    sr.continuous = false;
-    sr.interimResults = true;
-    sr.maxAlternatives = 1;
-    sr.onstart = () => setState("listening");
-    sr.onresult = (ev: any) => {
-      let interimStr = "";
-      let finalStr = "";
-      for (let i = 0; i < ev.results.length; i++) {
-        const t = ev.results[i][0].transcript;
-        if (ev.results[i].isFinal) finalStr += t;
-        else interimStr += t;
-      }
-      setInterim(interimStr);
-      interimRef.current = interimStr;
-      if (finalStr) {
-        finalRef.current = `${finalRef.current} ${finalStr}`.trim();
-        setFinalText(finalRef.current);
-      }
-    };
-    sr.onerror = (e: any) => {
-      if (e.error === "not-allowed") toast.error("Microfono bloccato");
-      else if (e.error === "no-speech") toast.message("Non ho sentito nulla");
-      else if (e.error !== "aborted") toast.error(`Errore voce: ${e.error}`);
-      setState("idle");
-    };
-    sr.onend = () => {
-      const text = `${finalRef.current} ${interimRef.current}`.trim();
-      setInterim("");
-      interimRef.current = "";
-      if (stoppingRef.current || !text) {
-        setState("idle");
+    setLastSpoken("");
+    chunksRef.current = [];
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
+      if (runRef.current !== runId) {
+        stream.getTracks().forEach((track) => track.stop());
         return;
       }
-      setFinalText(text);
-      handleFinal(text);
-    };
-    srRef.current = sr;
-    try {
-      sr.start();
+      streamRef.current = stream;
+      const recorder = new MediaRecorder(stream, { mimeType: mime });
+      recorderRef.current = recorder;
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunksRef.current.push(event.data);
+      };
+      recorder.onstop = async () => {
+        if (runRef.current !== runId) return;
+        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || mime });
+        cleanup();
+        if (blob.size < MIN_AUDIO_BYTES) {
+          toast.message("Non ho sentito nulla");
+          setState("idle");
+          return;
+        }
+        setState("transcribing");
+        try {
+          const audioBase64 = await blobToBase64(blob);
+          const { text } = await transcribe({
+            data: {
+              audioBase64,
+              mime: blob.type || mime,
+              language: "it",
+              prompt: "Trascrivi un comando vocale in italiano per il gestionale Meduza. Mantieni nomi prodotto, numeri, grammi e tessere.",
+            },
+          });
+          if (runRef.current === runId) await handleText(text);
+        } catch (e: any) {
+          toast.error(e.message ?? "Errore trascrizione");
+          setState("idle");
+        }
+      };
+
+      const AudioCtor = window.AudioContext || (window as any).webkitAudioContext;
+      const audioCtx = new AudioCtor();
+      audioCtxRef.current = audioCtx;
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 1024;
+      source.connect(analyser);
+      const buffer = new Float32Array(analyser.fftSize);
+      let lastVoiceAt = performance.now();
+      let hasSpoken = false;
+      let noiseFloor = 0.006;
+
+      const finish = () => {
+        try {
+          if (recorder.state === "recording") recorder.stop();
+        } catch {}
+      };
+
+      const tick = () => {
+        if (runRef.current !== runId || recorder.state !== "recording") return;
+        analyser.getFloatTimeDomainData(buffer);
+        let sum = 0;
+        for (let i = 0; i < buffer.length; i += 1) sum += buffer[i] * buffer[i];
+        const rms = Math.sqrt(sum / buffer.length);
+        setLevel(rms);
+        const threshold = Math.max(0.009, noiseFloor + 0.008);
+        if (!hasSpoken) noiseFloor = noiseFloor * 0.96 + Math.min(rms, 0.035) * 0.04;
+        if (rms > threshold) {
+          hasSpoken = true;
+          lastVoiceAt = performance.now();
+        }
+        if (hasSpoken && performance.now() - lastVoiceAt >= SILENCE_MS) return finish();
+        rafRef.current = requestAnimationFrame(tick);
+      };
+
+      recorder.start(250);
+      setState("listening");
+      rafRef.current = requestAnimationFrame(tick);
+      maxTimerRef.current = setTimeout(finish, MAX_RECORD_MS);
     } catch (e: any) {
-      toast.error("Non riesco ad avviare il microfono");
+      toast.error(e?.name === "NotAllowedError" ? "Microfono bloccato" : "Microfono non disponibile");
+      cleanup();
       setState("idle");
     }
-  }, [handleFinal]);
+  }, [cleanup, handleText, state, transcribe]);
 
-  const onMicClick = () => {
-    if (state === "listening") stop();
-    else if (state === "idle") start();
-  };
-
-  const busy = state === "thinking" || state === "executing";
+  const busy = state === "transcribing" || state === "thinking" || state === "executing";
   const listening = state === "listening";
   const showOverlay = listening || busy || !!finalText;
+  const meter = Math.min(1, level * 18);
 
   return (
     <>
@@ -234,51 +309,32 @@ export function VoiceAssistant() {
           <div className="bg-card/95 border-2 border-gold/60 rounded-2xl px-4 py-3 max-w-md w-full backdrop-blur-md shadow-2xl pointer-events-auto">
             <div className="flex items-center justify-between mb-1">
               <span className="text-[10px] font-display uppercase tracking-widest text-gold">
-                {listening ? "Ascolto…" : state === "thinking" ? "Capisco…" : state === "executing" ? "Eseguo…" : "Ultimo comando"}
+                {listening ? "Ascolto…" : state === "transcribing" ? "Trascrivo…" : state === "thinking" ? "Capisco…" : state === "executing" ? "Eseguo…" : "Ultimo comando"}
               </span>
               <button onClick={() => { stop(); setFinalText(""); setLastSpoken(""); }} className="text-gold-muted hover:text-gold">
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
             <div className="text-sm text-foreground min-h-[1.5rem] leading-snug">
-              {finalText}
-              {interim && <span className="text-gold-muted italic"> {interim}</span>}
-              {listening && !finalText && !interim && (
-                <span className="text-gold-muted italic">Parla ora…</span>
-              )}
+              {finalText || (listening ? "Parla ora, chiudo dopo 3 secondi di silenzio…" : "")}
             </div>
-            {lastSpoken && !listening && (
-              <div className="text-[11px] text-gold italic mt-1">→ {lastSpoken}</div>
-            )}
+            {lastSpoken && !listening && <div className="text-[11px] text-gold italic mt-1">→ {lastSpoken}</div>}
           </div>
         </div>
       )}
 
       <div className="fixed z-30 bottom-20 md:bottom-6 right-4">
         <button
-          onClick={onMicClick}
-          disabled={busy || !supported}
+          onClick={listening ? stop : start}
+          disabled={busy}
           className={cn(
             "relative w-16 h-16 rounded-full border-2 flex items-center justify-center shadow-xl backdrop-blur transition",
-            listening
-              ? "bg-destructive border-destructive text-white animate-pulse"
-              : busy
-                ? "bg-card/80 border-gold/50 text-gold"
-                : supported
-                  ? "bg-gradient-gold border-gold text-primary-foreground hover:scale-105"
-                  : "bg-muted border-muted text-muted-foreground opacity-50",
+            listening ? "bg-destructive border-destructive text-destructive-foreground animate-pulse" : busy ? "bg-card/80 border-gold/50 text-gold" : "bg-gradient-gold border-gold text-primary-foreground hover:scale-105",
           )}
-          title={!supported ? "Voce non supportata" : listening ? "Ferma" : "Parla"}
+          style={listening ? { transform: `scale(${1 + meter * 0.18})` } : undefined}
+          title={listening ? "Ferma" : "Parla"}
         >
-          {busy ? (
-            <Loader2 className="w-7 h-7 animate-spin" />
-          ) : listening ? (
-            <Mic className="w-7 h-7" />
-          ) : supported ? (
-            <Mic className="w-7 h-7" />
-          ) : (
-            <MicOff className="w-7 h-7" />
-          )}
+          {busy ? <Loader2 className="w-7 h-7 animate-spin" /> : <Mic className="w-7 h-7" />}
         </button>
       </div>
     </>

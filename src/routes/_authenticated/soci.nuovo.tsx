@@ -1,10 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { MeduzaLayout } from "@/components/MeduzaLayout";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Mic } from "lucide-react";
 import { VoiceFormWizard, warmUpVoiceForm, type WizardField } from "@/components/voice/VoiceFormWizard";
+import { voiceBus } from "@/components/voice/voice-bus";
 
 export const Route = createFileRoute("/_authenticated/soci/nuovo")({
   component: NewSocio,
@@ -43,6 +44,17 @@ function NewSocio() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
+
+  useEffect(() => {
+    voiceBus.register({
+      fillCurrentForm: (fields) => {
+        setForm((current) => ({ ...current, ...fields }));
+        toast.success("Campi socio compilati");
+        return true;
+      },
+    });
+    return () => voiceBus.unregister(["fillCurrentForm"]);
+  }, []);
 
   function setField<K extends keyof typeof empty>(k: K, v: string) {
     setForm((f) => ({ ...f, [k]: v }));

@@ -7,6 +7,7 @@ export type VoiceHandlers = {
   clearCart: () => void;
   confirmOrder: () => Promise<boolean>;
   renewPlan: (planQuery: string) => Promise<boolean>;
+  fillCurrentForm: (fields: Record<string, string>) => Promise<boolean> | boolean;
 };
 
 type Listener = (msg: { kind: "info" | "success" | "error"; text: string }) => void;

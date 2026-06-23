@@ -3,10 +3,11 @@ import { MeduzaLayout } from "@/components/MeduzaLayout";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Trash2, Pencil, Check, X, Mic } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { VoiceFormWizard, warmUpVoiceForm, type WizardField } from "@/components/voice/VoiceFormWizard";
+import { voiceBus } from "@/components/voice/voice-bus";
 
 export const Route = createFileRoute("/_authenticated/prodotti")({
   component: ProductsPage,
@@ -36,6 +37,22 @@ function ProductsPage() {
   const canEdit = isAdmin || can("manage_products");
   const [editing, setEditing] = useState<Partial<ProductRow> | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
+
+  useEffect(() => {
+    voiceBus.register({
+      fillCurrentForm: (fields) => {
+        setEditing((current) => ({
+          ...(current ?? { type: "per_gram", price: 0, stock: 0, active: true }),
+          ...fields,
+          price: fields.price != null ? Number(fields.price) : current?.price ?? 0,
+          stock: fields.stock != null ? Number(fields.stock) : current?.stock ?? 0,
+        }));
+        toast.success("Campi prodotto compilati");
+        return true;
+      },
+    });
+    return () => voiceBus.unregister(["fillCurrentForm"]);
+  }, []);
 
   const { data: products } = useQuery({
     queryKey: ["products"],

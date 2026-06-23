@@ -3,10 +3,11 @@ import { MeduzaLayout } from "@/components/MeduzaLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { UserPlus, Shield, ShieldCheck, Mic } from "lucide-react";
 import { VoiceFormWizard, warmUpVoiceForm, type WizardField } from "@/components/voice/VoiceFormWizard";
+import { voiceBus } from "@/components/voice/voice-bus";
 
 export const Route = createFileRoute("/_authenticated/collaboratori")({
   component: Collabs,
@@ -36,6 +37,20 @@ function Collabs() {
   const [name, setName] = useState("");
   const [perms, setPerms] = useState<string[]>(["use_cash"]);
   const [wizardOpen, setWizardOpen] = useState(false);
+
+  useEffect(() => {
+    voiceBus.register({
+      fillCurrentForm: (fields) => {
+        setAdding(true);
+        if (fields.name) setName(fields.name);
+        if (fields.email) setEmail(fields.email);
+        if (fields.password) setPassword(fields.password);
+        toast.success("Campi collaboratore compilati");
+        return true;
+      },
+    });
+    return () => voiceBus.unregister(["fillCurrentForm"]);
+  }, []);
 
   function setWizardField(k: string, v: string) {
     if (k === "name") setName(v);
