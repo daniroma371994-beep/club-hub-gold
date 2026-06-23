@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Mic } from "lucide-react";
-import { VoiceFormWizard, warmUpVoiceForm, type WizardField } from "@/components/voice/VoiceFormWizard";
+import { VoiceFormWizard, type WizardField } from "@/components/voice/VoiceFormWizard";
 import { voiceBus } from "@/components/voice/voice-bus";
 
 export const Route = createFileRoute("/_authenticated/soci/nuovo")({
@@ -114,7 +114,7 @@ function NewSocio() {
       <div className="max-w-3xl mb-4">
         <button
           type="button"
-          onClick={() => { warmUpVoiceForm().catch(() => undefined); setWizardOpen(true); }}
+          onClick={() => setWizardOpen(true)}
           className="w-full md:w-auto flex items-center justify-center gap-2 px-5 py-3 bg-gradient-gold text-primary-foreground rounded-md font-display uppercase tracking-[0.3em] text-xs shadow-lg"
         >
           <Mic className="w-4 h-4" /> Compila a voce
