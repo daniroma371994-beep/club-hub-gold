@@ -610,9 +610,9 @@ export function VoiceFormWizard({
       setPhase("done");
       const runId = ++runRef.current;
       (async () => {
-        await speak("Compilazione completata.");
+        await speak("Fatto.");
         if (!cancelledRef.current && runRef.current === runId) {
-          closeTimerRef.current = window.setTimeout(() => onCloseRef.current(), 900);
+          closeTimerRef.current = window.setTimeout(() => onCloseRef.current(), 350);
         }
       })();
       return () => {
