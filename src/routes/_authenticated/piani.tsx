@@ -2,14 +2,23 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { MeduzaLayout } from "@/components/MeduzaLayout";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Trash2, Pencil, Check, X, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, X, ArrowLeft, Mic } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { VoiceFormWizard, type WizardField } from "@/components/voice/VoiceFormWizard";
 
 export const Route = createFileRoute("/_authenticated/piani")({
   component: PlansPage,
 });
+
+const PLAN_WIZARD: WizardField[] = [
+  { key: "name", label: "Nome piano", hint: "Esempio: 1 mese, 6 mesi, 1 anno" },
+  { key: "duration_days", label: "Durata in giorni", type: "number" },
+  { key: "price", label: "Prezzo in euro", type: "number" },
+  { key: "description", label: "Descrizione", hint: "Oppure salta" },
+];
+
 
 interface Plan {
   id: string;
