@@ -283,11 +283,10 @@ export function VoiceAssistant() {
         setState("idle");
         return;
       }
-      // auto-restart on transient errors
-      if (stateRef.current === "wake") setTimeout(startWake, 800);
+      if (wakeDesiredRef.current && stateRef.current === "wake") setTimeout(startWake, 800);
     };
     sr.onend = () => {
-      if (stateRef.current === "wake") setTimeout(startWake, 200);
+      if (wakeDesiredRef.current && stateRef.current === "wake") setTimeout(startWake, 200);
     };
     srRef.current = sr;
     try {
