@@ -35,6 +35,13 @@ function Collabs() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [perms, setPerms] = useState<string[]>(["use_cash"]);
+  const [wizardOpen, setWizardOpen] = useState(false);
+
+  function setWizardField(k: string, v: string) {
+    if (k === "name") setName(v);
+    else if (k === "email") setEmail(v);
+    else if (k === "password") setPassword(v);
+  }
 
   const { data: collabs } = useQuery({
     queryKey: ["collabs"],
