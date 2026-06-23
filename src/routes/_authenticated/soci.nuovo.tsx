@@ -3,10 +3,23 @@ import { MeduzaLayout } from "@/components/MeduzaLayout";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Mic } from "lucide-react";
+import { VoiceFormWizard, type WizardField } from "@/components/voice/VoiceFormWizard";
 
 export const Route = createFileRoute("/_authenticated/soci/nuovo")({
   component: NewSocio,
 });
+
+const WIZARD_FIELDS: WizardField[] = [
+  { key: "card_number", label: "Numero tessera", type: "number", hint: "Detta solo i numeri" },
+  { key: "first_name", label: "Nome" },
+  { key: "last_name", label: "Cognome" },
+  { key: "birth_date", label: "Data di nascita", type: "date", hint: "Esempio: 12 marzo 1990" },
+  { key: "address", label: "Indirizzo" },
+  { key: "phone", label: "Telefono", type: "phone" },
+  { key: "email", label: "Email", type: "email", hint: "Di chiocciola per @ e punto per ." },
+  { key: "document_number", label: "Numero documento" },
+];
 
 const empty = {
   card_number: "",
