@@ -116,6 +116,7 @@ Azioni disponibili:
 - clear_cart: svuota tutto il carrello.
 - confirm_order: conferma e incassa l'ordine attuale. "conferma ordine", "incassa", "cobra".
 - renew_plan: attiva/rinnova quota associativa per il socio attuale. query = nome o durata del piano. "rinnova piano 6 mesi".
+- fill_current_form: compila il form attuale quando l'utente detta più campi in una frase. Usa form_fields con chiavi adatte: per prodotto {"name","price","stock","description"}; per piano {"name","duration_days","price","description"}; per socio {"card_number","first_name","last_name","birth_date","address","phone","email","document_number"}; per collaboratore {"name","email","password"}. Esempio: "prodotto Amnesia prezzo 10 stock 50".
 - cancel: l'utente ha detto "annulla", "lascia stare", "fermati".
 - unknown: se non capisci o manca informazione critica. In "speak" metti una spiegazione breve in italiano.
 
