@@ -7,6 +7,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { VoiceFormWizard, warmUpVoiceForm, type WizardField } from "@/components/voice/VoiceFormWizard";
+import { voiceBus } from "@/components/voice/voice-bus";
+import { useEffect } from "react";
 
 export const Route = createFileRoute("/_authenticated/piani")({
   component: PlansPage,
@@ -34,6 +36,22 @@ function PlansPage() {
   const { isAdmin } = useAuth();
   const [editing, setEditing] = useState<Partial<Plan> | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
+
+  useEffect(() => {
+    voiceBus.register({
+      fillCurrentForm: (fields) => {
+        setEditing((current) => ({
+          ...(current ?? { duration_days: 30, price: 0, active: true }),
+          ...fields,
+          duration_days: fields.duration_days != null ? Number(fields.duration_days) : current?.duration_days ?? 30,
+          price: fields.price != null ? Number(fields.price) : current?.price ?? 0,
+        }));
+        toast.success("Campi piano compilati");
+        return true;
+      },
+    });
+    return () => voiceBus.unregister(["fillCurrentForm"]);
+  }, []);
 
   const { data: plans } = useQuery({
     queryKey: ["plans"],
