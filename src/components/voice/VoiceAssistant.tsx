@@ -36,6 +36,8 @@ export function VoiceAssistant() {
 
   const srRef = useRef<any>(null);
   const stoppingRef = useRef(false);
+  const interimRef = useRef("");
+  const finalRef = useRef("");
 
   useEffect(() => {
     const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -50,12 +52,12 @@ export function VoiceAssistant() {
       try {
         if (action === "navigate" && intent.target) {
           const to = ROUTE_MAP[intent.target];
-          if (!to) return toast.error(`No conozco "${intent.target}"`);
+          if (!to) return toast.error(`Non conosco "${intent.target}"`);
           await nav({ to });
-          toast.success(intent.speak ?? `Abriendo ${intent.target}`);
+          toast.success(intent.speak ?? `Apro ${intent.target}`);
         } else if (action === "create_member") {
           if (!intent.first_name || !intent.last_name) {
-            toast.error("Faltan nombre o apellido");
+            toast.error("Mancano nome o cognome");
             return;
           }
           const { data: u } = await supabase.auth.getUser();
@@ -77,10 +79,10 @@ export function VoiceAssistant() {
             .select("id")
             .single();
           if (error) throw error;
-          toast.success(`Socio creado: ${intent.first_name} ${intent.last_name}`);
+          toast.success(`Socio creato: ${intent.first_name} ${intent.last_name}`);
           await nav({ to: "/soci/$id", params: { id: data.id } });
         } else if (action === "find_member") {
-          if (!intent.query) return toast.error("Dime qué socio buscar");
+          if (!intent.query) return toast.error("Dimmi quale socio cercare");
           if (route !== "/soci/gestisci") {
             voiceBus.pending = intent;
             await nav({ to: "/soci/gestisci" });
@@ -88,7 +90,7 @@ export function VoiceAssistant() {
           }
           await voiceBus.handlers.findMember?.(intent.query);
         } else if (action === "add_to_cart") {
-          if (!intent.query) return toast.error("¿Qué producto?");
+          if (!intent.query) return toast.error("Quale prodotto?");
           if (route !== "/soci/gestisci") {
             voiceBus.pending = intent;
             await nav({ to: "/soci/gestisci" });
@@ -100,12 +102,12 @@ export function VoiceAssistant() {
           await voiceBus.handlers.removeFromCart?.(intent.query);
         } else if (action === "clear_cart") {
           voiceBus.handlers.clearCart?.();
-          toast.success("Pedido vaciado");
+          toast.success("Carrello svuotato");
         } else if (action === "confirm_order") {
-          if (route !== "/soci/gestisci") return toast.error("Abre primero la página de socio");
+          if (route !== "/soci/gestisci") return toast.error("Apri prima la pagina gestione soci");
           await voiceBus.handlers.confirmOrder?.();
         } else if (action === "renew_plan") {
-          if (!intent.query) return toast.error("¿Qué plan?");
+          if (!intent.query) return toast.error("Quale piano?");
           if (route !== "/soci/gestisci") {
             voiceBus.pending = intent;
             await nav({ to: "/soci/gestisci" });
@@ -113,9 +115,9 @@ export function VoiceAssistant() {
           }
           await voiceBus.handlers.renewPlan?.(intent.query);
         } else if (action === "cancel") {
-          toast.message(intent.speak ?? "Cancelado");
+          toast.message(intent.speak ?? "Annullato");
         } else {
-          toast.error(intent.speak ?? "No entendí.");
+          toast.error(intent.speak ?? "Non ho capito.");
         }
         qc.invalidateQueries();
       } catch (e: any) {
@@ -145,7 +147,7 @@ export function VoiceAssistant() {
         });
         await executeIntent(intent);
       } catch (e: any) {
-        toast.error(e.message ?? "Error procesando");
+        toast.error(e.message ?? "Errore durante l'elaborazione");
         setState("idle");
       }
     },
@@ -160,15 +162,17 @@ export function VoiceAssistant() {
   const start = useCallback(() => {
     const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) {
-      toast.error("Tu navegador no soporta dictado por voz. Usa Chrome.");
+      toast.error("Il browser non supporta il comando vocale. Usa Chrome.");
       return;
     }
     try { srRef.current?.stop(); } catch {}
     stoppingRef.current = false;
     setInterim("");
     setFinalText("");
+    interimRef.current = "";
+    finalRef.current = "";
     const sr = new SR();
-    sr.lang = "es-ES";
+    sr.lang = "it-IT";
     sr.continuous = false;
     sr.interimResults = true;
     sr.maxAlternatives = 1;
@@ -182,17 +186,22 @@ export function VoiceAssistant() {
         else interimStr += t;
       }
       setInterim(interimStr);
-      if (finalStr) setFinalText((p) => (p + " " + finalStr).trim());
+      interimRef.current = interimStr;
+      if (finalStr) {
+        finalRef.current = `${finalRef.current} ${finalStr}`.trim();
+        setFinalText(finalRef.current);
+      }
     };
     sr.onerror = (e: any) => {
-      if (e.error === "not-allowed") toast.error("Micrófono bloqueado");
-      else if (e.error === "no-speech") toast.message("No oí nada");
-      else if (e.error !== "aborted") toast.error(`Error voz: ${e.error}`);
+      if (e.error === "not-allowed") toast.error("Microfono bloccato");
+      else if (e.error === "no-speech") toast.message("Non ho sentito nulla");
+      else if (e.error !== "aborted") toast.error(`Errore voce: ${e.error}`);
       setState("idle");
     };
     sr.onend = () => {
-      const text = (finalText + " " + interim).trim();
+      const text = `${finalRef.current} ${interimRef.current}`.trim();
       setInterim("");
+      interimRef.current = "";
       if (stoppingRef.current || !text) {
         setState("idle");
         return;
@@ -204,10 +213,10 @@ export function VoiceAssistant() {
     try {
       sr.start();
     } catch (e: any) {
-      toast.error("No se pudo iniciar el micrófono");
+      toast.error("Non riesco ad avviare il microfono");
       setState("idle");
     }
-  }, [finalText, interim, handleFinal]);
+  }, [handleFinal]);
 
   const onMicClick = () => {
     if (state === "listening") stop();
@@ -225,7 +234,7 @@ export function VoiceAssistant() {
           <div className="bg-card/95 border-2 border-gold/60 rounded-2xl px-4 py-3 max-w-md w-full backdrop-blur-md shadow-2xl pointer-events-auto">
             <div className="flex items-center justify-between mb-1">
               <span className="text-[10px] font-display uppercase tracking-widest text-gold">
-                {listening ? "Escuchando…" : state === "thinking" ? "Procesando…" : state === "executing" ? "Ejecutando…" : "Última orden"}
+                {listening ? "Ascolto…" : state === "thinking" ? "Capisco…" : state === "executing" ? "Eseguo…" : "Ultimo comando"}
               </span>
               <button onClick={() => { stop(); setFinalText(""); setLastSpoken(""); }} className="text-gold-muted hover:text-gold">
                 <X className="w-3.5 h-3.5" />
@@ -235,7 +244,7 @@ export function VoiceAssistant() {
               {finalText}
               {interim && <span className="text-gold-muted italic"> {interim}</span>}
               {listening && !finalText && !interim && (
-                <span className="text-gold-muted italic">Habla ahora…</span>
+                <span className="text-gold-muted italic">Parla ora…</span>
               )}
             </div>
             {lastSpoken && !listening && (
@@ -259,7 +268,7 @@ export function VoiceAssistant() {
                   ? "bg-gradient-gold border-gold text-primary-foreground hover:scale-105"
                   : "bg-muted border-muted text-muted-foreground opacity-50",
           )}
-          title={!supported ? "Voz no soportada" : listening ? "Detener" : "Hablar"}
+          title={!supported ? "Voce non supportata" : listening ? "Ferma" : "Parla"}
         >
           {busy ? (
             <Loader2 className="w-7 h-7 animate-spin" />
