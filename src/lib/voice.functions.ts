@@ -9,6 +9,7 @@ const TranscribeInput = z.object({
   audioBase64: z.string().min(1),
   mime: z.string().min(1),
   language: z.string().optional(),
+  prompt: z.string().optional(),
 });
 
 function extToFormat(mime: string): { ext: string; format: string } {
@@ -28,14 +29,24 @@ export const transcribeVoice = createServerFn({ method: "POST" })
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
     const buf = Uint8Array.from(atob(data.audioBase64), (c) => c.charCodeAt(0));
+    if (buf.byteLength < 1024) throw new Error("Audio troppo breve: ripeti il campo.");
+    if (buf.byteLength > 25 * 1024 * 1024) throw new Error("Audio troppo lungo: ripeti più corto.");
     const { ext } = extToFormat(data.mime);
     const form = new FormData();
-    form.append("model", "openai/gpt-4o-mini-transcribe");
+    form.append("model", "openai/gpt-4o-transcribe");
     form.append("language", data.language ?? "it");
+    form.append(
+      "prompt",
+      data.prompt ??
+        "Trascrivi la risposta breve dell'utente in italiano. Mantieni nomi, email, numeri e date il più fedeli possibile.",
+    );
     form.append("file", new Blob([buf], { type: data.mime }), `recording.${ext}`);
     const res = await fetch("https://ai.gateway.lovable.dev/v1/audio/transcriptions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${key}` },
+      headers: {
+        "Lovable-API-Key": key,
+        "X-Lovable-AIG-SDK": "vercel-ai-sdk",
+      },
       body: form,
     });
     if (!res.ok) {
@@ -89,42 +100,42 @@ export const parseVoiceIntent = createServerFn({ method: "POST" })
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
     const gateway = createLovableAiGatewayProvider(key);
 
-    const productList = (data.products ?? []).map((p) => `- ${p.name}`).join("\n") || "(ninguno)";
-    const planList = (data.plans ?? []).map((p) => `- ${p.name} (${p.duration_days} días)`).join("\n") || "(ninguno)";
+    const productList = (data.products ?? []).map((p) => `- ${p.name}`).join("\n") || "(nessuno)";
+    const planList = (data.plans ?? []).map((p) => `- ${p.name} (${p.duration_days} giorni)`).join("\n") || "(nessuno)";
 
-    const system = `Eres el asistente de voz "Meduza" de un club privado. El usuario habla en español. Tu tarea es convertir el texto transcrito en una acción estructurada. NO ejecutas nada, solo devuelves el JSON.
+    const system = `Sei l'assistente vocale "Meduza" di un club privato. L'utente parla in italiano. Il tuo compito è convertire il testo trascritto in un'azione strutturata. NON esegui nulla, restituisci solo JSON.
 
-Acciones disponibles:
-- navigate: ir a una sección. target ∈ {"dashboard","soci","crear-socio","gestionar-socio","productos","caja","planes","colaboradores"}. Frases típicas: "abre la caja", "ve a productos", "muestra el dashboard".
-- create_member: registrar nuevo socio. Extrae first_name, last_name, y opcional dni, phone, address, email, birth_date (formato YYYY-MM-DD). El usuario suele decir "nuevo socio Juan Pérez DNI 12345678 teléfono 600...".
-- find_member: buscar socio existente. query = número de tarjeta o nombre. "busca socio número 42", "abre la ficha de María".
-- add_to_cart: añadir producto al pedido del socio actual. query = nombre del producto (debe coincidir con uno de la lista), quantity = número (acepta decimales), unit = "g" para gramos o "pz" para piezas. "añade 2 gramos de Amnesia", "agrega 3 piezas de pre-rolled".
-- remove_from_cart: quitar producto del pedido. query = nombre del producto.
-- clear_cart: vaciar el pedido entero.
-- confirm_order: confirmar y cobrar el pedido actual. "confirma el pedido", "cobra".
-- renew_plan: activar/renovar cuota asociativa para el socio actual. query = nombre o duración del plan (debe coincidir con uno de la lista). "renueva plan 6 meses".
-- cancel: el usuario dijo "cancela", "olvídalo".
-- unknown: si no entiendes o falta info crítica. Pon en "speak" una breve explicación en español de qué falta.
+Azioni disponibili:
+- navigate: vai a una sezione. target ∈ {"dashboard","soci","crear-socio","gestionar-socio","productos","caja","planes","colaboradores"}. Frasi tipiche: "apri cassa", "vai a prodotti", "mostra dashboard", "nuovo socio", "gestisci soci", "quote", "collaboratori".
+- create_member: registra un nuovo socio. Estrai first_name, last_name e opzionali dni, phone, address, email, birth_date (formato YYYY-MM-DD). Frase tipica: "nuovo socio Mario Rossi DNI 12345678 telefono 600...".
+- find_member: cerca socio esistente. query = numero tessera o nome. "cerca socio numero 42", "apri scheda Maria".
+- add_to_cart: aggiungi prodotto al carrello/ordine del socio attuale. query = nome prodotto (deve coincidere con lista), quantity = numero anche decimale, unit = "g" per grammi o "pz" per pezzi. "aggiungi 2 grammi di Amnesia", "metti 3 pezzi".
+- remove_from_cart: togli prodotto dal carrello. query = nome prodotto.
+- clear_cart: svuota tutto il carrello.
+- confirm_order: conferma e incassa l'ordine attuale. "conferma ordine", "incassa", "cobra".
+- renew_plan: attiva/rinnova quota associativa per il socio attuale. query = nome o durata del piano. "rinnova piano 6 mesi".
+- cancel: l'utente ha detto "annulla", "lascia stare", "fermati".
+- unknown: se non capisci o manca informazione critica. In "speak" metti una spiegazione breve in italiano.
 
-Productos activos:
+Prodotti attivi:
 ${productList}
 
-Planes activos:
+Piani attivi:
 ${planList}
 
-Ruta actual: ${data.route ?? "desconocida"}
+Pagina attuale: ${data.route ?? "sconosciuta"}
 
-Reglas:
-- Para add_to_cart: si el usuario no especifica unidad, usa "pz" para productos por pieza y "g" para los demás (asume por defecto "g" si no estás seguro). quantity por defecto 1.
-- Para renew_plan: pasa el nombre tal como lo dijo el usuario; el cliente hará el match difuso.
-- Nunca inventes nombres de productos o planes que no aparecen en las listas. Si no hay match razonable, usa unknown.
-- En "speak" pon SIEMPRE una confirmación corta en español de lo que vas a hacer (ej. "Añadiendo 2 gramos de Amnesia"). Máximo 15 palabras.`;
+Regole:
+- Per add_to_cart: se l'utente non specifica unità, usa "pz" per prodotti a pezzo e "g" per gli altri; se non sei sicuro usa "g". quantity predefinita 1.
+- Per renew_plan: passa il nome come detto dall'utente; il client farà match difuso.
+- Non inventare prodotti o piani non presenti nelle liste. Se non c'è match ragionevole, usa unknown.
+- In "speak" metti SEMPRE una conferma corta in italiano di ciò che farai (es. "Aggiungo 2 grammi di Amnesia"). Massimo 15 parole.`;
 
     const { experimental_output: output } = await generateText({
       model: gateway("google/gemini-3-flash-preview"),
       experimental_output: Output.object({ schema: IntentSchema }),
       system,
-      prompt: `Texto del usuario: """${data.text}"""`,
+      prompt: `Testo dell'utente: """${data.text}"""`,
     });
 
     return output;
