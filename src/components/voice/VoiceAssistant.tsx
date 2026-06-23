@@ -157,6 +157,10 @@ export function VoiceAssistant() {
             return;
           }
           await voiceBus.handlers.renewPlan?.(intent.query);
+        } else if (action === "fill_current_form") {
+          if (!intent.form_fields || Object.keys(intent.form_fields).length === 0) return toast.error("Dimmi i campi da compilare");
+          const handled = await voiceBus.handlers.fillCurrentForm?.(intent.form_fields);
+          if (!handled) toast.error("Apri un modulo e riprova");
         } else if (action === "cancel") {
           toast.message(intent.speak ?? "Annullato");
         } else {
