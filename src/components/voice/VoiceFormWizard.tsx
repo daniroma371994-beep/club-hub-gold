@@ -713,14 +713,14 @@ export function VoiceFormWizard({
               <div className="grid gap-2">
                 <button
                   type="button"
-                  onClick={() => startWizard("manual")}
+                  onClick={startWizard}
                   className="w-full bg-gradient-gold text-primary-foreground py-3 rounded-md font-display uppercase tracking-[0.3em] text-xs"
                 >
                   Avvia modalità sicura campo per campo
                 </button>
                 <button
                   type="button"
-                  onClick={() => startWizard("auto")}
+                  onClick={startWizard}
                   className="w-full border border-gold/50 text-gold py-2.5 rounded-md font-display uppercase tracking-[0.25em] text-[10px]"
                 >
                   Prova automatico continuo
@@ -729,15 +729,15 @@ export function VoiceFormWizard({
             ) : error ? (
               <button
                 type="button"
-                onClick={() => startWizard(mode)}
+                onClick={startWizard}
                 className="w-full bg-gradient-gold text-primary-foreground py-3 rounded-md font-display uppercase tracking-[0.3em] text-xs"
               >
                 Riprova microfono
               </button>
-            ) : mode === "manual" && phase === "waiting" ? (
+            ) : false && phase === "waiting" ? (
               <button
                 type="button"
-                onClick={startCurrentField}
+                onClick={startWizard}
                 className="w-full bg-gradient-gold text-primary-foreground py-3 rounded-md font-display uppercase tracking-[0.3em] text-xs"
               >
                 Registra questo campo
