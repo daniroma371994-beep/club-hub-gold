@@ -423,16 +423,14 @@ export function VoiceFormWizard({
     setCycle((value) => value + 1);
   }, [cleanupRecording]);
 
-  const startWizard = useCallback(async (nextMode: Mode) => {
+  const startWizard = useCallback(async () => {
     setError("");
-    setMode(nextMode);
     setPhase("preparing");
     try {
       const stream = await warmUpVoiceForm();
       streamRef.current = stream;
       setStarted(true);
-      if (nextMode === "auto") setCycle((value) => value + 1);
-      else setPhase("waiting");
+      setCycle((value) => value + 1);
     } catch (err) {
       const message = err instanceof DOMException ? micErrorMessage(err) : err instanceof Error ? err.message : micErrorMessage(err);
       setError(message);
@@ -515,7 +513,6 @@ export function VoiceFormWizard({
           await speak(normalized.length > 45 ? "Ho scritto il campo." : `Ho scritto: ${normalized}.`);
           if (!cancelledRef.current && runRef.current === runId) {
             setIdx((value) => value + 1);
-            if (mode === "manual") setPhase("waiting");
           }
         } catch (err: any) {
           const message = err?.message ?? "Errore trascrizione";
@@ -578,31 +575,8 @@ export function VoiceFormWizard({
       rafRef.current = requestAnimationFrame(tick);
       maxTimerRef.current = window.setTimeout(stopRecorder, MAX_RECORD_MS);
     },
-    [blob2b64, cleanupRecording, ensureMic, mode, releaseEverything, retrySameField, speak, transcribe],
+    [blob2b64, cleanupRecording, ensureMic, releaseEverything, retrySameField, speak, transcribe],
   );
-
-  const startCurrentField = useCallback(async () => {
-    if (!field || finished) return;
-    cancelledRef.current = false;
-    setError("");
-    setHeard("");
-    setLevel(0);
-    const runId = ++runRef.current;
-    try {
-      await ensureMic();
-      if (cancelledRef.current || runRef.current !== runId) return;
-      setPhase("speaking");
-      const prompt = field.hint ? `${field.label}. ${field.hint}.` : `${field.label}.`;
-      await speak(prompt);
-      if (cancelledRef.current || runRef.current !== runId) return;
-      await startRecording(field, runId);
-    } catch (err) {
-      const message = err instanceof DOMException ? micErrorMessage(err) : err instanceof Error ? err.message : micErrorMessage(err);
-      setError(message);
-      setPhase("error");
-      toast.error(message);
-    }
-  }, [ensureMic, field, finished, speak, startRecording]);
 
   useEffect(() => {
     cancelledRef.current = false;
@@ -610,13 +584,6 @@ export function VoiceFormWizard({
 
     if (!started) {
       setPhase("waiting");
-      return undefined;
-    }
-
-    if (mode === "manual") {
-      setPhase("waiting");
-      setHeard("");
-      setLevel(0);
       return undefined;
     }
 
@@ -668,7 +635,7 @@ export function VoiceFormWizard({
         // ignore speech cleanup errors
       }
     };
-  }, [cleanupRecording, cycle, fields, finished, idx, ensureMic, mode, speak, startRecording, started]);
+  }, [cleanupRecording, cycle, fields, finished, idx, ensureMic, speak, startRecording, started]);
 
   useEffect(() => () => releaseEverything(), [releaseEverything]);
 
