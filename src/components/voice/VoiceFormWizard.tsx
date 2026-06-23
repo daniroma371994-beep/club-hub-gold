@@ -13,9 +13,9 @@ export type WizardField = {
 
 type Phase = "waiting" | "preparing" | "speaking" | "listening" | "transcribing" | "confirming" | "done" | "error";
 
-const SILENCE_MS = 3000;
-const MAX_RECORD_MS = 18000;
-const MIN_SPEECH_MS = 350;
+const SILENCE_MS = 1300;
+const MAX_RECORD_MS = 12000;
+const MIN_SPEECH_MS = 250;
 const MIN_AUDIO_BYTES = 1200;
 
 let warmedStream: MediaStream | null = null;
@@ -422,7 +422,7 @@ export function VoiceFormWizard({
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = "it-IT";
-        utterance.rate = 0.92;
+        utterance.rate = 1.15;
         utterance.pitch = 1;
         const voice = window.speechSynthesis.getVoices().find((v) => v.lang.toLowerCase().startsWith("it"));
         if (voice) utterance.voice = voice;
@@ -430,7 +430,7 @@ export function VoiceFormWizard({
         utterance.onerror = done;
         window.speechSynthesis.resume();
         window.speechSynthesis.speak(utterance);
-        fallbackTimer = window.setTimeout(done, Math.min(7500, Math.max(2200, text.length * 95)));
+        fallbackTimer = window.setTimeout(done, Math.min(5000, Math.max(1200, text.length * 70)));
       } catch {
         done();
       }
@@ -509,7 +509,6 @@ export function VoiceFormWizard({
           }
           if (command === "skip") {
             setPhase("confirming");
-            await speak("Salto questo campo.");
             if (!cancelledRef.current && runRef.current === runId) setIdx((value) => value + 1);
             return;
           }
@@ -531,7 +530,6 @@ export function VoiceFormWizard({
           setHeard(normalized);
           onChangeRef.current(currentField.key, normalized);
           setPhase("confirming");
-          await speak(normalized.length > 45 ? "Ho scritto il campo." : `Ho scritto: ${normalized}.`);
           if (!cancelledRef.current && runRef.current === runId) {
             setIdx((value) => value + 1);
           }
@@ -612,9 +610,9 @@ export function VoiceFormWizard({
       setPhase("done");
       const runId = ++runRef.current;
       (async () => {
-        await speak("Compilazione completata.");
+        await speak("Fatto.");
         if (!cancelledRef.current && runRef.current === runId) {
-          closeTimerRef.current = window.setTimeout(() => onCloseRef.current(), 900);
+          closeTimerRef.current = window.setTimeout(() => onCloseRef.current(), 350);
         }
       })();
       return () => {
@@ -639,11 +637,8 @@ export function VoiceFormWizard({
         console.log("[VoiceWizard] speaking prompt for", currentField.key);
         await speak(prompt);
         if (cancelledRef.current || runRef.current !== runId) return;
-        // Give the mic a moment to recover from echo cancellation duck after TTS
-        await new Promise((r) => window.setTimeout(r, 350));
-        if (cancelledRef.current || runRef.current !== runId) return;
-        // Re-check mic is still healthy before recording (it may have been muted during TTS)
-        await ensureMic();
+        // tiny gap so the mic recovers from TTS ducking
+        await new Promise((r) => window.setTimeout(r, 120));
         if (cancelledRef.current || runRef.current !== runId) return;
         console.log("[VoiceWizard] starting recorder for", currentField.key);
         await startRecording(currentField, runId);
@@ -726,7 +721,7 @@ export function VoiceFormWizard({
                 {phase === "waiting" && "Pronto"}
                 {phase === "preparing" && "Preparo il microfono…"}
                 {phase === "speaking" && "La IA legge il campo…"}
-                {phase === "listening" && "Parla ora — chiudo dopo 3 secondi di silenzio"}
+                {phase === "listening" && "Parla ora — chiudo dopo 1 secondo di silenzio"}
                 {phase === "transcribing" && "Sto capendo la tua voce…"}
                 {phase === "confirming" && "Ok, passo al prossimo campo"}
                 {phase === "error" && "Serve il microfono"}
