@@ -44,6 +44,10 @@ export function warmUpVoiceForm() {
   try {
     const live = warmedStream?.getAudioTracks().some((track) => track.readyState === "live");
     if (warmedStream && live) return Promise.resolve(warmedStream);
+    if (warmedStream && !live) {
+      warmedStream = null;
+      warmupPromise = null;
+    }
     if (!warmupPromise) {
       warmupPromise = navigator.mediaDevices.getUserMedia(micConstraints).then((stream) => {
         warmedStream = stream;
@@ -351,6 +355,8 @@ export function VoiceFormWizard({
     }
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
+    warmedStream = null;
+    warmupPromise = null;
   }, [cleanupRecording]);
 
   const ensureMic = useCallback(async () => {
@@ -576,7 +582,7 @@ export function VoiceFormWizard({
         if (cancelledRef.current || runRef.current !== runId) return;
         await startRecording(currentField, runId);
       } catch (err) {
-        const message = err instanceof Error ? err.message : micErrorMessage(err);
+        const message = err instanceof DOMException ? micErrorMessage(err) : err instanceof Error ? err.message : micErrorMessage(err);
         setError(message);
         setPhase("error");
         toast.error(message);
