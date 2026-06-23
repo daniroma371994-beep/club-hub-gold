@@ -2,14 +2,23 @@ import { createFileRoute } from "@tanstack/react-router";
 import { MeduzaLayout } from "@/components/MeduzaLayout";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Trash2, Pencil, Check, X } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, X, Mic } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { VoiceFormWizard, type WizardField } from "@/components/voice/VoiceFormWizard";
 
 export const Route = createFileRoute("/_authenticated/prodotti")({
   component: ProductsPage,
 });
+
+const PRODUCT_WIZARD: WizardField[] = [
+  { key: "name", label: "Nome prodotto" },
+  { key: "description", label: "Descrizione", hint: "Oppure salta" },
+  { key: "price", label: "Prezzo", type: "number", hint: "Solo numero in euro" },
+  { key: "stock", label: "Stock disponibile", type: "number" },
+];
+
 
 interface ProductRow {
   id: string;
