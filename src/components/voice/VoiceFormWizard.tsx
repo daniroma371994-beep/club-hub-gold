@@ -231,7 +231,6 @@ export function VoiceFormWizard({
 
   const confirm = () => {
     stopListening();
-    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
     const value = capturedRef.current || interim;
     if (!value) {
       toast.message("Niente da salvare, ripeti o salta");
@@ -242,7 +241,6 @@ export function VoiceFormWizard({
 
   const skip = () => {
     stopListening();
-    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
     capturedRef.current = "";
     setCaptured("");
     setInterim("");
@@ -250,7 +248,6 @@ export function VoiceFormWizard({
   };
   const repeat = () => {
     stopListening();
-    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
     capturedRef.current = "";
     setCaptured("");
     setInterim("");
