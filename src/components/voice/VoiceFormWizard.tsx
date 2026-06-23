@@ -721,7 +721,7 @@ export function VoiceFormWizard({
                 {phase === "waiting" && "Pronto"}
                 {phase === "preparing" && "Preparo il microfono…"}
                 {phase === "speaking" && "La IA legge il campo…"}
-                {phase === "listening" && "Parla ora — chiudo dopo 3 secondi di silenzio"}
+                {phase === "listening" && "Parla ora — chiudo dopo 1 secondo di silenzio"}
                 {phase === "transcribing" && "Sto capendo la tua voce…"}
                 {phase === "confirming" && "Ok, passo al prossimo campo"}
                 {phase === "error" && "Serve il microfono"}
