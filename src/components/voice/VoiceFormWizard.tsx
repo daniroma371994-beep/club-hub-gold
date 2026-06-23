@@ -374,14 +374,33 @@ export function VoiceFormWizard({
   }, [cleanupRecording]);
 
   const ensureMic = useCallback(async () => {
-    const live = streamRef.current?.getAudioTracks().some((track) => track.readyState === "live");
-    if (streamRef.current && live) return streamRef.current;
+    const tracks = streamRef.current?.getAudioTracks() ?? [];
+    const healthy = tracks.length > 0 && tracks.every((track) => track.readyState === "live" && !track.muted && track.enabled);
+
+    if (streamRef.current && healthy) {
+      console.log("[VoiceWizard] reusing existing mic stream");
+      return streamRef.current;
+    }
 
     const mime = mimeForRecording();
     if (!mime) throw new Error("Questo browser non registra un formato audio supportato.");
 
-    const stream = await warmUpVoiceForm();
+    // Stop dead/muted stream so we can grab a fresh one
+    if (streamRef.current) {
+      console.log("[VoiceWizard] mic stream stale, re-acquiring", {
+        readyStates: tracks.map((t) => t.readyState),
+        muted: tracks.map((t) => t.muted),
+      });
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      warmedStream = null;
+      warmupPromise = null;
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia(micConstraints);
+    warmedStream = stream;
     streamRef.current = stream;
+    console.log("[VoiceWizard] acquired fresh mic stream");
     return stream;
   }, []);
 
@@ -458,6 +477,7 @@ export function VoiceFormWizard({
         if (cancelledRef.current || runRef.current !== runId) return;
 
         const blob = new Blob(chunksRef.current, { type: recorder.mimeType || mime });
+        console.log("[VoiceWizard] recorder stopped", { key: currentField.key, size: blob.size, chunks: chunksRef.current.length });
         if (blob.size < MIN_AUDIO_BYTES) {
           setPhase("speaking");
           await speak("Non ho sentito bene. Ripeti il campo.");
@@ -615,10 +635,19 @@ export function VoiceFormWizard({
         if (cancelledRef.current || runRef.current !== runId) return;
         setPhase("speaking");
         const prompt = currentField.hint ? `${currentField.label}. ${currentField.hint}.` : `${currentField.label}.`;
+        console.log("[VoiceWizard] speaking prompt for", currentField.key);
         await speak(prompt);
         if (cancelledRef.current || runRef.current !== runId) return;
+        // Give the mic a moment to recover from echo cancellation duck after TTS
+        await new Promise((r) => window.setTimeout(r, 350));
+        if (cancelledRef.current || runRef.current !== runId) return;
+        // Re-check mic is still healthy before recording (it may have been muted during TTS)
+        await ensureMic();
+        if (cancelledRef.current || runRef.current !== runId) return;
+        console.log("[VoiceWizard] starting recorder for", currentField.key);
         await startRecording(currentField, runId);
       } catch (err) {
+        console.error("[VoiceWizard] field flow error", err);
         const message = err instanceof DOMException ? micErrorMessage(err) : err instanceof Error ? err.message : micErrorMessage(err);
         setError(message);
         setPhase("error");
