@@ -2,14 +2,23 @@ import { createFileRoute } from "@tanstack/react-router";
 import { MeduzaLayout } from "@/components/MeduzaLayout";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Trash2, Pencil, Check, X } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, X, Mic } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { VoiceFormWizard, type WizardField } from "@/components/voice/VoiceFormWizard";
 
 export const Route = createFileRoute("/_authenticated/prodotti")({
   component: ProductsPage,
 });
+
+const PRODUCT_WIZARD: WizardField[] = [
+  { key: "name", label: "Nome prodotto" },
+  { key: "description", label: "Descrizione", hint: "Oppure salta" },
+  { key: "price", label: "Prezzo", type: "number", hint: "Solo numero in euro" },
+  { key: "stock", label: "Stock disponibile", type: "number" },
+];
+
 
 interface ProductRow {
   id: string;
@@ -26,6 +35,7 @@ function ProductsPage() {
   const { can, isAdmin } = useAuth();
   const canEdit = isAdmin || can("manage_products");
   const [editing, setEditing] = useState<Partial<ProductRow> | null>(null);
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   const { data: products } = useQuery({
     queryKey: ["products"],
@@ -87,11 +97,20 @@ function ProductsPage() {
               value={String(editing.stock ?? 0)} onChange={(v) => setEditing({ ...editing, stock: Number(v) })} />
           </div>
           <Inp label="Descrizione" value={editing.description ?? ""} onChange={(v) => setEditing({ ...editing, description: v })} />
-          <div className="flex gap-2 pt-2">
+          <div className="flex flex-wrap gap-2 pt-2">
             <button onClick={save} className="bg-gradient-gold text-primary-foreground px-5 py-2 rounded-md text-xs uppercase tracking-widest flex items-center gap-2"><Check className="w-3 h-3" />Salva</button>
+            <button onClick={() => setWizardOpen(true)} className="border border-gold text-gold px-5 py-2 rounded-md text-xs uppercase tracking-widest flex items-center gap-2"><Mic className="w-3 h-3" />Compila a voce</button>
             <button onClick={()=>setEditing(null)} className="border border-border text-muted-foreground px-5 py-2 rounded-md text-xs uppercase tracking-widest flex items-center gap-2"><X className="w-3 h-3" />Annulla</button>
           </div>
         </div>
+      )}
+
+      {wizardOpen && editing && (
+        <VoiceFormWizard
+          fields={PRODUCT_WIZARD}
+          onChange={(k, v) => setEditing((e) => ({ ...(e ?? {}), [k]: k === "price" || k === "stock" ? Number(v) : v }))}
+          onClose={() => setWizardOpen(false)}
+        />
       )}
 
       <div className="grid gap-2">
