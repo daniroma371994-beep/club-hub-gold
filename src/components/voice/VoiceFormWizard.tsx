@@ -12,7 +12,6 @@ export type WizardField = {
 };
 
 type Phase = "waiting" | "preparing" | "speaking" | "listening" | "transcribing" | "confirming" | "done" | "error";
-type Mode = "auto" | "manual";
 
 const SILENCE_MS = 3000;
 const MAX_RECORD_MS = 18000;
@@ -300,9 +299,8 @@ export function VoiceFormWizard({
   const transcribe = useServerFn(transcribeVoice);
   const [idx, setIdx] = useState(0);
   const [cycle, setCycle] = useState(0);
-  const [started, setStarted] = useState(false);
-  const [mode, setMode] = useState<Mode>("manual");
-  const [phase, setPhase] = useState<Phase>("waiting");
+  const [started, setStarted] = useState(true);
+  const [phase, setPhase] = useState<Phase>("preparing");
   const [heard, setHeard] = useState("");
   const [level, setLevel] = useState(0);
   const [error, setError] = useState("");
