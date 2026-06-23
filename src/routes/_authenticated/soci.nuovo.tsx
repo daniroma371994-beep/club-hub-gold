@@ -92,7 +92,24 @@ function NewSocio() {
 
   return (
     <MeduzaLayout title="Nuovo Socio">
+      {wizardOpen && (
+        <VoiceFormWizard
+          fields={WIZARD_FIELDS}
+          onChange={(k, v) => setField(k as keyof typeof empty, v)}
+          onClose={() => setWizardOpen(false)}
+        />
+      )}
+      <div className="max-w-3xl mb-4">
+        <button
+          type="button"
+          onClick={() => setWizardOpen(true)}
+          className="w-full md:w-auto flex items-center justify-center gap-2 px-5 py-3 bg-gradient-gold text-primary-foreground rounded-md font-display uppercase tracking-[0.3em] text-xs shadow-lg"
+        >
+          <Mic className="w-4 h-4" /> Compila a voce
+        </button>
+      </div>
       <form onSubmit={submit} className="bg-card/60 border border-gold/30 rounded-lg p-6 md:p-8 space-y-6 max-w-3xl">
+
         <Section title="Dati anagrafici">
           <div className="grid md:grid-cols-2 gap-4">
             <Inp label="N° Tessera" required value={form.card_number} onChange={(v)=>setField("card_number",v)} placeholder="es. 0001" />
