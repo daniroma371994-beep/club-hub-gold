@@ -647,11 +647,11 @@ export function VoiceFormWizard({
   const meter = Math.min(1, level * 18);
 
   return (
-    <div className="fixed inset-0 bg-background/95 backdrop-blur z-50 flex items-end md:items-center justify-center p-0 md:p-4">
-      <div className="bg-card border-2 border-gold/60 rounded-t-2xl md:rounded-2xl p-6 w-full max-w-md space-y-5 shadow-2xl">
+    <div className="fixed inset-0 bg-background/96 backdrop-blur-xl z-50 flex items-end md:items-center justify-center p-0 md:p-4">
+      <div className="bg-card/95 border-2 border-gold/60 rounded-t-3xl md:rounded-3xl p-5 md:p-7 w-full max-w-xl max-h-[92vh] overflow-y-auto space-y-5 shadow-2xl">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-display uppercase tracking-[0.3em] text-gold-muted">
-            Dettatura automatica {Math.min(idx + 1, fields.length)} / {fields.length}
+            Meduza Voice · Alexa club {Math.min(idx + 1, fields.length)} / {fields.length}
           </span>
           <button type="button" onClick={close} className="text-gold-muted hover:text-gold" aria-label="Chiudi dettatura">
             <X className="w-4 h-4" />
@@ -667,14 +667,14 @@ export function VoiceFormWizard({
           <>
             <div className="text-center">
               <div className="text-[10px] uppercase tracking-[0.3em] text-gold-muted">Campo</div>
-              <div className="font-display text-3xl text-gold mt-1">{field?.label}</div>
+              <div className="font-display text-3xl md:text-4xl text-gold mt-1">{field?.label}</div>
               {field?.hint && <div className="text-xs text-muted-foreground mt-1">{field.hint}</div>}
             </div>
 
-            <div className="flex flex-col items-center justify-center py-4">
+            <div className="flex flex-col items-center justify-center py-3">
               <div
                 className={
-                  "w-28 h-28 rounded-full flex items-center justify-center border-4 transition " +
+                  "w-32 h-32 md:w-36 md:h-36 rounded-full flex items-center justify-center border-4 transition shadow-[0_0_60px_-18px_oklch(var(--gold)_/_0.9)] " +
                   (phase === "listening"
                     ? "border-destructive bg-destructive/10 text-destructive"
                     : phase === "transcribing"
@@ -685,15 +685,15 @@ export function VoiceFormWizard({
                 }
                 style={phase === "listening" ? { transform: `scale(${1 + meter * 0.32})` } : undefined}
               >
-                {(phase === "waiting" || phase === "preparing" || phase === "transcribing") && <Loader2 className="w-12 h-12 animate-spin" />}
-                {phase === "speaking" && <Volume2 className="w-12 h-12 animate-pulse" />}
-                {phase === "listening" && <Mic className="w-12 h-12" />}
-                {phase === "confirming" && <Check className="w-12 h-12" />}
-                {phase === "error" && <X className="w-12 h-12" />}
+                {(phase === "waiting" || phase === "preparing" || phase === "transcribing") && <Loader2 className="w-14 h-14 animate-spin" />}
+                {phase === "speaking" && <Volume2 className="w-14 h-14 animate-pulse" />}
+                {phase === "listening" && <Mic className="w-14 h-14" />}
+                {phase === "confirming" && <Check className="w-14 h-14" />}
+                {phase === "error" && <X className="w-14 h-14" />}
               </div>
 
-              <div className="mt-4 text-xs uppercase tracking-[0.25em] text-gold-muted text-center min-h-[1.5rem]">
-                {phase === "waiting" && (!started ? "Tocca avvia: il microfono parte da un tuo clic" : "Tocca registra per questo campo")}
+              <div className="mt-4 text-xs uppercase tracking-[0.25em] text-gold-muted text-center min-h-[1.5rem] leading-relaxed">
+                {phase === "waiting" && "Pronto"}
                 {phase === "preparing" && "Preparo il microfono…"}
                 {phase === "speaking" && "La IA legge il campo…"}
                 {phase === "listening" && "Parla ora — chiudo dopo 3 secondi di silenzio"}
