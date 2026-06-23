@@ -44,7 +44,9 @@ export function VoiceAssistant() {
   const srRef = useRef<any>(null);
   const stopTimerRef = useRef<number | null>(null);
   const stateRef = useRef<State>("idle");
+  const wakeDesiredRef = useRef<boolean>(wakeEnabled);
   stateRef.current = state;
+  wakeDesiredRef.current = wakeEnabled;
 
   const blob2b64 = (blob: Blob) =>
     new Promise<string>((resolve, reject) => {
