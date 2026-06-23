@@ -674,7 +674,7 @@ export function VoiceFormWizard({
             <div className="flex flex-col items-center justify-center py-3">
               <div
                 className={
-                  "w-32 h-32 md:w-36 md:h-36 rounded-full flex items-center justify-center border-4 transition shadow-[0_0_60px_-18px_oklch(var(--gold)_/_0.9)] " +
+                  "w-32 h-32 md:w-36 md:h-36 rounded-full flex items-center justify-center border-4 transition shadow-[0_0_60px_-18px_var(--gold)] " +
                   (phase === "listening"
                     ? "border-destructive bg-destructive/10 text-destructive"
                     : phase === "transcribing"
