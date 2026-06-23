@@ -728,7 +728,7 @@ export function VoiceFormWizard({
               </div>
 
               <div className="mt-4 text-xs uppercase tracking-[0.25em] text-gold-muted text-center min-h-[1.5rem]">
-                {phase === "waiting" && "Tocca avvia per autorizzare bene il microfono"}
+                {phase === "waiting" && (!started ? "Tocca avvia: il microfono parte da un tuo clic" : "Tocca registra per questo campo")}
                 {phase === "preparing" && "Preparo il microfono…"}
                 {phase === "speaking" && "La IA legge il campo…"}
                 {phase === "listening" && "Parla ora — chiudo dopo 3 secondi di silenzio"}
@@ -745,24 +745,41 @@ export function VoiceFormWizard({
             </div>
 
             {!started ? (
-              <button
-                type="button"
-                onClick={startWizard}
-                className="w-full bg-gradient-gold text-primary-foreground py-3 rounded-md font-display uppercase tracking-[0.3em] text-xs"
-              >
-                Avvia microfono e compila tutti i campi
-              </button>
+              <div className="grid gap-2">
+                <button
+                  type="button"
+                  onClick={() => startWizard("manual")}
+                  className="w-full bg-gradient-gold text-primary-foreground py-3 rounded-md font-display uppercase tracking-[0.3em] text-xs"
+                >
+                  Avvia modalità sicura campo per campo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => startWizard("auto")}
+                  className="w-full border border-gold/50 text-gold py-2.5 rounded-md font-display uppercase tracking-[0.25em] text-[10px]"
+                >
+                  Prova automatico continuo
+                </button>
+              </div>
             ) : error ? (
               <button
                 type="button"
-                onClick={startWizard}
+                onClick={() => startWizard(mode)}
                 className="w-full bg-gradient-gold text-primary-foreground py-3 rounded-md font-display uppercase tracking-[0.3em] text-xs"
               >
                 Riprova microfono
               </button>
+            ) : mode === "manual" && phase === "waiting" ? (
+              <button
+                type="button"
+                onClick={startCurrentField}
+                className="w-full bg-gradient-gold text-primary-foreground py-3 rounded-md font-display uppercase tracking-[0.3em] text-xs"
+              >
+                Registra questo campo
+              </button>
             ) : (
               <div className="rounded-md border border-gold/20 bg-input/50 px-3 py-2 text-center text-[11px] text-muted-foreground">
-                Comandi vocali: “salta”, “ripeti”, “annulla”. Non devi premere altri pulsanti.
+                {mode === "manual" ? "Dopo ogni campo premi “Registra questo campo”: è il modo più stabile per il microfono." : "Comandi vocali: “salta”, “ripeti”, “annulla”."}
               </div>
             )}
           </>
