@@ -531,7 +531,6 @@ export function VoiceFormWizard({
           setHeard(normalized);
           onChangeRef.current(currentField.key, normalized);
           setPhase("confirming");
-          await speak(normalized.length > 45 ? "Ho scritto il campo." : `Ho scritto: ${normalized}.`);
           if (!cancelledRef.current && runRef.current === runId) {
             setIdx((value) => value + 1);
           }
