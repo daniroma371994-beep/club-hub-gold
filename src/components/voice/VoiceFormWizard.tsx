@@ -477,6 +477,7 @@ export function VoiceFormWizard({
         if (cancelledRef.current || runRef.current !== runId) return;
 
         const blob = new Blob(chunksRef.current, { type: recorder.mimeType || mime });
+        console.log("[VoiceWizard] recorder stopped", { key: currentField.key, size: blob.size, chunks: chunksRef.current.length });
         if (blob.size < MIN_AUDIO_BYTES) {
           setPhase("speaking");
           await speak("Non ho sentito bene. Ripeti il campo.");
