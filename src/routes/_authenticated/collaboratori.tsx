@@ -5,11 +5,19 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { toast } from "sonner";
-import { UserPlus, Shield, ShieldCheck } from "lucide-react";
+import { UserPlus, Shield, ShieldCheck, Mic } from "lucide-react";
+import { VoiceFormWizard, type WizardField } from "@/components/voice/VoiceFormWizard";
 
 export const Route = createFileRoute("/_authenticated/collaboratori")({
   component: Collabs,
 });
+
+const COLLAB_WIZARD: WizardField[] = [
+  { key: "name", label: "Nome collaboratore" },
+  { key: "email", label: "Email", type: "email", hint: "Di chiocciola per @ e punto per ." },
+  { key: "password", label: "Password iniziale" },
+];
+
 
 const ALL_PERMS = [
   { v: "manage_members", l: "Gestione soci" },
@@ -27,6 +35,13 @@ function Collabs() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [perms, setPerms] = useState<string[]>(["use_cash"]);
+  const [wizardOpen, setWizardOpen] = useState(false);
+
+  function setWizardField(k: string, v: string) {
+    if (k === "name") setName(v);
+    else if (k === "email") setEmail(v);
+    else if (k === "password") setPassword(v);
+  }
 
   const { data: collabs } = useQuery({
     queryKey: ["collabs"],
@@ -100,11 +115,16 @@ function Collabs() {
               ))}
             </div>
           </div>
-          <div className="flex gap-2 pt-2">
+          <div className="flex flex-wrap gap-2 pt-2">
             <button onClick={createCollab} className="bg-gradient-gold text-primary-foreground px-5 py-2 rounded-md text-xs uppercase tracking-widest">Crea</button>
+            <button onClick={() => setWizardOpen(true)} className="border border-gold text-gold px-5 py-2 rounded-md text-xs uppercase tracking-widest flex items-center gap-2"><Mic className="w-3 h-3" />Compila a voce</button>
             <button onClick={()=>setAdding(false)} className="border border-border text-muted-foreground px-5 py-2 rounded-md text-xs uppercase tracking-widest">Annulla</button>
           </div>
         </div>
+      )}
+
+      {wizardOpen && (
+        <VoiceFormWizard fields={COLLAB_WIZARD} onChange={setWizardField} onClose={() => setWizardOpen(false)} />
       )}
 
       <div className="grid gap-3">
