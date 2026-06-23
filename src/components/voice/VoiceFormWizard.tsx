@@ -102,16 +102,37 @@ export function VoiceFormWizard({
     }
   }, []);
 
+  const capturedRef = useRef("");
+  const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const idxRef = useRef(idx);
+  idxRef.current = idx;
+
   const stopListening = useCallback(() => {
     try { srRef.current?.stop(); } catch {}
     setListening(false);
   }, []);
 
+  const advance = useCallback((value: string) => {
+    const f = fields[idxRef.current];
+    if (!f) return;
+    const normalized = normalize(value, f.type);
+    if (!normalized) return;
+    onChange(f.key, normalized);
+    toast.success(`${f.label}: ${normalized}`);
+    capturedRef.current = "";
+    setCaptured("");
+    setInterim("");
+    setIdx((i) => i + 1);
+  }, [fields, onChange]);
+
   const startListening = useCallback(() => {
-    if (!field) return;
+    const f = fields[idxRef.current];
+    if (!f) return;
     const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) return toast.error("Voce non supportata. Usa Chrome.");
     try { srRef.current?.stop(); } catch {}
+    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+    capturedRef.current = "";
     setInterim("");
     setCaptured("");
     const sr = new SR();
@@ -126,20 +147,37 @@ export function VoiceFormWizard({
         if (ev.results[i].isFinal) fStr += t; else iStr += t;
       }
       setInterim(iStr);
-      if (fStr) setCaptured((p) => (p + " " + fStr).trim());
+      if (fStr) {
+        capturedRef.current = (capturedRef.current + " " + fStr).trim();
+        setCaptured(capturedRef.current);
+        // Auto-advance shortly after a final chunk
+        if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+        advanceTimerRef.current = setTimeout(() => {
+          try { sr.stop(); } catch {}
+          advance(capturedRef.current);
+        }, 900);
+      }
     };
     sr.onerror = (e: any) => {
       setListening(false);
       if (e.error === "not-allowed") toast.error("Microfono bloccato");
-      else if (e.error === "no-speech") toast.message("Non ho sentito");
-      else if (e.error !== "aborted") toast.error(`Errore: ${e.error}`);
+      else if (e.error === "no-speech") {
+        toast.message("Non ho sentito, riprova");
+        // Restart listening so user can speak again
+        setTimeout(() => { if (idxRef.current === idxRef.current) startListening(); }, 500);
+      } else if (e.error !== "aborted") toast.error(`Errore: ${e.error}`);
     };
     sr.onend = () => {
       setListening(false);
+      // If we have captured text but auto-advance didn't fire yet, advance now
+      if (capturedRef.current) {
+        if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+        advance(capturedRef.current);
+      }
     };
     srRef.current = sr;
     try { sr.start(); } catch { setListening(false); }
-  }, [field]);
+  }, [fields, advance]);
 
   // When moving to a new field, announce it then start listening
   useEffect(() => {
@@ -147,31 +185,48 @@ export function VoiceFormWizard({
       speak("Compilazione completata");
       return;
     }
+    capturedRef.current = "";
     setCaptured("");
     setInterim("");
     const prompt = field.hint ? `${field.label}. ${field.hint}` : field.label;
     speak(prompt, () => startListening());
-    return () => {
-      try { srRef.current?.stop(); } catch {}
-      window.speechSynthesis.cancel();
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx]);
 
+  useEffect(() => () => {
+    try { srRef.current?.stop(); } catch {}
+    window.speechSynthesis.cancel();
+    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+  }, []);
+
+
   const confirm = () => {
-    if (!field) return;
-    const value = normalize(captured || interim, field.type);
+    stopListening();
+    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+    const value = capturedRef.current || interim;
     if (!value) {
       toast.message("Niente da salvare, ripeti o salta");
       return;
     }
-    onChange(field.key, value);
-    toast.success(`${field.label}: ${value}`);
-    setIdx((i) => i + 1);
+    advance(value);
   };
 
-  const skip = () => { stopListening(); setIdx((i) => i + 1); };
-  const repeat = () => { stopListening(); setCaptured(""); setInterim(""); startListening(); };
+  const skip = () => {
+    stopListening();
+    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+    capturedRef.current = "";
+    setCaptured("");
+    setInterim("");
+    setIdx((i) => i + 1);
+  };
+  const repeat = () => {
+    stopListening();
+    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+    capturedRef.current = "";
+    setCaptured("");
+    setInterim("");
+    startListening();
+  };
 
   if (!supported) {
     return (
