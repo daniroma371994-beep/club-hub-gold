@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      member_subscriptions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          duration_days: number
+          end_date: string
+          id: string
+          member_id: string
+          notes: string | null
+          paid: boolean
+          plan_id: string | null
+          plan_name: string
+          price: number
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          duration_days: number
+          end_date: string
+          id?: string
+          member_id: string
+          notes?: string | null
+          paid?: boolean
+          plan_id?: string | null
+          plan_name: string
+          price: number
+          start_date?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          duration_days?: number
+          end_date?: string
+          id?: string
+          member_id?: string
+          notes?: string | null
+          paid?: boolean
+          plan_id?: string | null
+          plan_name?: string
+          price?: number
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_subscriptions_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "membership_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       members: {
         Row: {
           address: string | null
@@ -76,6 +139,39 @@ export type Database = {
           phone?: string | null
           photo_url?: string | null
           qr_token?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      membership_plans: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string | null
+          duration_days: number
+          id: string
+          name: string
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          duration_days: number
+          id?: string
+          name: string
+          price: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          duration_days?: number
+          id?: string
+          name?: string
+          price?: number
           updated_at?: string
         }
         Relationships: []
