@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import logoUrl from "@/assets/meduza-logo.png";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
+import { VoiceAssistant } from "@/components/voice/VoiceAssistant";
 
 const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, perm: null, adminOnly: false },
@@ -131,6 +132,8 @@ export function MeduzaLayout({ children, title }: { children: ReactNode; title?:
           {children}
         </div>
       </main>
+
+      <VoiceAssistant />
     </div>
   );
 }
