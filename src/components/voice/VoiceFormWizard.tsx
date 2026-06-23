@@ -189,6 +189,12 @@ function parseItalianInteger(text: string): number | null {
 
 function normalizeNumber(text: string) {
   const raw = cleanBase(text).toLowerCase().replace(/€/g, " euro ");
+  const tokens = raw.replace(/[.,]/g, " ").split(/\s+/).filter(Boolean);
+  const digitSequence = tokens
+    .filter((word) => !/^(euro|grammi?|pezzi?|giorni|numero)$/.test(word))
+    .map((word) => digitWords[word] ?? (/^\d$/.test(word) ? word : ""));
+  if (digitSequence.length > 1 && digitSequence.every(Boolean)) return digitSequence.join("");
+
   const digitMatch = raw.match(/\d+(?:[.,]\d+)?/);
   if (digitMatch) return digitMatch[0].replace(",", ".");
 
