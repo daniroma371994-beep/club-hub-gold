@@ -115,11 +115,16 @@ function Collabs() {
               ))}
             </div>
           </div>
-          <div className="flex gap-2 pt-2">
+          <div className="flex flex-wrap gap-2 pt-2">
             <button onClick={createCollab} className="bg-gradient-gold text-primary-foreground px-5 py-2 rounded-md text-xs uppercase tracking-widest">Crea</button>
+            <button onClick={() => setWizardOpen(true)} className="border border-gold text-gold px-5 py-2 rounded-md text-xs uppercase tracking-widest flex items-center gap-2"><Mic className="w-3 h-3" />Compila a voce</button>
             <button onClick={()=>setAdding(false)} className="border border-border text-muted-foreground px-5 py-2 rounded-md text-xs uppercase tracking-widest">Annulla</button>
           </div>
         </div>
+      )}
+
+      {wizardOpen && (
+        <VoiceFormWizard fields={COLLAB_WIZARD} onChange={setWizardField} onClose={() => setWizardOpen(false)} />
       )}
 
       <div className="grid gap-3">
