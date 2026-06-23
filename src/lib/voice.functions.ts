@@ -9,6 +9,7 @@ const TranscribeInput = z.object({
   audioBase64: z.string().min(1),
   mime: z.string().min(1),
   language: z.string().optional(),
+  prompt: z.string().optional(),
 });
 
 function extToFormat(mime: string): { ext: string; format: string } {
@@ -28,14 +29,24 @@ export const transcribeVoice = createServerFn({ method: "POST" })
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
     const buf = Uint8Array.from(atob(data.audioBase64), (c) => c.charCodeAt(0));
+    if (buf.byteLength < 1024) throw new Error("Audio troppo breve: ripeti il campo.");
+    if (buf.byteLength > 25 * 1024 * 1024) throw new Error("Audio troppo lungo: ripeti più corto.");
     const { ext } = extToFormat(data.mime);
     const form = new FormData();
     form.append("model", "openai/gpt-4o-mini-transcribe");
     form.append("language", data.language ?? "it");
+    form.append(
+      "prompt",
+      data.prompt ??
+        "Trascrivi la risposta breve dell'utente in italiano. Mantieni nomi, email, numeri e date il più fedeli possibile.",
+    );
     form.append("file", new Blob([buf], { type: data.mime }), `recording.${ext}`);
     const res = await fetch("https://ai.gateway.lovable.dev/v1/audio/transcriptions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${key}` },
+      headers: {
+        "Lovable-API-Key": key,
+        "X-Lovable-AIG-SDK": "vercel-ai-sdk",
+      },
       body: form,
     });
     if (!res.ok) {
