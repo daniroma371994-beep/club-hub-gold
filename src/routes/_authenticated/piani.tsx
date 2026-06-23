@@ -33,6 +33,7 @@ function PlansPage() {
   const qc = useQueryClient();
   const { isAdmin } = useAuth();
   const [editing, setEditing] = useState<Partial<Plan> | null>(null);
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   const { data: plans } = useQuery({
     queryKey: ["plans"],
