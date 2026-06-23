@@ -3,12 +3,11 @@ import { MeduzaLayout } from "@/components/MeduzaLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { UserPlus, Shield, ShieldCheck, Mic } from "lucide-react";
 import { VoiceFormWizard, warmUpVoiceForm, type WizardField } from "@/components/voice/VoiceFormWizard";
 import { voiceBus } from "@/components/voice/voice-bus";
-import { useEffect } from "react";
 
 export const Route = createFileRoute("/_authenticated/collaboratori")({
   component: Collabs,
