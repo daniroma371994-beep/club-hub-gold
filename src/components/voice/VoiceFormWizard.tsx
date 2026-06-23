@@ -637,11 +637,8 @@ export function VoiceFormWizard({
         console.log("[VoiceWizard] speaking prompt for", currentField.key);
         await speak(prompt);
         if (cancelledRef.current || runRef.current !== runId) return;
-        // Give the mic a moment to recover from echo cancellation duck after TTS
-        await new Promise((r) => window.setTimeout(r, 350));
-        if (cancelledRef.current || runRef.current !== runId) return;
-        // Re-check mic is still healthy before recording (it may have been muted during TTS)
-        await ensureMic();
+        // tiny gap so the mic recovers from TTS ducking
+        await new Promise((r) => window.setTimeout(r, 120));
         if (cancelledRef.current || runRef.current !== runId) return;
         console.log("[VoiceWizard] starting recorder for", currentField.key);
         await startRecording(currentField, runId);
