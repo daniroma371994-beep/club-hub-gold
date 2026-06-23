@@ -6,7 +6,7 @@ import { Plus, Trash2, Pencil, Check, X, ArrowLeft, Mic } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { VoiceFormWizard, type WizardField } from "@/components/voice/VoiceFormWizard";
+import { VoiceFormWizard, warmUpVoiceForm, type WizardField } from "@/components/voice/VoiceFormWizard";
 import { voiceBus } from "@/components/voice/voice-bus";
 
 export const Route = createFileRoute("/_authenticated/piani")({
@@ -87,6 +87,16 @@ function PlansPage() {
     qc.invalidateQueries({ queryKey: ["plans"] });
   }
 
+  async function openVoiceWizard() {
+    try {
+      await warmUpVoiceForm();
+    } catch {
+      // The wizard will show the microphone error and retry button.
+    } finally {
+      setWizardOpen(true);
+    }
+  }
+
   return (
     <MeduzaLayout title="Quote associative">
       <Link to="/soci" className="inline-flex items-center gap-2 text-gold-muted hover:text-gold text-xs uppercase tracking-widest mb-6">
@@ -114,7 +124,7 @@ function PlansPage() {
           <Inp label="Descrizione" value={editing.description ?? ""} onChange={(v) => setEditing({ ...editing, description: v })} />
           <div className="flex flex-wrap gap-2 pt-2">
             <button onClick={save} className="bg-gradient-gold text-primary-foreground px-5 py-2 rounded-md text-xs uppercase tracking-widest flex items-center gap-2"><Check className="w-3 h-3" />Salva</button>
-            <button onClick={() => setWizardOpen(true)} className="border border-gold text-gold px-5 py-2 rounded-md text-xs uppercase tracking-widest flex items-center gap-2"><Mic className="w-3 h-3" />Compila a voce</button>
+            <button onClick={openVoiceWizard} className="border border-gold text-gold px-5 py-2 rounded-md text-xs uppercase tracking-widest flex items-center gap-2"><Mic className="w-3 h-3" />Compila a voce</button>
             <button onClick={() => setEditing(null)} className="border border-border text-muted-foreground px-5 py-2 rounded-md text-xs uppercase tracking-widest flex items-center gap-2"><X className="w-3 h-3" />Annulla</button>
           </div>
         </div>

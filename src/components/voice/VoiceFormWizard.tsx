@@ -12,7 +12,6 @@ export type WizardField = {
 };
 
 type Phase = "waiting" | "preparing" | "speaking" | "listening" | "transcribing" | "confirming" | "done" | "error";
-type Mode = "auto" | "manual";
 
 const SILENCE_MS = 3000;
 const MAX_RECORD_MS = 18000;
@@ -300,9 +299,8 @@ export function VoiceFormWizard({
   const transcribe = useServerFn(transcribeVoice);
   const [idx, setIdx] = useState(0);
   const [cycle, setCycle] = useState(0);
-  const [started, setStarted] = useState(false);
-  const [mode, setMode] = useState<Mode>("manual");
-  const [phase, setPhase] = useState<Phase>("waiting");
+  const [started, setStarted] = useState(true);
+  const [phase, setPhase] = useState<Phase>("preparing");
   const [heard, setHeard] = useState("");
   const [level, setLevel] = useState(0);
   const [error, setError] = useState("");
@@ -425,16 +423,14 @@ export function VoiceFormWizard({
     setCycle((value) => value + 1);
   }, [cleanupRecording]);
 
-  const startWizard = useCallback(async (nextMode: Mode) => {
+  const startWizard = useCallback(async () => {
     setError("");
-    setMode(nextMode);
     setPhase("preparing");
     try {
       const stream = await warmUpVoiceForm();
       streamRef.current = stream;
       setStarted(true);
-      if (nextMode === "auto") setCycle((value) => value + 1);
-      else setPhase("waiting");
+      setCycle((value) => value + 1);
     } catch (err) {
       const message = err instanceof DOMException ? micErrorMessage(err) : err instanceof Error ? err.message : micErrorMessage(err);
       setError(message);
@@ -517,7 +513,6 @@ export function VoiceFormWizard({
           await speak(normalized.length > 45 ? "Ho scritto il campo." : `Ho scritto: ${normalized}.`);
           if (!cancelledRef.current && runRef.current === runId) {
             setIdx((value) => value + 1);
-            if (mode === "manual") setPhase("waiting");
           }
         } catch (err: any) {
           const message = err?.message ?? "Errore trascrizione";
@@ -580,31 +575,8 @@ export function VoiceFormWizard({
       rafRef.current = requestAnimationFrame(tick);
       maxTimerRef.current = window.setTimeout(stopRecorder, MAX_RECORD_MS);
     },
-    [blob2b64, cleanupRecording, ensureMic, mode, releaseEverything, retrySameField, speak, transcribe],
+    [blob2b64, cleanupRecording, ensureMic, releaseEverything, retrySameField, speak, transcribe],
   );
-
-  const startCurrentField = useCallback(async () => {
-    if (!field || finished) return;
-    cancelledRef.current = false;
-    setError("");
-    setHeard("");
-    setLevel(0);
-    const runId = ++runRef.current;
-    try {
-      await ensureMic();
-      if (cancelledRef.current || runRef.current !== runId) return;
-      setPhase("speaking");
-      const prompt = field.hint ? `${field.label}. ${field.hint}.` : `${field.label}.`;
-      await speak(prompt);
-      if (cancelledRef.current || runRef.current !== runId) return;
-      await startRecording(field, runId);
-    } catch (err) {
-      const message = err instanceof DOMException ? micErrorMessage(err) : err instanceof Error ? err.message : micErrorMessage(err);
-      setError(message);
-      setPhase("error");
-      toast.error(message);
-    }
-  }, [ensureMic, field, finished, speak, startRecording]);
 
   useEffect(() => {
     cancelledRef.current = false;
@@ -612,13 +584,6 @@ export function VoiceFormWizard({
 
     if (!started) {
       setPhase("waiting");
-      return undefined;
-    }
-
-    if (mode === "manual") {
-      setPhase("waiting");
-      setHeard("");
-      setLevel(0);
       return undefined;
     }
 
@@ -670,7 +635,7 @@ export function VoiceFormWizard({
         // ignore speech cleanup errors
       }
     };
-  }, [cleanupRecording, cycle, fields, finished, idx, ensureMic, mode, speak, startRecording, started]);
+  }, [cleanupRecording, cycle, fields, finished, idx, ensureMic, speak, startRecording, started]);
 
   useEffect(() => () => releaseEverything(), [releaseEverything]);
 
@@ -682,11 +647,11 @@ export function VoiceFormWizard({
   const meter = Math.min(1, level * 18);
 
   return (
-    <div className="fixed inset-0 bg-background/95 backdrop-blur z-50 flex items-end md:items-center justify-center p-0 md:p-4">
-      <div className="bg-card border-2 border-gold/60 rounded-t-2xl md:rounded-2xl p-6 w-full max-w-md space-y-5 shadow-2xl">
+    <div className="fixed inset-0 bg-background/96 backdrop-blur-xl z-50 flex items-end md:items-center justify-center p-0 md:p-4">
+      <div className="bg-card/95 border-2 border-gold/60 rounded-t-3xl md:rounded-3xl p-5 md:p-7 w-full max-w-xl max-h-[92vh] overflow-y-auto space-y-5 shadow-2xl">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-display uppercase tracking-[0.3em] text-gold-muted">
-            Dettatura automatica {Math.min(idx + 1, fields.length)} / {fields.length}
+            Meduza Voice · Alexa club {Math.min(idx + 1, fields.length)} / {fields.length}
           </span>
           <button type="button" onClick={close} className="text-gold-muted hover:text-gold" aria-label="Chiudi dettatura">
             <X className="w-4 h-4" />
@@ -702,14 +667,14 @@ export function VoiceFormWizard({
           <>
             <div className="text-center">
               <div className="text-[10px] uppercase tracking-[0.3em] text-gold-muted">Campo</div>
-              <div className="font-display text-3xl text-gold mt-1">{field?.label}</div>
+              <div className="font-display text-3xl md:text-4xl text-gold mt-1">{field?.label}</div>
               {field?.hint && <div className="text-xs text-muted-foreground mt-1">{field.hint}</div>}
             </div>
 
-            <div className="flex flex-col items-center justify-center py-4">
+            <div className="flex flex-col items-center justify-center py-3">
               <div
                 className={
-                  "w-28 h-28 rounded-full flex items-center justify-center border-4 transition " +
+                  "w-32 h-32 md:w-36 md:h-36 rounded-full flex items-center justify-center border-4 transition shadow-[0_0_60px_-18px_var(--gold)] " +
                   (phase === "listening"
                     ? "border-destructive bg-destructive/10 text-destructive"
                     : phase === "transcribing"
@@ -720,15 +685,15 @@ export function VoiceFormWizard({
                 }
                 style={phase === "listening" ? { transform: `scale(${1 + meter * 0.32})` } : undefined}
               >
-                {(phase === "waiting" || phase === "preparing" || phase === "transcribing") && <Loader2 className="w-12 h-12 animate-spin" />}
-                {phase === "speaking" && <Volume2 className="w-12 h-12 animate-pulse" />}
-                {phase === "listening" && <Mic className="w-12 h-12" />}
-                {phase === "confirming" && <Check className="w-12 h-12" />}
-                {phase === "error" && <X className="w-12 h-12" />}
+                {(phase === "waiting" || phase === "preparing" || phase === "transcribing") && <Loader2 className="w-14 h-14 animate-spin" />}
+                {phase === "speaking" && <Volume2 className="w-14 h-14 animate-pulse" />}
+                {phase === "listening" && <Mic className="w-14 h-14" />}
+                {phase === "confirming" && <Check className="w-14 h-14" />}
+                {phase === "error" && <X className="w-14 h-14" />}
               </div>
 
-              <div className="mt-4 text-xs uppercase tracking-[0.25em] text-gold-muted text-center min-h-[1.5rem]">
-                {phase === "waiting" && (!started ? "Tocca avvia: il microfono parte da un tuo clic" : "Tocca registra per questo campo")}
+              <div className="mt-4 text-xs uppercase tracking-[0.25em] text-gold-muted text-center min-h-[1.5rem] leading-relaxed">
+                {phase === "waiting" && "Pronto"}
                 {phase === "preparing" && "Preparo il microfono…"}
                 {phase === "speaking" && "La IA legge il campo…"}
                 {phase === "listening" && "Parla ora — chiudo dopo 3 secondi di silenzio"}
@@ -744,42 +709,36 @@ export function VoiceFormWizard({
               )}
             </div>
 
-            {!started ? (
-              <div className="grid gap-2">
-                <button
-                  type="button"
-                  onClick={() => startWizard("manual")}
-                  className="w-full bg-gradient-gold text-primary-foreground py-3 rounded-md font-display uppercase tracking-[0.3em] text-xs"
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {fields.map((item, itemIndex) => (
+                <div
+                  key={item.key}
+                  className={
+                    "rounded-xl border px-3 py-2 min-h-14 " +
+                    (itemIndex < idx
+                      ? "border-gold/40 bg-gold/10 text-gold"
+                      : itemIndex === idx
+                        ? "border-gold/70 bg-input text-foreground"
+                        : "border-border bg-input/40 text-muted-foreground")
+                  }
                 >
-                  Avvia modalità sicura campo per campo
-                </button>
-                <button
-                  type="button"
-                  onClick={() => startWizard("auto")}
-                  className="w-full border border-gold/50 text-gold py-2.5 rounded-md font-display uppercase tracking-[0.25em] text-[10px]"
-                >
-                  Prova automatico continuo
-                </button>
-              </div>
-            ) : error ? (
+                  <div className="text-[9px] uppercase tracking-[0.2em]">{itemIndex + 1}</div>
+                  <div className="text-xs font-display uppercase tracking-wider leading-tight mt-1">{item.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {error ? (
               <button
                 type="button"
-                onClick={() => startWizard(mode)}
+                onClick={startWizard}
                 className="w-full bg-gradient-gold text-primary-foreground py-3 rounded-md font-display uppercase tracking-[0.3em] text-xs"
               >
                 Riprova microfono
               </button>
-            ) : mode === "manual" && phase === "waiting" ? (
-              <button
-                type="button"
-                onClick={startCurrentField}
-                className="w-full bg-gradient-gold text-primary-foreground py-3 rounded-md font-display uppercase tracking-[0.3em] text-xs"
-              >
-                Registra questo campo
-              </button>
             ) : (
               <div className="rounded-md border border-gold/20 bg-input/50 px-3 py-2 text-center text-[11px] text-muted-foreground">
-                {mode === "manual" ? "Dopo ogni campo premi “Registra questo campo”: è il modo più stabile per il microfono." : "Comandi vocali: “salta”, “ripeti”, “annulla”."}
+                Compilazione continua: ascolto ogni campo in ordine. Puoi dire “salta”, “ripeti” o “annulla”.
               </div>
             )}
           </>

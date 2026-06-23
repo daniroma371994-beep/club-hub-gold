@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { UserPlus, Shield, ShieldCheck, Mic } from "lucide-react";
-import { VoiceFormWizard, type WizardField } from "@/components/voice/VoiceFormWizard";
+import { VoiceFormWizard, warmUpVoiceForm, type WizardField } from "@/components/voice/VoiceFormWizard";
 import { voiceBus } from "@/components/voice/voice-bus";
 
 export const Route = createFileRoute("/_authenticated/collaboratori")({
@@ -56,6 +56,16 @@ function Collabs() {
     if (k === "name") setName(v);
     else if (k === "email") setEmail(v);
     else if (k === "password") setPassword(v);
+  }
+
+  async function openVoiceWizard() {
+    try {
+      await warmUpVoiceForm();
+    } catch {
+      // The wizard will show the microphone error and retry button.
+    } finally {
+      setWizardOpen(true);
+    }
   }
 
   const { data: collabs } = useQuery({
@@ -132,7 +142,7 @@ function Collabs() {
           </div>
           <div className="flex flex-wrap gap-2 pt-2">
             <button onClick={createCollab} className="bg-gradient-gold text-primary-foreground px-5 py-2 rounded-md text-xs uppercase tracking-widest">Crea</button>
-            <button onClick={() => setWizardOpen(true)} className="border border-gold text-gold px-5 py-2 rounded-md text-xs uppercase tracking-widest flex items-center gap-2"><Mic className="w-3 h-3" />Compila a voce</button>
+            <button onClick={openVoiceWizard} className="border border-gold text-gold px-5 py-2 rounded-md text-xs uppercase tracking-widest flex items-center gap-2"><Mic className="w-3 h-3" />Compila a voce</button>
             <button onClick={()=>setAdding(false)} className="border border-border text-muted-foreground px-5 py-2 rounded-md text-xs uppercase tracking-widest">Annulla</button>
           </div>
         </div>
