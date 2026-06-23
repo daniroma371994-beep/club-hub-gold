@@ -35,6 +35,7 @@ function ProductsPage() {
   const { can, isAdmin } = useAuth();
   const canEdit = isAdmin || can("manage_products");
   const [editing, setEditing] = useState<Partial<ProductRow> | null>(null);
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   const { data: products } = useQuery({
     queryKey: ["products"],
