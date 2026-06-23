@@ -329,7 +329,7 @@ export function VoiceAssistant() {
           disabled={busy}
           className={cn(
             "relative w-16 h-16 rounded-full border-2 flex items-center justify-center shadow-xl backdrop-blur transition after:absolute after:inset-[-8px] after:rounded-full after:border after:border-gold/25",
-            listening ? "bg-destructive border-destructive text-destructive-foreground animate-pulse" : busy ? "bg-card/80 border-gold/50 text-gold" : "bg-gradient-gold border-gold text-primary-foreground hover:scale-105 shadow-[0_0_45px_-12px_oklch(var(--gold)_/_0.9)]",
+            listening ? "bg-destructive border-destructive text-destructive-foreground animate-pulse" : busy ? "bg-card/80 border-gold/50 text-gold" : "bg-gradient-gold border-gold text-primary-foreground hover:scale-105 shadow-[0_0_45px_-12px_var(--gold)]",
           )}
           style={listening ? { transform: `scale(${1 + meter * 0.18})` } : undefined}
           title={listening ? "Ferma" : "Parla"}
