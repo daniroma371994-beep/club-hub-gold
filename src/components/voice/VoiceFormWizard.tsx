@@ -744,7 +744,7 @@ export function VoiceFormWizard({
               </button>
             ) : (
               <div className="rounded-md border border-gold/20 bg-input/50 px-3 py-2 text-center text-[11px] text-muted-foreground">
-                {mode === "manual" ? "Dopo ogni campo premi “Registra questo campo”: è il modo più stabile per il microfono." : "Comandi vocali: “salta”, “ripeti”, “annulla”."}
+                Compilazione continua: ascolto ogni campo in ordine. Puoi dire “salta”, “ripeti” o “annulla”.
               </div>
             )}
           </>
