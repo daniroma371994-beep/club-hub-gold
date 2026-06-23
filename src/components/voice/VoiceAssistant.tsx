@@ -305,11 +305,11 @@ export function VoiceAssistant() {
   return (
     <>
       {showOverlay && (
-        <div className="fixed inset-x-0 bottom-36 md:bottom-24 z-40 flex justify-center pointer-events-none px-4">
-          <div className="bg-card/95 border-2 border-gold/60 rounded-2xl px-4 py-3 max-w-md w-full backdrop-blur-md shadow-2xl pointer-events-auto">
+        <div className="fixed inset-x-0 bottom-28 md:bottom-24 z-40 flex justify-center pointer-events-none px-4">
+          <div className="bg-card/95 border-2 border-gold/60 rounded-3xl px-5 py-4 max-w-md w-full backdrop-blur-xl shadow-2xl pointer-events-auto">
             <div className="flex items-center justify-between mb-1">
               <span className="text-[10px] font-display uppercase tracking-widest text-gold">
-                {listening ? "Ascolto…" : state === "transcribing" ? "Trascrivo…" : state === "thinking" ? "Capisco…" : state === "executing" ? "Eseguo…" : "Ultimo comando"}
+                {listening ? "Meduza ascolta…" : state === "transcribing" ? "Meduza trascrive…" : state === "thinking" ? "Meduza capisce…" : state === "executing" ? "Meduza esegue…" : "Ultimo comando"}
               </span>
               <button onClick={() => { stop(); setFinalText(""); setLastSpoken(""); }} className="text-gold-muted hover:text-gold">
                 <X className="w-3.5 h-3.5" />
@@ -323,13 +323,13 @@ export function VoiceAssistant() {
         </div>
       )}
 
-      <div className="fixed z-30 bottom-20 md:bottom-6 right-4">
+      <div className="fixed z-30 bottom-6 right-4">
         <button
           onClick={listening ? stop : start}
           disabled={busy}
           className={cn(
-            "relative w-16 h-16 rounded-full border-2 flex items-center justify-center shadow-xl backdrop-blur transition",
-            listening ? "bg-destructive border-destructive text-destructive-foreground animate-pulse" : busy ? "bg-card/80 border-gold/50 text-gold" : "bg-gradient-gold border-gold text-primary-foreground hover:scale-105",
+            "relative w-16 h-16 rounded-full border-2 flex items-center justify-center shadow-xl backdrop-blur transition after:absolute after:inset-[-8px] after:rounded-full after:border after:border-gold/25",
+            listening ? "bg-destructive border-destructive text-destructive-foreground animate-pulse" : busy ? "bg-card/80 border-gold/50 text-gold" : "bg-gradient-gold border-gold text-primary-foreground hover:scale-105 shadow-[0_0_45px_-12px_oklch(var(--gold)_/_0.9)]",
           )}
           style={listening ? { transform: `scale(${1 + meter * 0.18})` } : undefined}
           title={listening ? "Ferma" : "Parla"}
