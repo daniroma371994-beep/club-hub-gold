@@ -160,7 +160,7 @@ function parseItalianInteger(text: string): number | null {
     const ten = Object.entries(tensWords).find(([prefix]) => word.startsWith(prefix.slice(0, -1)));
     if (ten) {
       const [prefix, value] = ten;
-      const rest = word.replace(prefix.slice(0, -1), "");
+      const rest = word.replace(prefix.slice(0, -1), "").replace(/^[aei]/, "");
       current += value + (unitWords[rest] ?? 0);
       continue;
     }
