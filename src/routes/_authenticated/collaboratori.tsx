@@ -5,11 +5,19 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { toast } from "sonner";
-import { UserPlus, Shield, ShieldCheck } from "lucide-react";
+import { UserPlus, Shield, ShieldCheck, Mic } from "lucide-react";
+import { VoiceFormWizard, type WizardField } from "@/components/voice/VoiceFormWizard";
 
 export const Route = createFileRoute("/_authenticated/collaboratori")({
   component: Collabs,
 });
+
+const COLLAB_WIZARD: WizardField[] = [
+  { key: "name", label: "Nome collaboratore" },
+  { key: "email", label: "Email", type: "email", hint: "Di chiocciola per @ e punto per ." },
+  { key: "password", label: "Password iniziale" },
+];
+
 
 const ALL_PERMS = [
   { v: "manage_members", l: "Gestione soci" },
