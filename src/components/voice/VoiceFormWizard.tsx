@@ -13,9 +13,9 @@ export type WizardField = {
 
 type Phase = "waiting" | "preparing" | "speaking" | "listening" | "transcribing" | "confirming" | "done" | "error";
 
-const SILENCE_MS = 3000;
-const MAX_RECORD_MS = 18000;
-const MIN_SPEECH_MS = 350;
+const SILENCE_MS = 1300;
+const MAX_RECORD_MS = 12000;
+const MIN_SPEECH_MS = 250;
 const MIN_AUDIO_BYTES = 1200;
 
 let warmedStream: MediaStream | null = null;
