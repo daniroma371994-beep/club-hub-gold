@@ -201,19 +201,32 @@ export function VoiceFormWizard({
 
 
   const confirm = () => {
-    if (!field) return;
-    const value = normalize(captured || interim, field.type);
+    stopListening();
+    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+    const value = capturedRef.current || interim;
     if (!value) {
       toast.message("Niente da salvare, ripeti o salta");
       return;
     }
-    onChange(field.key, value);
-    toast.success(`${field.label}: ${value}`);
-    setIdx((i) => i + 1);
+    advance(value);
   };
 
-  const skip = () => { stopListening(); setIdx((i) => i + 1); };
-  const repeat = () => { stopListening(); setCaptured(""); setInterim(""); startListening(); };
+  const skip = () => {
+    stopListening();
+    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+    capturedRef.current = "";
+    setCaptured("");
+    setInterim("");
+    setIdx((i) => i + 1);
+  };
+  const repeat = () => {
+    stopListening();
+    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+    capturedRef.current = "";
+    setCaptured("");
+    setInterim("");
+    startListening();
+  };
 
   if (!supported) {
     return (
