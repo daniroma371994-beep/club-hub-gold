@@ -617,7 +617,7 @@ export function VoiceFormWizard({
 
   const close = () => {
     releaseEverything();
-    onClose();
+    onCloseRef.current();
   };
 
   const meter = Math.min(1, level * 18);
