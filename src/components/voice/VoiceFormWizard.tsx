@@ -103,9 +103,13 @@ export function VoiceFormWizard({
   }, []);
 
   const capturedRef = useRef("");
-  const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const idxRef = useRef(idx);
   idxRef.current = idx;
+
+  // Trigger words that confirm/advance; "ripeti" clears; "salta" skips
+  const OK_RE = /\b(ok|okay|okey|avanti|prossimo|prossima|conferma|vai|fatto)\b/i;
+  const REPEAT_RE = /\b(ripeti|rifai|cancella|ricomincia)\b/i;
+  const SKIP_RE = /\b(salta|saltare|vuoto|niente)\b/i;
 
   const stopListening = useCallback(() => {
     try { srRef.current?.stop(); } catch {}
@@ -116,7 +120,10 @@ export function VoiceFormWizard({
     const f = fields[idxRef.current];
     if (!f) return;
     const normalized = normalize(value, f.type);
-    if (!normalized) return;
+    if (!normalized) {
+      toast.message("Niente da salvare, parla o salta");
+      return;
+    }
     onChange(f.key, normalized);
     toast.success(`${f.label}: ${normalized}`);
     capturedRef.current = "";
@@ -131,53 +138,73 @@ export function VoiceFormWizard({
     const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) return toast.error("Voce non supportata. Usa Chrome.");
     try { srRef.current?.stop(); } catch {}
-    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
-    capturedRef.current = "";
-    setInterim("");
-    setCaptured("");
     const sr = new SR();
     sr.lang = "it-IT";
-    sr.continuous = false;
+    sr.continuous = true;
     sr.interimResults = true;
     sr.onstart = () => setListening(true);
     sr.onresult = (ev: any) => {
       let iStr = "", fStr = "";
-      for (let i = 0; i < ev.results.length; i++) {
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
         const t = ev.results[i][0].transcript;
         if (ev.results[i].isFinal) fStr += t; else iStr += t;
       }
       setInterim(iStr);
-      if (fStr) {
-        capturedRef.current = (capturedRef.current + " " + fStr).trim();
-        setCaptured(capturedRef.current);
-        // Auto-advance shortly after a final chunk
-        if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
-        advanceTimerRef.current = setTimeout(() => {
-          try { sr.stop(); } catch {}
-          advance(capturedRef.current);
-        }, 900);
+      if (!fStr) return;
+
+      // Check triggers in the final chunk
+      if (SKIP_RE.test(fStr)) {
+        capturedRef.current = "";
+        setCaptured("");
+        setInterim("");
+        try { sr.stop(); } catch {}
+        setIdx((i) => i + 1);
+        return;
       }
+      if (REPEAT_RE.test(fStr)) {
+        capturedRef.current = "";
+        setCaptured("");
+        setInterim("");
+        return;
+      }
+      if (OK_RE.test(fStr)) {
+        // Remove trigger word from final chunk, append remainder to captured
+        const cleaned = fStr.replace(OK_RE, " ").replace(/\s+/g, " ").trim();
+        if (cleaned) {
+          capturedRef.current = (capturedRef.current + " " + cleaned).trim();
+          setCaptured(capturedRef.current);
+        }
+        try { sr.stop(); } catch {}
+        advance(capturedRef.current);
+        return;
+      }
+      capturedRef.current = (capturedRef.current + " " + fStr).trim();
+      setCaptured(capturedRef.current);
     };
     sr.onerror = (e: any) => {
       setListening(false);
       if (e.error === "not-allowed") toast.error("Microfono bloccato");
       else if (e.error === "no-speech") {
-        toast.message("Non ho sentito, riprova");
-        // Restart listening so user can speak again
-        setTimeout(() => { if (idxRef.current === idxRef.current) startListening(); }, 500);
+        // restart silently
+        setTimeout(() => { if (!done) startListening(); }, 400);
       } else if (e.error !== "aborted") toast.error(`Errore: ${e.error}`);
     };
     sr.onend = () => {
       setListening(false);
-      // If we have captured text but auto-advance didn't fire yet, advance now
-      if (capturedRef.current) {
-        if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
-        advance(capturedRef.current);
+      // Auto-restart unless intentionally stopped / advanced / done
+      if (!done && idxRef.current === idx) {
+        // Only restart if no advance happened (captured wasn't cleared by advance)
+        // Use setTimeout so React state has time to flush
+        setTimeout(() => {
+          if (idxRef.current === idx && !done) {
+            try { sr.start(); } catch {}
+          }
+        }, 200);
       }
     };
     srRef.current = sr;
     try { sr.start(); } catch { setListening(false); }
-  }, [fields, advance]);
+  }, [fields, advance, done, idx]);
 
   // When moving to a new field, announce it then start listening
   useEffect(() => {
@@ -188,7 +215,9 @@ export function VoiceFormWizard({
     capturedRef.current = "";
     setCaptured("");
     setInterim("");
-    const prompt = field.hint ? `${field.label}. ${field.hint}` : field.label;
+    const prompt = field.hint
+      ? `${field.label}. ${field.hint}. Di ok quando hai finito.`
+      : `${field.label}. Di ok quando hai finito.`;
     speak(prompt, () => startListening());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx]);
@@ -196,8 +225,8 @@ export function VoiceFormWizard({
   useEffect(() => () => {
     try { srRef.current?.stop(); } catch {}
     window.speechSynthesis.cancel();
-    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
   }, []);
+
 
 
   const confirm = () => {
