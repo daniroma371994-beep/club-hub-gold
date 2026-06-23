@@ -634,10 +634,19 @@ export function VoiceFormWizard({
         if (cancelledRef.current || runRef.current !== runId) return;
         setPhase("speaking");
         const prompt = currentField.hint ? `${currentField.label}. ${currentField.hint}.` : `${currentField.label}.`;
+        console.log("[VoiceWizard] speaking prompt for", currentField.key);
         await speak(prompt);
         if (cancelledRef.current || runRef.current !== runId) return;
+        // Give the mic a moment to recover from echo cancellation duck after TTS
+        await new Promise((r) => window.setTimeout(r, 350));
+        if (cancelledRef.current || runRef.current !== runId) return;
+        // Re-check mic is still healthy before recording (it may have been muted during TTS)
+        await ensureMic();
+        if (cancelledRef.current || runRef.current !== runId) return;
+        console.log("[VoiceWizard] starting recorder for", currentField.key);
         await startRecording(currentField, runId);
       } catch (err) {
+        console.error("[VoiceWizard] field flow error", err);
         const message = err instanceof DOMException ? micErrorMessage(err) : err instanceof Error ? err.message : micErrorMessage(err);
         setError(message);
         setPhase("error");
