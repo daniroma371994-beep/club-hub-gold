@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { MeduzaLayout } from "@/components/MeduzaLayout";
-import { UserPlus, ScanLine, List } from "lucide-react";
+import { UserPlus, ScanLine, List, BadgeEuro } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/soci/")({
   component: SociMenu,
@@ -37,9 +37,12 @@ function SociMenu() {
         </Link>
       </div>
 
-      <div className="mt-8">
+      <div className="mt-8 flex flex-wrap gap-6">
         <Link to="/soci/elenco" className="inline-flex items-center gap-2 text-gold-muted hover:text-gold text-xs uppercase tracking-widest">
           <List className="w-3 h-3" /> Elenco completo soci
+        </Link>
+        <Link to="/piani" className="inline-flex items-center gap-2 text-gold-muted hover:text-gold text-xs uppercase tracking-widest">
+          <BadgeEuro className="w-3 h-3" /> Quote associative
         </Link>
       </div>
     </MeduzaLayout>
