@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedProdottiRouteImport } from './routes/_authenticated/prodotti'
+import { Route as AuthenticatedPianiRouteImport } from './routes/_authenticated/piani'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCollaboratoriRouteImport } from './routes/_authenticated/collaboratori'
 import { Route as AuthenticatedCassaRouteImport } from './routes/_authenticated/cassa'
@@ -39,6 +40,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthenticatedProdottiRoute = AuthenticatedProdottiRouteImport.update({
   id: '/prodotti',
   path: '/prodotti',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPianiRoute = AuthenticatedPianiRouteImport.update({
+  id: '/piani',
+  path: '/piani',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
@@ -90,6 +96,7 @@ export interface FileRoutesByFullPath {
   '/cassa': typeof AuthenticatedCassaRoute
   '/collaboratori': typeof AuthenticatedCollaboratoriRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/piani': typeof AuthenticatedPianiRoute
   '/prodotti': typeof AuthenticatedProdottiRoute
   '/soci/$id': typeof AuthenticatedSociIdRoute
   '/soci/elenco': typeof AuthenticatedSociElencoRoute
@@ -103,6 +110,7 @@ export interface FileRoutesByTo {
   '/cassa': typeof AuthenticatedCassaRoute
   '/collaboratori': typeof AuthenticatedCollaboratoriRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/piani': typeof AuthenticatedPianiRoute
   '/prodotti': typeof AuthenticatedProdottiRoute
   '/soci/$id': typeof AuthenticatedSociIdRoute
   '/soci/elenco': typeof AuthenticatedSociElencoRoute
@@ -118,6 +126,7 @@ export interface FileRoutesById {
   '/_authenticated/cassa': typeof AuthenticatedCassaRoute
   '/_authenticated/collaboratori': typeof AuthenticatedCollaboratoriRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/piani': typeof AuthenticatedPianiRoute
   '/_authenticated/prodotti': typeof AuthenticatedProdottiRoute
   '/_authenticated/soci/$id': typeof AuthenticatedSociIdRoute
   '/_authenticated/soci/elenco': typeof AuthenticatedSociElencoRoute
@@ -133,6 +142,7 @@ export interface FileRouteTypes {
     | '/cassa'
     | '/collaboratori'
     | '/dashboard'
+    | '/piani'
     | '/prodotti'
     | '/soci/$id'
     | '/soci/elenco'
@@ -146,6 +156,7 @@ export interface FileRouteTypes {
     | '/cassa'
     | '/collaboratori'
     | '/dashboard'
+    | '/piani'
     | '/prodotti'
     | '/soci/$id'
     | '/soci/elenco'
@@ -160,6 +171,7 @@ export interface FileRouteTypes {
     | '/_authenticated/cassa'
     | '/_authenticated/collaboratori'
     | '/_authenticated/dashboard'
+    | '/_authenticated/piani'
     | '/_authenticated/prodotti'
     | '/_authenticated/soci/$id'
     | '/_authenticated/soci/elenco'
@@ -202,6 +214,13 @@ declare module '@tanstack/react-router' {
       path: '/prodotti'
       fullPath: '/prodotti'
       preLoaderRoute: typeof AuthenticatedProdottiRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/piani': {
+      id: '/_authenticated/piani'
+      path: '/piani'
+      fullPath: '/piani'
+      preLoaderRoute: typeof AuthenticatedPianiRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard': {
@@ -267,6 +286,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCassaRoute: typeof AuthenticatedCassaRoute
   AuthenticatedCollaboratoriRoute: typeof AuthenticatedCollaboratoriRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedPianiRoute: typeof AuthenticatedPianiRoute
   AuthenticatedProdottiRoute: typeof AuthenticatedProdottiRoute
   AuthenticatedSociIdRoute: typeof AuthenticatedSociIdRoute
   AuthenticatedSociElencoRoute: typeof AuthenticatedSociElencoRoute
@@ -279,6 +299,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCassaRoute: AuthenticatedCassaRoute,
   AuthenticatedCollaboratoriRoute: AuthenticatedCollaboratoriRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedPianiRoute: AuthenticatedPianiRoute,
   AuthenticatedProdottiRoute: AuthenticatedProdottiRoute,
   AuthenticatedSociIdRoute: AuthenticatedSociIdRoute,
   AuthenticatedSociElencoRoute: AuthenticatedSociElencoRoute,

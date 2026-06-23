@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Users, Package, ScanLine, ShieldCheck, LogOut, LayoutDashboard, UserCog } from "lucide-react";
+import { Users, Package, ScanLine, ShieldCheck, LogOut, LayoutDashboard, UserCog, BadgeEuro } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import logoUrl from "@/assets/meduza-logo.png";
@@ -7,11 +7,12 @@ import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
 const NAV = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, perm: null },
-  { to: "/soci", label: "Soci", icon: Users, perm: "manage_members" as const },
-  { to: "/prodotti", label: "Prodotti", icon: Package, perm: "manage_products" as const },
-  { to: "/cassa", label: "Cassa", icon: ScanLine, perm: "use_cash" as const },
-  { to: "/collaboratori", label: "Collaboratori", icon: UserCog, perm: "manage_collaborators" as const },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, perm: null, adminOnly: false },
+  { to: "/soci", label: "Soci", icon: Users, perm: "manage_members" as const, adminOnly: false },
+  { to: "/piani", label: "Quote", icon: BadgeEuro, perm: null, adminOnly: true },
+  { to: "/prodotti", label: "Prodotti", icon: Package, perm: "manage_products" as const, adminOnly: false },
+  { to: "/cassa", label: "Cassa", icon: ScanLine, perm: "use_cash" as const, adminOnly: false },
+  { to: "/collaboratori", label: "Collaboratori", icon: UserCog, perm: "manage_collaborators" as const, adminOnly: false },
 ];
 
 export function MeduzaLayout({ children, title }: { children: ReactNode; title?: string }) {
@@ -19,7 +20,7 @@ export function MeduzaLayout({ children, title }: { children: ReactNode; title?:
   const nav = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  const visible = NAV.filter((n) => !n.perm || isAdmin || can(n.perm));
+  const visible = NAV.filter((n) => (n.adminOnly ? isAdmin : !n.perm || isAdmin || can(n.perm)));
 
   async function signOut() {
     await supabase.auth.signOut();
