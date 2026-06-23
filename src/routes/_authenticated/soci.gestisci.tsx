@@ -7,6 +7,7 @@ import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { ArrowLeft, ScanLine, X, Plus, Minus, Trash2, Search, Euro, FileText, BadgeCheck, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { voiceBus } from "@/components/voice/voice-bus";
 
 export const Route = createFileRoute("/_authenticated/soci/gestisci")({
   component: GestisciSocio,
@@ -149,6 +150,81 @@ function GestisciSocio() {
     setShowSubForm(false);
     qc.invalidateQueries({ queryKey: ["member-subs", member.id] });
   }
+
+  // ---------- Voice handlers ----------
+  const stateRef = useRef({ member, cart, products, plans, activeSub });
+  stateRef.current = { member, cart, products, plans, activeSub };
+
+  useEffect(() => {
+    const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
+    const fuzzy = <T extends { name: string }>(list: T[] | undefined, q: string): T | undefined => {
+      if (!list) return undefined;
+      const nq = norm(q);
+      return (
+        list.find((x) => norm(x.name) === nq) ??
+        list.find((x) => norm(x.name).includes(nq)) ??
+        list.find((x) => nq.includes(norm(x.name)))
+      );
+    };
+
+    voiceBus.register({
+      findMember: async (query) => {
+        await findByToken(query);
+        return true;
+      },
+      addToCart: async (productQuery, quantity, unit) => {
+        const { products: ps, member: m } = stateRef.current;
+        if (!m) { toast.error("Primero identifica al socio"); return false; }
+        const p = fuzzy(ps, productQuery);
+        if (!p) { toast.error(`Producto "${productQuery}" no encontrado`); return false; }
+        const q = quantity ?? (p.type === "per_gram" ? 1 : 1);
+        setCart((c) => {
+          const e = c.find((i) => i.product.id === p.id);
+          if (e) return c.map((i) => i.product.id === p.id ? { ...i, quantity: i.quantity + q } : i);
+          return [...c, { product: p, quantity: q }];
+        });
+        toast.success(`+${q}${p.type === "per_gram" ? "g" : "pz"} ${p.name}`);
+        return true;
+      },
+      removeFromCart: async (productQuery) => {
+        const { cart: c } = stateRef.current;
+        const item = c.find((i) => norm(i.product.name).includes(norm(productQuery)));
+        if (!item) return false;
+        setCart((cs) => cs.filter((i) => i.product.id !== item.product.id));
+        toast.success(`Quitado: ${item.product.name}`);
+        return true;
+      },
+      clearCart: () => setCart([]),
+      confirmOrder: async () => {
+        await complete();
+        return true;
+      },
+      renewPlan: async (planQuery) => {
+        const { plans: ps, member: m } = stateRef.current;
+        if (!m) { toast.error("Primero identifica al socio"); return false; }
+        let p = fuzzy(ps, planQuery);
+        if (!p) {
+          // try matching by duration_days from words like "6 meses", "30 días"
+          const num = parseInt(planQuery.replace(/[^0-9]/g, ""), 10);
+          if (num && ps) {
+            const isMonths = /mes/i.test(planQuery);
+            const target = isMonths ? num * 30 : num;
+            p = ps.reduce<Plan | undefined>((best, cur) => {
+              const d = Math.abs(cur.duration_days - target);
+              if (!best || d < Math.abs(best.duration_days - target)) return cur;
+              return best;
+            }, undefined);
+          }
+        }
+        if (!p) { toast.error(`Plan "${planQuery}" no encontrado`); return false; }
+        await activatePlan(p);
+        return true;
+      },
+    });
+
+    return () => voiceBus.unregister(["findMember", "addToCart", "removeFromCart", "clearCart", "confirmOrder", "renewPlan"]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <MeduzaLayout title="Gestisci Socio">
