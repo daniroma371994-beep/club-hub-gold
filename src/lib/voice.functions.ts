@@ -8,6 +8,7 @@ import { createLovableAiGatewayProvider } from "./ai-gateway.server";
 const TranscribeInput = z.object({
   audioBase64: z.string().min(1),
   mime: z.string().min(1),
+  language: z.string().optional(),
 });
 
 function extToFormat(mime: string): { ext: string; format: string } {
@@ -30,7 +31,7 @@ export const transcribeVoice = createServerFn({ method: "POST" })
     const { ext } = extToFormat(data.mime);
     const form = new FormData();
     form.append("model", "openai/gpt-4o-mini-transcribe");
-    form.append("language", "es");
+    form.append("language", data.language ?? "it");
     form.append("file", new Blob([buf], { type: data.mime }), `recording.${ext}`);
     const res = await fetch("https://ai.gateway.lovable.dev/v1/audio/transcriptions", {
       method: "POST",
@@ -39,7 +40,7 @@ export const transcribeVoice = createServerFn({ method: "POST" })
     });
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
-      throw new Error(`Transcripción falló (${res.status}): ${txt.slice(0, 200)}`);
+      throw new Error(`Trascrizione fallita (${res.status}): ${txt.slice(0, 200)}`);
     }
     const json = await res.json();
     return { text: (json.text ?? "").trim() };
