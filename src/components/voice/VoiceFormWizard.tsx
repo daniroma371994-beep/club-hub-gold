@@ -314,7 +314,6 @@ export function VoiceFormWizard({
   const closeTimerRef = useRef<number | null>(null);
   const runRef = useRef(0);
   const cancelledRef = useRef(false);
-  const resolvedSpeechRef = useRef(false);
   const onChangeRef = useRef(onChange);
   const onCloseRef = useRef(onClose);
 
@@ -405,11 +404,13 @@ export function VoiceFormWizard({
   }, []);
 
   const speak = useCallback((text: string) => {
-    resolvedSpeechRef.current = false;
     return new Promise<void>((resolve) => {
+      let resolved = false;
+      let fallbackTimer: number | null = null;
       const done = () => {
-        if (resolvedSpeechRef.current) return;
-        resolvedSpeechRef.current = true;
+        if (resolved) return;
+        resolved = true;
+        if (fallbackTimer) window.clearTimeout(fallbackTimer);
         resolve();
       };
 
@@ -429,7 +430,7 @@ export function VoiceFormWizard({
         utterance.onerror = done;
         window.speechSynthesis.resume();
         window.speechSynthesis.speak(utterance);
-        window.setTimeout(done, Math.min(7500, Math.max(2200, text.length * 95)));
+        fallbackTimer = window.setTimeout(done, Math.min(7500, Math.max(2200, text.length * 95)));
       } catch {
         done();
       }
