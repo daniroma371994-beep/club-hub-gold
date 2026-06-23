@@ -11,7 +11,7 @@ export type WizardField = {
   hint?: string;
 };
 
-type Phase = "preparing" | "speaking" | "listening" | "transcribing" | "confirming" | "done" | "error";
+type Phase = "waiting" | "preparing" | "speaking" | "listening" | "transcribing" | "confirming" | "done" | "error";
 
 const SILENCE_MS = 3000;
 const MAX_RECORD_MS = 18000;
@@ -299,7 +299,8 @@ export function VoiceFormWizard({
   const transcribe = useServerFn(transcribeVoice);
   const [idx, setIdx] = useState(0);
   const [cycle, setCycle] = useState(0);
-  const [phase, setPhase] = useState<Phase>("preparing");
+  const [started, setStarted] = useState(false);
+  const [phase, setPhase] = useState<Phase>("waiting");
   const [heard, setHeard] = useState("");
   const [level, setLevel] = useState(0);
   const [error, setError] = useState("");
@@ -421,6 +422,22 @@ export function VoiceFormWizard({
     setHeard("");
     setCycle((value) => value + 1);
   }, [cleanupRecording]);
+
+  const startWizard = useCallback(async () => {
+    setError("");
+    setPhase("preparing");
+    try {
+      const stream = await warmUpVoiceForm();
+      streamRef.current = stream;
+      setStarted(true);
+      setCycle((value) => value + 1);
+    } catch (err) {
+      const message = err instanceof DOMException ? micErrorMessage(err) : err instanceof Error ? err.message : micErrorMessage(err);
+      setError(message);
+      setPhase("error");
+      toast.error(message);
+    }
+  }, []);
 
   const startRecording = useCallback(
     async (currentField: WizardField, runId: number) => {
@@ -563,6 +580,11 @@ export function VoiceFormWizard({
     cancelledRef.current = false;
     setError("");
 
+    if (!started) {
+      setPhase("waiting");
+      return undefined;
+    }
+
     if (finished) {
       setPhase("done");
       const runId = ++runRef.current;
@@ -611,7 +633,7 @@ export function VoiceFormWizard({
         // ignore speech cleanup errors
       }
     };
-  }, [cleanupRecording, cycle, fields, finished, idx, ensureMic, speak, startRecording]);
+  }, [cleanupRecording, cycle, fields, finished, idx, ensureMic, speak, startRecording, started]);
 
   useEffect(() => () => releaseEverything(), [releaseEverything]);
 
@@ -661,7 +683,7 @@ export function VoiceFormWizard({
                 }
                 style={phase === "listening" ? { transform: `scale(${1 + meter * 0.32})` } : undefined}
               >
-                {(phase === "preparing" || phase === "transcribing") && <Loader2 className="w-12 h-12 animate-spin" />}
+                {(phase === "waiting" || phase === "preparing" || phase === "transcribing") && <Loader2 className="w-12 h-12 animate-spin" />}
                 {phase === "speaking" && <Volume2 className="w-12 h-12 animate-pulse" />}
                 {phase === "listening" && <Mic className="w-12 h-12" />}
                 {phase === "confirming" && <Check className="w-12 h-12" />}
@@ -669,6 +691,7 @@ export function VoiceFormWizard({
               </div>
 
               <div className="mt-4 text-xs uppercase tracking-[0.25em] text-gold-muted text-center min-h-[1.5rem]">
+                {phase === "waiting" && "Tocca avvia per autorizzare bene il microfono"}
                 {phase === "preparing" && "Preparo il microfono…"}
                 {phase === "speaking" && "La IA legge il campo…"}
                 {phase === "listening" && "Parla ora — chiudo dopo 3 secondi di silenzio"}
@@ -684,10 +707,18 @@ export function VoiceFormWizard({
               )}
             </div>
 
-            {error ? (
+            {!started ? (
               <button
                 type="button"
-                onClick={retrySameField}
+                onClick={startWizard}
+                className="w-full bg-gradient-gold text-primary-foreground py-3 rounded-md font-display uppercase tracking-[0.3em] text-xs"
+              >
+                Avvia microfono e compila tutti i campi
+              </button>
+            ) : error ? (
+              <button
+                type="button"
+                onClick={startWizard}
                 className="w-full bg-gradient-gold text-primary-foreground py-3 rounded-md font-display uppercase tracking-[0.3em] text-xs"
               >
                 Riprova microfono
