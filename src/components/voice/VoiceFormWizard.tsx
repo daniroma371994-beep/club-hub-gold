@@ -422,7 +422,7 @@ export function VoiceFormWizard({
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = "it-IT";
-        utterance.rate = 0.92;
+        utterance.rate = 1.15;
         utterance.pitch = 1;
         const voice = window.speechSynthesis.getVoices().find((v) => v.lang.toLowerCase().startsWith("it"));
         if (voice) utterance.voice = voice;
@@ -430,7 +430,7 @@ export function VoiceFormWizard({
         utterance.onerror = done;
         window.speechSynthesis.resume();
         window.speechSynthesis.speak(utterance);
-        fallbackTimer = window.setTimeout(done, Math.min(7500, Math.max(2200, text.length * 95)));
+        fallbackTimer = window.setTimeout(done, Math.min(5000, Math.max(1200, text.length * 70)));
       } catch {
         done();
       }
