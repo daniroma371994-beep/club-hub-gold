@@ -124,13 +124,13 @@ export const agentRespond = createServerFn({ method: "POST" })
       }),
       create_member: tool({
         description:
-          "Crea un nuevo socio. La foto del DNI y la firma se pueden añadir luego desde la ficha del socio. Si falta algún dato obligatorio, pide al usuario que lo dicte antes de llamar esta herramienta.",
+          "Crea un nuevo socio con TODOS los datos dictados. Llama esta herramienta UNA SOLA VEZ cuando tengas: nombre, apellido, fecha de nacimiento, DNI, ciudad, teléfono y plan. La foto del DNI y la firma del contrato son el ÚNICO paso aparte (se hacen en la ficha del socio después).",
         inputSchema: z.object({
           first_name: z.string().min(1),
           last_name: z.string().min(1),
           birth_date: z.string().describe("Fecha de nacimiento en formato YYYY-MM-DD o DD/MM/YYYY"),
-          city: z.string().optional(),
-          phone: z.string().optional(),
+          city: z.string().min(1),
+          phone: z.string().min(3),
           dni_number: z.string().min(3),
           plan_name: z.string().describe("Nombre del plan (ej. Mensual, Trimestral, Anual)"),
         }),
@@ -160,8 +160,8 @@ export const agentRespond = createServerFn({ method: "POST" })
               first_name: input.first_name.trim(),
               last_name: input.last_name.trim(),
               birth_date: birth,
-              city: input.city?.trim() || null,
-              phone: input.phone?.trim() || null,
+              city: input.city.trim(),
+              phone: input.phone.trim(),
               dni_number: input.dni_number.trim().toUpperCase(),
               plan_id: plan.id,
               joined_at: joined,
@@ -173,7 +173,8 @@ export const agentRespond = createServerFn({ method: "POST" })
           if (error) return { error: error.message };
           return {
             created,
-            note: "Socio creado. La foto del DNI y la firma del contrato se pueden añadir desde la ficha del socio.",
+            navigate_to: `/soci/${created.id}`,
+            note: "Socio creado. Ahora abre la ficha para subir la foto del DNI y firmar el contrato.",
           };
         },
       }),
