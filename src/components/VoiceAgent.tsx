@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { useNavigate } from "@tanstack/react-router";
 import { Mic, Square, Loader2, X, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { agentRespond, transcribeAudio } from "@/lib/voice-agent.functions";
