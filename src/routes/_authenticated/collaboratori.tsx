@@ -5,9 +5,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { UserPlus, Shield, ShieldCheck, Mic } from "lucide-react";
+import { UserPlus, Shield, ShieldCheck, Mic, KeyRound } from "lucide-react";
 import { VoiceFormWizard, warmUpVoiceForm, type WizardField } from "@/components/voice/VoiceFormWizard";
 import { voiceBus } from "@/components/voice/voice-bus";
+import { useServerFn } from "@tanstack/react-start";
+import { adminResetCollabPassword } from "@/lib/admin-users.functions";
 
 export const Route = createFileRoute("/_authenticated/collaboratori")({
   component: Collabs,
