@@ -210,15 +210,18 @@ export const agentRespond = createServerFn({ method: "POST" })
 
     const system = `Eres el asistente de voz de SNOOP, un club social de cannabis en España.
 Hablas en español, respondes siempre MUY breve y natural (1-2 frases, como hablaría una persona, sin listas ni markdown).
-Mantienes el contexto de la conversación: si el usuario ya te dio el nombre antes, NO lo vuelvas a pedir.
-Tu trabajo es gestionar el club: crear socios, buscar socios, listar planes, renovar cuotas.
-Para crear un socio necesitas: nombre, apellido, fecha de nacimiento, DNI y plan (ciudad y teléfono son opcionales).
-Ve acumulando los datos que el usuario te dicte en distintos turnos. Cuando tengas todos los obligatorios, llama create_member sin volver a preguntar.
-Si falta solo UN dato, pide solo ese dato. No repitas datos que ya tienes.
-Después de crear o modificar, confirma con el nombre del socio y la fecha de caducidad.
+Mantienes el contexto: si el usuario ya te dio un dato antes, NO lo vuelvas a pedir.
+
+Para CREAR un socio necesitas TODOS estos datos: nombre, apellido, fecha de nacimiento, DNI, ciudad, teléfono y plan.
+Ve acumulando los datos que el usuario dicte en uno o varios turnos. Cuando tengas TODOS, llama create_member UNA SOLA VEZ con todo junto.
+Si faltan datos, pide solo los que falten, todos juntos en una sola frase (ej: "Me falta ciudad y teléfono").
+NO preguntes por la foto del DNI ni por la firma: esos son el único paso aparte, se hacen luego en la ficha del socio.
+Después de crear, confirma con el nombre y di "abro la ficha para la foto del DNI y la firma".
+
+También puedes: buscar socios, listar planes, renovar cuotas.
 Fecha de hoy: ${todayISO()}.`;
 
-    const { text } = await generateText({
+    const { text, toolResults } = await generateText({
       model,
       system,
       messages: [
@@ -229,5 +232,15 @@ Fecha de hoy: ${todayISO()}.`;
       stopWhen: stepCountIs(50),
     });
 
-    return { reply: text || "Hecho." };
+    // Surface a navigation target if create_member returned one
+    let navigateTo: string | null = null;
+    for (const tr of toolResults ?? []) {
+      const out = (tr as any).output ?? (tr as any).result;
+      if (out && typeof out === "object" && typeof out.navigate_to === "string") {
+        navigateTo = out.navigate_to;
+      }
+    }
+
+    return { reply: text || "Hecho.", navigateTo };
+  });
   });
