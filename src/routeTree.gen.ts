@@ -13,15 +13,10 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedProdottiRouteImport } from './routes/_authenticated/prodotti'
 import { Route as AuthenticatedPianiRouteImport } from './routes/_authenticated/piani'
-import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as AuthenticatedCollaboratoriRouteImport } from './routes/_authenticated/collaboratori'
-import { Route as AuthenticatedCassaRouteImport } from './routes/_authenticated/cassa'
 import { Route as AuthenticatedSociIndexRouteImport } from './routes/_authenticated/soci.index'
 import { Route as AuthenticatedSociNuovoRouteImport } from './routes/_authenticated/soci.nuovo'
 import { Route as AuthenticatedSociGestisciRouteImport } from './routes/_authenticated/soci.gestisci'
-import { Route as AuthenticatedSociElencoRouteImport } from './routes/_authenticated/soci.elenco'
 import { Route as AuthenticatedSociIdRouteImport } from './routes/_authenticated/soci.$id'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -43,30 +38,9 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedProdottiRoute = AuthenticatedProdottiRouteImport.update({
-  id: '/prodotti',
-  path: '/prodotti',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedPianiRoute = AuthenticatedPianiRouteImport.update({
   id: '/piani',
   path: '/piani',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedCollaboratoriRoute =
-  AuthenticatedCollaboratoriRouteImport.update({
-    id: '/collaboratori',
-    path: '/collaboratori',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedCassaRoute = AuthenticatedCassaRouteImport.update({
-  id: '/cassa',
-  path: '/cassa',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedSociIndexRoute = AuthenticatedSociIndexRouteImport.update({
@@ -85,11 +59,6 @@ const AuthenticatedSociGestisciRoute =
     path: '/soci/gestisci',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedSociElencoRoute = AuthenticatedSociElencoRouteImport.update({
-  id: '/soci/elenco',
-  path: '/soci/elenco',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedSociIdRoute = AuthenticatedSociIdRouteImport.update({
   id: '/soci/$id',
   path: '/soci/$id',
@@ -100,13 +69,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/cassa': typeof AuthenticatedCassaRoute
-  '/collaboratori': typeof AuthenticatedCollaboratoriRoute
-  '/dashboard': typeof AuthenticatedDashboardRoute
   '/piani': typeof AuthenticatedPianiRoute
-  '/prodotti': typeof AuthenticatedProdottiRoute
   '/soci/$id': typeof AuthenticatedSociIdRoute
-  '/soci/elenco': typeof AuthenticatedSociElencoRoute
   '/soci/gestisci': typeof AuthenticatedSociGestisciRoute
   '/soci/nuovo': typeof AuthenticatedSociNuovoRoute
   '/soci/': typeof AuthenticatedSociIndexRoute
@@ -115,13 +79,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/cassa': typeof AuthenticatedCassaRoute
-  '/collaboratori': typeof AuthenticatedCollaboratoriRoute
-  '/dashboard': typeof AuthenticatedDashboardRoute
   '/piani': typeof AuthenticatedPianiRoute
-  '/prodotti': typeof AuthenticatedProdottiRoute
   '/soci/$id': typeof AuthenticatedSociIdRoute
-  '/soci/elenco': typeof AuthenticatedSociElencoRoute
   '/soci/gestisci': typeof AuthenticatedSociGestisciRoute
   '/soci/nuovo': typeof AuthenticatedSociNuovoRoute
   '/soci': typeof AuthenticatedSociIndexRoute
@@ -132,13 +91,8 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/_authenticated/cassa': typeof AuthenticatedCassaRoute
-  '/_authenticated/collaboratori': typeof AuthenticatedCollaboratoriRoute
-  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/piani': typeof AuthenticatedPianiRoute
-  '/_authenticated/prodotti': typeof AuthenticatedProdottiRoute
   '/_authenticated/soci/$id': typeof AuthenticatedSociIdRoute
-  '/_authenticated/soci/elenco': typeof AuthenticatedSociElencoRoute
   '/_authenticated/soci/gestisci': typeof AuthenticatedSociGestisciRoute
   '/_authenticated/soci/nuovo': typeof AuthenticatedSociNuovoRoute
   '/_authenticated/soci/': typeof AuthenticatedSociIndexRoute
@@ -149,13 +103,8 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
-    | '/cassa'
-    | '/collaboratori'
-    | '/dashboard'
     | '/piani'
-    | '/prodotti'
     | '/soci/$id'
-    | '/soci/elenco'
     | '/soci/gestisci'
     | '/soci/nuovo'
     | '/soci/'
@@ -164,13 +113,8 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
-    | '/cassa'
-    | '/collaboratori'
-    | '/dashboard'
     | '/piani'
-    | '/prodotti'
     | '/soci/$id'
-    | '/soci/elenco'
     | '/soci/gestisci'
     | '/soci/nuovo'
     | '/soci'
@@ -180,13 +124,8 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/reset-password'
-    | '/_authenticated/cassa'
-    | '/_authenticated/collaboratori'
-    | '/_authenticated/dashboard'
     | '/_authenticated/piani'
-    | '/_authenticated/prodotti'
     | '/_authenticated/soci/$id'
-    | '/_authenticated/soci/elenco'
     | '/_authenticated/soci/gestisci'
     | '/_authenticated/soci/nuovo'
     | '/_authenticated/soci/'
@@ -229,39 +168,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/prodotti': {
-      id: '/_authenticated/prodotti'
-      path: '/prodotti'
-      fullPath: '/prodotti'
-      preLoaderRoute: typeof AuthenticatedProdottiRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/piani': {
       id: '/_authenticated/piani'
       path: '/piani'
       fullPath: '/piani'
       preLoaderRoute: typeof AuthenticatedPianiRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/dashboard': {
-      id: '/_authenticated/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/collaboratori': {
-      id: '/_authenticated/collaboratori'
-      path: '/collaboratori'
-      fullPath: '/collaboratori'
-      preLoaderRoute: typeof AuthenticatedCollaboratoriRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/cassa': {
-      id: '/_authenticated/cassa'
-      path: '/cassa'
-      fullPath: '/cassa'
-      preLoaderRoute: typeof AuthenticatedCassaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/soci/': {
@@ -285,13 +196,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSociGestisciRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/soci/elenco': {
-      id: '/_authenticated/soci/elenco'
-      path: '/soci/elenco'
-      fullPath: '/soci/elenco'
-      preLoaderRoute: typeof AuthenticatedSociElencoRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/soci/$id': {
       id: '/_authenticated/soci/$id'
       path: '/soci/$id'
@@ -303,26 +207,16 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedCassaRoute: typeof AuthenticatedCassaRoute
-  AuthenticatedCollaboratoriRoute: typeof AuthenticatedCollaboratoriRoute
-  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedPianiRoute: typeof AuthenticatedPianiRoute
-  AuthenticatedProdottiRoute: typeof AuthenticatedProdottiRoute
   AuthenticatedSociIdRoute: typeof AuthenticatedSociIdRoute
-  AuthenticatedSociElencoRoute: typeof AuthenticatedSociElencoRoute
   AuthenticatedSociGestisciRoute: typeof AuthenticatedSociGestisciRoute
   AuthenticatedSociNuovoRoute: typeof AuthenticatedSociNuovoRoute
   AuthenticatedSociIndexRoute: typeof AuthenticatedSociIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedCassaRoute: AuthenticatedCassaRoute,
-  AuthenticatedCollaboratoriRoute: AuthenticatedCollaboratoriRoute,
-  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedPianiRoute: AuthenticatedPianiRoute,
-  AuthenticatedProdottiRoute: AuthenticatedProdottiRoute,
   AuthenticatedSociIdRoute: AuthenticatedSociIdRoute,
-  AuthenticatedSociElencoRoute: AuthenticatedSociElencoRoute,
   AuthenticatedSociGestisciRoute: AuthenticatedSociGestisciRoute,
   AuthenticatedSociNuovoRoute: AuthenticatedSociNuovoRoute,
   AuthenticatedSociIndexRoute: AuthenticatedSociIndexRoute,

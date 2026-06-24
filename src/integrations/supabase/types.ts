@@ -14,62 +14,70 @@ export type Database = {
   }
   public: {
     Tables: {
-      member_subscriptions: {
+      members: {
         Row: {
+          birth_date: string
+          city: string | null
+          contract_signed_at: string | null
+          contract_version: string
           created_at: string
           created_by: string | null
-          duration_days: number
-          end_date: string
+          dni_number: string
+          dni_photo_path: string | null
+          expires_at: string
+          first_name: string
           id: string
-          member_id: string
+          joined_at: string
+          last_name: string
           notes: string | null
-          paid: boolean
+          phone: string | null
           plan_id: string | null
-          plan_name: string
-          price: number
-          start_date: string
+          signature_path: string | null
           updated_at: string
         }
         Insert: {
+          birth_date: string
+          city?: string | null
+          contract_signed_at?: string | null
+          contract_version?: string
           created_at?: string
           created_by?: string | null
-          duration_days: number
-          end_date: string
+          dni_number: string
+          dni_photo_path?: string | null
+          expires_at: string
+          first_name: string
           id?: string
-          member_id: string
+          joined_at?: string
+          last_name: string
           notes?: string | null
-          paid?: boolean
+          phone?: string | null
           plan_id?: string | null
-          plan_name: string
-          price: number
-          start_date?: string
+          signature_path?: string | null
           updated_at?: string
         }
         Update: {
+          birth_date?: string
+          city?: string | null
+          contract_signed_at?: string | null
+          contract_version?: string
           created_at?: string
           created_by?: string | null
-          duration_days?: number
-          end_date?: string
+          dni_number?: string
+          dni_photo_path?: string | null
+          expires_at?: string
+          first_name?: string
           id?: string
-          member_id?: string
+          joined_at?: string
+          last_name?: string
           notes?: string | null
-          paid?: boolean
+          phone?: string | null
           plan_id?: string | null
-          plan_name?: string
-          price?: number
-          start_date?: string
+          signature_path?: string | null
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "member_subscriptions_member_id_fkey"
-            columns: ["member_id"]
-            isOneToOne: false
-            referencedRelation: "members"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "member_subscriptions_plan_id_fkey"
+            foreignKeyName: "members_plan_id_fkey"
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "membership_plans"
@@ -77,137 +85,35 @@ export type Database = {
           },
         ]
       }
-      members: {
-        Row: {
-          address: string | null
-          birth_date: string | null
-          card_number: string
-          created_at: string
-          created_by: string | null
-          document_expiry: string | null
-          document_number: string | null
-          document_type: string | null
-          email: string | null
-          expires_at: string | null
-          first_name: string
-          id: string
-          joined_at: string
-          last_name: string
-          notes: string | null
-          phone: string | null
-          photo_url: string | null
-          qr_token: string
-          updated_at: string
-        }
-        Insert: {
-          address?: string | null
-          birth_date?: string | null
-          card_number: string
-          created_at?: string
-          created_by?: string | null
-          document_expiry?: string | null
-          document_number?: string | null
-          document_type?: string | null
-          email?: string | null
-          expires_at?: string | null
-          first_name: string
-          id?: string
-          joined_at?: string
-          last_name: string
-          notes?: string | null
-          phone?: string | null
-          photo_url?: string | null
-          qr_token?: string
-          updated_at?: string
-        }
-        Update: {
-          address?: string | null
-          birth_date?: string | null
-          card_number?: string
-          created_at?: string
-          created_by?: string | null
-          document_expiry?: string | null
-          document_number?: string | null
-          document_type?: string | null
-          email?: string | null
-          expires_at?: string | null
-          first_name?: string
-          id?: string
-          joined_at?: string
-          last_name?: string
-          notes?: string | null
-          phone?: string | null
-          photo_url?: string | null
-          qr_token?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       membership_plans: {
         Row: {
           active: boolean
           created_at: string
-          description: string | null
           duration_days: number
           id: string
           name: string
-          price: number
+          price_cents: number
+          sort_order: number
           updated_at: string
         }
         Insert: {
           active?: boolean
           created_at?: string
-          description?: string | null
           duration_days: number
           id?: string
           name: string
-          price: number
+          price_cents: number
+          sort_order?: number
           updated_at?: string
         }
         Update: {
           active?: boolean
           created_at?: string
-          description?: string | null
           duration_days?: number
           id?: string
           name?: string
-          price?: number
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      products: {
-        Row: {
-          active: boolean
-          created_at: string
-          description: string | null
-          id: string
-          name: string
-          price: number
-          stock: number
-          type: Database["public"]["Enums"]["product_type"]
-          updated_at: string
-        }
-        Insert: {
-          active?: boolean
-          created_at?: string
-          description?: string | null
-          id?: string
-          name: string
-          price: number
-          stock?: number
-          type?: Database["public"]["Enums"]["product_type"]
-          updated_at?: string
-        }
-        Update: {
-          active?: boolean
-          created_at?: string
-          description?: string | null
-          id?: string
-          name?: string
-          price?: number
-          stock?: number
-          type?: Database["public"]["Enums"]["product_type"]
+          price_cents?: number
+          sort_order?: number
           updated_at?: string
         }
         Relationships: []
@@ -229,89 +135,6 @@ export type Database = {
           id?: string
         }
         Relationships: []
-      }
-      sale_items: {
-        Row: {
-          id: string
-          product_id: string | null
-          product_name: string
-          product_type: Database["public"]["Enums"]["product_type"]
-          quantity: number
-          sale_id: string
-          subtotal: number
-          unit_price: number
-        }
-        Insert: {
-          id?: string
-          product_id?: string | null
-          product_name: string
-          product_type: Database["public"]["Enums"]["product_type"]
-          quantity: number
-          sale_id: string
-          subtotal: number
-          unit_price: number
-        }
-        Update: {
-          id?: string
-          product_id?: string | null
-          product_name?: string
-          product_type?: Database["public"]["Enums"]["product_type"]
-          quantity?: number
-          sale_id?: string
-          subtotal?: number
-          unit_price?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "sale_items_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sale_items_sale_id_fkey"
-            columns: ["sale_id"]
-            isOneToOne: false
-            referencedRelation: "sales"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      sales: {
-        Row: {
-          cashier_id: string | null
-          created_at: string
-          id: string
-          member_id: string | null
-          notes: string | null
-          total: number
-        }
-        Insert: {
-          cashier_id?: string | null
-          created_at?: string
-          id?: string
-          member_id?: string | null
-          notes?: string | null
-          total?: number
-        }
-        Update: {
-          cashier_id?: string | null
-          created_at?: string
-          id?: string
-          member_id?: string | null
-          notes?: string | null
-          total?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "sales_member_id_fkey"
-            columns: ["member_id"]
-            isOneToOne: false
-            referencedRelation: "members"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       user_roles: {
         Row: {
