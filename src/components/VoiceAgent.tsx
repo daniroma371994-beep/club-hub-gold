@@ -31,6 +31,7 @@ export function VoiceAgent() {
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const navigate = useNavigate();
 
   const transcribe = useServerFn(transcribeAudio);
   const respond = useServerFn(agentRespond);
