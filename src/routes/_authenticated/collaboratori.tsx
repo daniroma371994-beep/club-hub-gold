@@ -5,9 +5,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { UserPlus, Shield, ShieldCheck, Mic } from "lucide-react";
+import { UserPlus, Shield, ShieldCheck, Mic, KeyRound } from "lucide-react";
 import { VoiceFormWizard, warmUpVoiceForm, type WizardField } from "@/components/voice/VoiceFormWizard";
 import { voiceBus } from "@/components/voice/voice-bus";
+import { useServerFn } from "@tanstack/react-start";
+import { adminResetCollabPassword } from "@/lib/admin-users.functions";
 
 export const Route = createFileRoute("/_authenticated/collaboratori")({
   component: Collabs,
@@ -37,6 +39,18 @@ function Collabs() {
   const [name, setName] = useState("");
   const [perms, setPerms] = useState<string[]>(["use_cash"]);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const resetFn = useServerFn(adminResetCollabPassword);
+
+  async function resetCollabPassword(userId: string) {
+    const np = window.prompt("Nuova password (min 6 caratteri)");
+    if (!np) return;
+    try {
+      await resetFn({ data: { userId, newPassword: np } });
+      toast.success("Password aggiornata. Comunicala al collaboratore.");
+    } catch (e: any) {
+      toast.error(e.message ?? "Errore");
+    }
+  }
 
   useEffect(() => {
     voiceBus.register({
@@ -155,7 +169,7 @@ function Collabs() {
       <div className="grid gap-3">
         {(collabs ?? []).map(c => (
           <div key={c.user_id} className="bg-card/60 border border-gold/20 rounded-lg p-5">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-3 gap-3">
               <div className="flex items-center gap-3">
                 {c.role === "admin" ? <ShieldCheck className="w-5 h-5 text-gold" /> : <Shield className="w-5 h-5 text-gold-muted" />}
                 <div>
@@ -163,6 +177,10 @@ function Collabs() {
                   <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{c.role}</div>
                 </div>
               </div>
+              <button onClick={() => resetCollabPassword(c.user_id)}
+                className="border border-gold/40 text-gold-muted hover:text-gold hover:border-gold px-3 py-1.5 rounded-md text-[10px] uppercase tracking-widest flex items-center gap-1.5 transition shrink-0">
+                <KeyRound className="w-3 h-3" /> Reset
+              </button>
             </div>
             {c.role !== "admin" && (
               <div className="flex flex-wrap gap-2">

@@ -15,6 +15,28 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+
+  async function sendReset(e: React.FormEvent) {
+    e.preventDefault();
+    if (!forgotEmail) return;
+    setForgotLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      toast.success("Email inviata. Controlla la posta.");
+      setForgotOpen(false);
+      setForgotEmail("");
+    } catch (err: any) {
+      toast.error(err.message ?? "Errore");
+    } finally {
+      setForgotLoading(false);
+    }
+  }
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -93,12 +115,41 @@ function AuthPage() {
             </button>
           </form>
 
+          {mode === "signin" && (
+            <div className="mt-4 text-center">
+              <button
+                type="button"
+                onClick={() => { setForgotOpen(true); setForgotEmail(email); }}
+                className="text-[11px] uppercase tracking-[0.3em] text-gold-muted hover:text-gold transition"
+              >
+                Password dimenticata?
+              </button>
+            </div>
+          )}
+
+          {forgotOpen && (
+            <form onSubmit={sendReset} className="mt-4 border-t border-gold/20 pt-4 space-y-3">
+              <Field label="Email per recupero">
+                <input required type="email" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} className="auth-input" />
+              </Field>
+              <div className="flex gap-2">
+                <button disabled={forgotLoading} className="flex-1 bg-gradient-gold text-primary-foreground py-2 rounded-md text-xs uppercase tracking-widest disabled:opacity-50">
+                  {forgotLoading ? "..." : "Invia link"}
+                </button>
+                <button type="button" onClick={() => setForgotOpen(false)} className="flex-1 border border-border text-muted-foreground py-2 rounded-md text-xs uppercase tracking-widest">
+                  Annulla
+                </button>
+              </div>
+            </form>
+          )}
+
           <p className="text-[10px] text-muted-foreground text-center mt-6 leading-relaxed">
             Il primo account registrato diventa <span className="text-gold">Amministratore</span>.<br />
             Gli account successivi devono essere abilitati dall'admin.
           </p>
         </div>
       </div>
+
 
       <style>{`
         .auth-input {
