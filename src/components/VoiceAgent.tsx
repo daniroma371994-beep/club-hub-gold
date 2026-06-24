@@ -45,6 +45,13 @@ export function VoiceAgent() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, status]);
 
+  useEffect(() => {
+    function onStart() { if (status === "idle") startRec(); }
+    window.addEventListener("snoop:voice-start", onStart);
+    return () => window.removeEventListener("snoop:voice-start", onStart);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
   async function startRec() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
