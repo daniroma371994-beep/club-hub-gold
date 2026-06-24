@@ -35,6 +35,15 @@ function GestisciSoci() {
   }
   useEffect(() => { load(); }, []);
 
+  useEffect(() => {
+    function onVoiceSearch(e: Event) {
+      const detail = (e as CustomEvent).detail as { query?: string } | undefined;
+      if (detail?.query !== undefined) setQ(detail.query);
+    }
+    window.addEventListener("snoop:search-members", onVoiceSearch as EventListener);
+    return () => window.removeEventListener("snoop:search-members", onVoiceSearch as EventListener);
+  }, []);
+
   const filtered = rows.filter((r) => {
     if (!q.trim()) return true;
     const s = q.toLowerCase();
