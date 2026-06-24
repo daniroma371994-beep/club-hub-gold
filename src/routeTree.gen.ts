@@ -13,7 +13,11 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedPianiRouteImport } from './routes/_authenticated/piani'
 import { Route as AuthenticatedSociIndexRouteImport } from './routes/_authenticated/soci.index'
+import { Route as AuthenticatedSociNuovoRouteImport } from './routes/_authenticated/soci.nuovo'
+import { Route as AuthenticatedSociGestisciRouteImport } from './routes/_authenticated/soci.gestisci'
+import { Route as AuthenticatedSociIdRouteImport } from './routes/_authenticated/soci.$id'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -34,9 +38,30 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedPianiRoute = AuthenticatedPianiRouteImport.update({
+  id: '/piani',
+  path: '/piani',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedSociIndexRoute = AuthenticatedSociIndexRouteImport.update({
   id: '/soci/',
   path: '/soci/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSociNuovoRoute = AuthenticatedSociNuovoRouteImport.update({
+  id: '/soci/nuovo',
+  path: '/soci/nuovo',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSociGestisciRoute =
+  AuthenticatedSociGestisciRouteImport.update({
+    id: '/soci/gestisci',
+    path: '/soci/gestisci',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSociIdRoute = AuthenticatedSociIdRouteImport.update({
+  id: '/soci/$id',
+  path: '/soci/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 
@@ -44,12 +69,20 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/piani': typeof AuthenticatedPianiRoute
+  '/soci/$id': typeof AuthenticatedSociIdRoute
+  '/soci/gestisci': typeof AuthenticatedSociGestisciRoute
+  '/soci/nuovo': typeof AuthenticatedSociNuovoRoute
   '/soci/': typeof AuthenticatedSociIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/piani': typeof AuthenticatedPianiRoute
+  '/soci/$id': typeof AuthenticatedSociIdRoute
+  '/soci/gestisci': typeof AuthenticatedSociGestisciRoute
+  '/soci/nuovo': typeof AuthenticatedSociNuovoRoute
   '/soci': typeof AuthenticatedSociIndexRoute
 }
 export interface FileRoutesById {
@@ -58,19 +91,43 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/_authenticated/piani': typeof AuthenticatedPianiRoute
+  '/_authenticated/soci/$id': typeof AuthenticatedSociIdRoute
+  '/_authenticated/soci/gestisci': typeof AuthenticatedSociGestisciRoute
+  '/_authenticated/soci/nuovo': typeof AuthenticatedSociNuovoRoute
   '/_authenticated/soci/': typeof AuthenticatedSociIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/reset-password' | '/soci/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/reset-password'
+    | '/piani'
+    | '/soci/$id'
+    | '/soci/gestisci'
+    | '/soci/nuovo'
+    | '/soci/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/reset-password' | '/soci'
+  to:
+    | '/'
+    | '/auth'
+    | '/reset-password'
+    | '/piani'
+    | '/soci/$id'
+    | '/soci/gestisci'
+    | '/soci/nuovo'
+    | '/soci'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/reset-password'
+    | '/_authenticated/piani'
+    | '/_authenticated/soci/$id'
+    | '/_authenticated/soci/gestisci'
+    | '/_authenticated/soci/nuovo'
     | '/_authenticated/soci/'
   fileRoutesById: FileRoutesById
 }
@@ -111,6 +168,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/piani': {
+      id: '/_authenticated/piani'
+      path: '/piani'
+      fullPath: '/piani'
+      preLoaderRoute: typeof AuthenticatedPianiRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/soci/': {
       id: '/_authenticated/soci/'
       path: '/soci'
@@ -118,14 +182,43 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSociIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/soci/nuovo': {
+      id: '/_authenticated/soci/nuovo'
+      path: '/soci/nuovo'
+      fullPath: '/soci/nuovo'
+      preLoaderRoute: typeof AuthenticatedSociNuovoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/soci/gestisci': {
+      id: '/_authenticated/soci/gestisci'
+      path: '/soci/gestisci'
+      fullPath: '/soci/gestisci'
+      preLoaderRoute: typeof AuthenticatedSociGestisciRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/soci/$id': {
+      id: '/_authenticated/soci/$id'
+      path: '/soci/$id'
+      fullPath: '/soci/$id'
+      preLoaderRoute: typeof AuthenticatedSociIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedPianiRoute: typeof AuthenticatedPianiRoute
+  AuthenticatedSociIdRoute: typeof AuthenticatedSociIdRoute
+  AuthenticatedSociGestisciRoute: typeof AuthenticatedSociGestisciRoute
+  AuthenticatedSociNuovoRoute: typeof AuthenticatedSociNuovoRoute
   AuthenticatedSociIndexRoute: typeof AuthenticatedSociIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedPianiRoute: AuthenticatedPianiRoute,
+  AuthenticatedSociIdRoute: AuthenticatedSociIdRoute,
+  AuthenticatedSociGestisciRoute: AuthenticatedSociGestisciRoute,
+  AuthenticatedSociNuovoRoute: AuthenticatedSociNuovoRoute,
   AuthenticatedSociIndexRoute: AuthenticatedSociIndexRoute,
 }
 
