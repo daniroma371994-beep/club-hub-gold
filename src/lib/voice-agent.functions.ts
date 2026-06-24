@@ -56,6 +56,16 @@ const ExtractInput = z.object({
   available_plans: z.array(z.string()).default([]),
 });
 
+const FieldsSchema = z.object({
+  first_name: z.string(),
+  last_name: z.string(),
+  birth_date: z.string(),
+  city: z.string(),
+  phone: z.string(),
+  dni_number: z.string(),
+  plan_name: z.string(),
+});
+
 export const extractMemberFields = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => ExtractInput.parse(d))
@@ -63,40 +73,38 @@ export const extractMemberFields = createServerFn({ method: "POST" })
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
     const gateway = createLovableAiGatewayProvider(key);
-    const model = gateway("google/gemini-3-flash-preview");
+    const model = gateway("google/gemini-2.5-flash");
 
-    const system = `Extraes datos de un socio dictados en voz (español/italiano).
-Devuelve SOLO un JSON con las claves: first_name, last_name, birth_date, city, phone, dni_number, plan_name.
+    const system = `Extraes datos de un socio dictados por voz (español o italiano) y devuelves un objeto con TODOS los campos.
 Reglas:
-- birth_date en formato YYYY-MM-DD. Si el usuario dice "24 del 07 del 1995" → "1995-07-24".
-- plan_name debe ser EXACTAMENTE uno de: ${data.available_plans.join(" | ") || "(ninguno)"}. Mapea sinónimos (mensual, trimestral, anual). Si no encaja, deja vacío.
-- dni_number en mayúsculas, sin espacios.
-- phone solo dígitos y opcional +.
-- Si un campo no se menciona y ya existía un valor previo, MANTÉN el valor previo.
-- Si un campo no se menciona y no había valor, devuélvelo como string vacío "".
-- NO inventes datos. NO añadas explicaciones.
-Estado actual:
-${JSON.stringify(data.current)}`;
+- Devuelve SIEMPRE los 7 campos. Si un campo no se menciona, devuelve el valor previo del estado actual (o "" si no había).
+- first_name / last_name: capitaliza correctamente.
+- birth_date: formato estricto YYYY-MM-DD. Acepta dictados tipo "24 del 7 del 1995", "24/07/1995", "veinticuatro de julio de mil novecientos noventa y cinco" → "1995-07-24".
+- dni_number: solo dígitos y letra final en mayúscula, sin espacios (ej "12345678A"). Acepta dictado tipo "uno dos tres cuatro cinco seis siete ocho A".
+- phone: solo dígitos (puede empezar por +). Acepta dictado tipo "seis seis seis siete siete siete ocho ocho ocho".
+- city: nombre de ciudad.
+- plan_name: DEBE coincidir EXACTAMENTE con uno de [${data.available_plans.join(", ") || "ninguno"}]. Mapea sinónimos (mensual→Mensual, trimestral→Trimestral, anual→Anual). Si no encaja, devuelve "".
+- NUNCA inventes datos que no se hayan dicho.
 
-    const { text } = await generateText({
-      model,
-      system,
-      prompt: `Transcripción nueva: "${data.transcript}"\n\nDevuelve el JSON actualizado.`,
-    });
+Estado actual: ${JSON.stringify(data.current)}`;
 
-    // Try to extract JSON from response
-    const match = text.match(/\{[\s\S]*\}/);
-    if (!match) return { fields: data.current, raw: text };
     try {
-      const parsed = JSON.parse(match[0]);
+      const { object } = await generateObject({
+        model,
+        system,
+        schema: FieldsSchema,
+        prompt: `Transcripción dictada por el usuario: "${data.transcript}"`,
+      });
+      // Merge: only overwrite when model returned a non-empty value
       const out = { ...data.current };
       for (const k of Object.keys(out) as Array<keyof typeof out>) {
-        const v = parsed[k];
+        const v = (object as any)[k];
         if (typeof v === "string" && v.trim()) out[k] = v.trim();
       }
-      return { fields: out, raw: text };
-    } catch {
-      return { fields: data.current, raw: text };
+      return { fields: out };
+    } catch (e: any) {
+      console.error("extractMemberFields failed:", e?.message);
+      throw new Error("Extracción falló: " + (e?.message ?? "desconocido"));
     }
   });
 
