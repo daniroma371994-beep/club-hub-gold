@@ -157,7 +157,7 @@ function Collabs() {
       <div className="grid gap-3">
         {(collabs ?? []).map(c => (
           <div key={c.user_id} className="bg-card/60 border border-gold/20 rounded-lg p-5">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-3 gap-3">
               <div className="flex items-center gap-3">
                 {c.role === "admin" ? <ShieldCheck className="w-5 h-5 text-gold" /> : <Shield className="w-5 h-5 text-gold-muted" />}
                 <div>
@@ -165,6 +165,10 @@ function Collabs() {
                   <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{c.role}</div>
                 </div>
               </div>
+              <button onClick={() => resetCollabPassword(c.user_id)}
+                className="border border-gold/40 text-gold-muted hover:text-gold hover:border-gold px-3 py-1.5 rounded-md text-[10px] uppercase tracking-widest flex items-center gap-1.5 transition shrink-0">
+                <KeyRound className="w-3 h-3" /> Reset
+              </button>
             </div>
             {c.role !== "admin" && (
               <div className="flex flex-wrap gap-2">
