@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Mic, Square, Loader2, X } from "lucide-react";
+import { Mic, Square, Loader2, X, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { agentRespond, transcribeAudio } from "@/lib/voice-agent.functions";
 
 type Status = "idle" | "recording" | "processing";
+type Msg = { role: "user" | "assistant"; content: string };
 
 function pickMime(): string | null {
   const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/mpeg"];
@@ -24,11 +25,11 @@ async function blobToBase64(blob: Blob): Promise<string> {
 export function VoiceAgent() {
   const [status, setStatus] = useState<Status>("idle");
   const [open, setOpen] = useState(false);
-  const [transcript, setTranscript] = useState("");
-  const [reply, setReply] = useState("");
+  const [messages, setMessages] = useState<Msg[]>([]);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const transcribe = useServerFn(transcribeAudio);
   const respond = useServerFn(agentRespond);
@@ -37,8 +38,11 @@ export function VoiceAgent() {
     streamRef.current?.getTracks().forEach((t) => t.stop());
   }, []);
 
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages, status]);
+
   async function startRec() {
-    setTranscript(""); setReply("");
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -57,7 +61,7 @@ export function VoiceAgent() {
         const blob = new Blob(chunksRef.current, { type: rec.mimeType });
         if (blob.size < 1500) {
           setStatus("idle");
-          toast.error("Grabación demasiado corta, vuelve a intentar.");
+          toast.error("No te he oído, vuelve a intentar.");
           return;
         }
         setStatus("processing");
@@ -65,9 +69,11 @@ export function VoiceAgent() {
           const b64 = await blobToBase64(blob);
           const { text } = await transcribe({ data: { audioBase64: b64, mimeType: rec.mimeType } });
           if (!text) { setStatus("idle"); toast.error("No se entendió nada."); return; }
-          setTranscript(text);
-          const { reply } = await respond({ data: { transcript: text } });
-          setReply(reply);
+          const history = messages;
+          const nextUser: Msg = { role: "user", content: text };
+          setMessages((m) => [...m, nextUser]);
+          const { reply } = await respond({ data: { transcript: text, history } });
+          setMessages((m) => [...m, { role: "assistant", content: reply }]);
         } catch (e: any) {
           toast.error(e.message ?? "Error en el asistente");
         } finally {
@@ -83,10 +89,7 @@ export function VoiceAgent() {
     }
   }
 
-  function stopRec() {
-    recorderRef.current?.stop();
-  }
-
+  function stopRec() { recorderRef.current?.stop(); }
   function toggle() {
     if (status === "recording") stopRec();
     else if (status === "idle") startRec();
@@ -94,7 +97,6 @@ export function VoiceAgent() {
 
   return (
     <>
-      {/* Floating mic */}
       <button
         type="button"
         onClick={toggle}
@@ -111,33 +113,42 @@ export function VoiceAgent() {
           : <Mic className="w-7 h-7" />}
       </button>
 
-      {/* Panel */}
-      {open && (transcript || reply || status !== "idle") && (
-        <div className="fixed z-40 bottom-24 right-3 md:right-8 w-[min(92vw,400px)] rounded-2xl border border-neon/40 bg-card/95 backdrop-blur-xl shadow-2xl glow-neon-soft overflow-hidden">
+      {open && (messages.length > 0 || status !== "idle") && (
+        <div className="fixed z-40 bottom-24 right-3 md:right-8 w-[min(92vw,400px)] rounded-2xl border border-neon/40 bg-card/95 backdrop-blur-xl shadow-2xl glow-neon-soft overflow-hidden flex flex-col">
           <div className="flex items-center justify-between px-4 py-2 border-b border-neon/20">
             <span className="text-[10px] uppercase tracking-[0.3em] text-neon-dim font-display">Asistente SNOOP</span>
-            <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-neon">
-              <X className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              {messages.length > 0 && (
+                <button
+                  onClick={() => setMessages([])}
+                  className="text-muted-foreground hover:text-neon"
+                  aria-label="Reiniciar conversación"
+                  title="Reiniciar"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+              <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-neon" aria-label="Cerrar">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
-          <div className="p-4 space-y-3 max-h-[60vh] overflow-y-auto">
+          <div ref={scrollRef} className="p-4 space-y-3 max-h-[60vh] overflow-y-auto">
+            {messages.map((m, i) => (
+              <div key={i}>
+                <div className={`text-[10px] uppercase tracking-widest mb-1 ${m.role === "user" ? "text-neon-dim" : "text-neon"}`}>
+                  {m.role === "user" ? "Tú" : "Snoop"}
+                </div>
+                <p className={`text-sm whitespace-pre-wrap ${m.role === "user" ? "text-muted-foreground italic" : "text-foreground"}`}>
+                  {m.role === "user" ? `"${m.content}"` : m.content}
+                </p>
+              </div>
+            ))}
             {status === "recording" && (
-              <p className="text-xs text-destructive animate-pulse">● Grabando… pulsa para parar.</p>
+              <p className="text-xs text-destructive animate-pulse">● Escuchando… pulsa para parar.</p>
             )}
-            {status === "processing" && !reply && (
+            {status === "processing" && (
               <p className="text-xs text-neon-dim flex items-center gap-2"><Loader2 className="w-3 h-3 animate-spin" /> Procesando…</p>
-            )}
-            {transcript && (
-              <div>
-                <div className="text-[10px] uppercase tracking-widest text-neon-dim mb-1">Tú</div>
-                <p className="text-sm text-muted-foreground italic">"{transcript}"</p>
-              </div>
-            )}
-            {reply && (
-              <div>
-                <div className="text-[10px] uppercase tracking-widest text-neon mb-1">Snoop</div>
-                <p className="text-sm text-foreground whitespace-pre-wrap">{reply}</p>
-              </div>
             )}
           </div>
         </div>
