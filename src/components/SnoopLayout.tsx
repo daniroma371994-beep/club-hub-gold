@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import logoAsset from "@/assets/snoop-logo.png.asset.json";
 import { cn } from "@/lib/utils";
 import { useState, type ReactNode } from "react";
+import { VoiceAgent } from "@/components/VoiceAgent";
 
 const NAV = [
   { to: "/soci", label: "Socios", icon: Users, adminOnly: false },
@@ -134,6 +135,8 @@ export function SnoopLayout({ children, title, subtitle }: { children: ReactNode
           {children}
         </div>
       </main>
+
+      <VoiceAgent />
     </div>
   );
 }
