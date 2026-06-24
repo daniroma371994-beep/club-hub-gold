@@ -1,8 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { SnoopLayout } from "@/components/SnoopLayout";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Search, UserPlus } from "lucide-react";
+import { toast } from "sonner";
 import { expiryBadge } from "@/lib/snoop";
 
 export const Route = createFileRoute("/_authenticated/soci/gestisci")({
