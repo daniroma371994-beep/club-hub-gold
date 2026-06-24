@@ -164,6 +164,13 @@ function SocioDetail() {
 
         {/* Right: actions */}
         <div className="space-y-6">
+          <button
+            onClick={nuevoPedido}
+            className="w-full flex items-center justify-center gap-2 bg-gradient-neon text-primary-foreground py-3 rounded-xl font-display font-semibold uppercase tracking-[0.2em] text-xs glow-neon"
+          >
+            <ShoppingBag className="w-4 h-4" /> Hacer pedido
+          </button>
+
           <div className="bg-card/60 border border-neon/20 rounded-2xl p-6">
             <div className="flex items-center gap-2 mb-3">
               <RefreshCw className="w-4 h-4 text-neon" />
