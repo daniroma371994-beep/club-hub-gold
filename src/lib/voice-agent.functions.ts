@@ -41,6 +41,65 @@ export const transcribeAudio = createServerFn({ method: "POST" })
     return { text: (j.text ?? "").trim() };
   });
 
+// ---------- Field extraction for the new-socio page ----------
+const ExtractInput = z.object({
+  transcript: z.string().min(1),
+  current: z.object({
+    first_name: z.string().default(""),
+    last_name: z.string().default(""),
+    birth_date: z.string().default(""),
+    city: z.string().default(""),
+    phone: z.string().default(""),
+    dni_number: z.string().default(""),
+    plan_name: z.string().default(""),
+  }),
+  available_plans: z.array(z.string()).default([]),
+});
+
+export const extractMemberFields = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => ExtractInput.parse(d))
+  .handler(async ({ data }) => {
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key) throw new Error("Missing LOVABLE_API_KEY");
+    const gateway = createLovableAiGatewayProvider(key);
+    const model = gateway("google/gemini-3-flash-preview");
+
+    const system = `Extraes datos de un socio dictados en voz (español/italiano).
+Devuelve SOLO un JSON con las claves: first_name, last_name, birth_date, city, phone, dni_number, plan_name.
+Reglas:
+- birth_date en formato YYYY-MM-DD. Si el usuario dice "24 del 07 del 1995" → "1995-07-24".
+- plan_name debe ser EXACTAMENTE uno de: ${data.available_plans.join(" | ") || "(ninguno)"}. Mapea sinónimos (mensual, trimestral, anual). Si no encaja, deja vacío.
+- dni_number en mayúsculas, sin espacios.
+- phone solo dígitos y opcional +.
+- Si un campo no se menciona y ya existía un valor previo, MANTÉN el valor previo.
+- Si un campo no se menciona y no había valor, devuélvelo como string vacío "".
+- NO inventes datos. NO añadas explicaciones.
+Estado actual:
+${JSON.stringify(data.current)}`;
+
+    const { text } = await generateText({
+      model,
+      system,
+      prompt: `Transcripción nueva: "${data.transcript}"\n\nDevuelve el JSON actualizado.`,
+    });
+
+    // Try to extract JSON from response
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) return { fields: data.current, raw: text };
+    try {
+      const parsed = JSON.parse(match[0]);
+      const out = { ...data.current };
+      for (const k of Object.keys(out) as Array<keyof typeof out>) {
+        const v = parsed[k];
+        if (typeof v === "string" && v.trim()) out[k] = v.trim();
+      }
+      return { fields: out, raw: text };
+    } catch {
+      return { fields: data.current, raw: text };
+    }
+  });
+
 // ---------- Agent ----------
 const AgentInput = z.object({
   transcript: z.string().min(1),
