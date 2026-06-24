@@ -1,74 +1,65 @@
+Procediamo per fasi. Questa è la **Fase 1**. Dashboard, Cassa, Prodotti, Collaboratori vengono nascosti ora e ricostruiti più avanti se vorrai.
 
-# Controllo vocale globale "Meduza"
+## 1. Branding "Snoop"
 
-Aggiungo un assistente vocale always-on in spagnolo che permette di navigare, registrare soci, gestire il dispensario e rinnovare le quote, il tutto a voce.
+- Logo caricato → diventa l'asset ufficiale (login, sidebar, watermark).
+- Palette: nero profondo + **neon verde** (`#39FF14` con glow), bianco testo, oro solo nel logo.
+- Font: display moderno geometrico (Space Grotesk) + body Inter. Niente più Cinzel/Cormorant.
+- Effetti: glow verde sui bordi attivi, scanline sottile, micro-animazioni framer-motion.
+- Nome app ovunque: **SNOOP** — "Your app for club access in Spain".
 
-## Flusso
+## 2. Reset database
+
+Cancello tutto e ricreo schema pulito:
+
+- `membership_plans` — piani fissi (Mensile / Trimestrale / Annuale) con prezzo e durata in giorni.
+- `members` — nome, cognome, data nascita, città, telefono, numero DNI, URL foto DNI, piano scelto, data iscrizione, data scadenza, URL firma, data firma contratto.
+- Drop: `products`, `sales`, `sale_items`, `member_subscriptions` (vecchi).
+- Storage bucket privato `snoop-docs` per foto DNI e firme.
+- RLS: solo utenti autenticati leggono/scrivono.
+- Seed: 3 piani di default (Mensile 20 €, Trimestrale 50 €, Annuale 150 €) — modificabili dopo.
+
+## 3. Menu laterale ridotto
+
+Solo: **Soci** + **Piani quote** (admin). Tutto il resto nascosto.
+
+## 4. Pagina Soci (menu)
+
+Due grandi card:
+- **Crea socio**
+- **Gestisci socio** (cerca per nome/DNI, lista con scadenza)
+
+## 5. Wizard "Crea socio" (5 step con barra progresso)
 
 ```text
-[Web Speech API es-ES continuo]  →  rileva wake word "Meduza"
-        ↓
-[MediaRecorder webm/mp4]         →  registra il comando (stop dopo 1.5s di silenzio o 8s max)
-        ↓
-[serverFn transcribeVoice]       →  Lovable AI · openai/gpt-4o-mini-transcribe
-        ↓
-[serverFn parseVoiceIntent]      →  Gemini 3 Flash + Output.object (zod schema)
-        ↓
-[VoiceRouter client]             →  esegue azione (navigate / dbInsert / addToCart / ecc.)
-        ↓
-HUD a schermo: stato (idle/listening/processing) + testo trascritto + conferma azione
+[1 Anagrafica] → [2 Contatti] → [3 Quota] → [4 Foto DNI] → [5 Contratto + Firma]
 ```
 
-## Intent supportati (schema zod)
+1. Nome, Cognome, Data di nascita
+2. Città, Telefono
+3. Selezione piano (cards con prezzo/durata) → calcola automaticamente data scadenza
+4. Numero DNI + scatto/upload foto fronte (compress + upload su bucket)
+5. Testo contratto in spagnolo (Ley Orgánica 4/2015, consumo privato adulti, no lucro, riservatezza, codice di condotta) scrollabile, poi canvas firma col dito → salvato come PNG su bucket. Senza firma il salvataggio è bloccato.
 
-| action | parametri | esempio in voce |
-|---|---|---|
-| `navigate` | `target: 'dashboard'|'soci'|'crear-socio'|'gestionar-socio'|'productos'|'caja'|'planes'|'colaboradores'` | "Meduza, abre la caja" |
-| `create_member` | `first_name, last_name, dni?, phone?, address?, email?, birth_date?` | "Meduza, nuevo socio Juan Pérez DNI 12345678 teléfono..." |
-| `find_member` | `query` (numero tessera, nome o cognome) | "Meduza, busca socio número 42" / "...Juan Pérez" |
-| `add_to_cart` | `product_query, quantity, unit: 'g'|'pz'` | "Meduza, añade 2 gramos de Amnesia" |
-| `remove_from_cart` | `product_query` | "Meduza, quita Amnesia" |
-| `clear_cart` | — | "Meduza, vacía el pedido" |
-| `confirm_order` | — | "Meduza, confirma el pedido" |
-| `renew_plan` | `plan_query` (nome o durata) | "Meduza, renueva plan 6 meses" |
-| `cancel` / `unknown` | `reason?` | feedback all'utente |
+A fine wizard: socio creato → schermata di conferma con QR personale + link a "Gestisci".
 
-`find_member`, `add_to_cart`, `confirm_order`, `renew_plan` agiscono sullo state condiviso della pagina "Gestisci socio"; se chiamati da un'altra route, naviga prima a `/soci/gestisci`.
+## 6. Gestisci socio
 
-## Backend (TanStack server functions)
+Lista con foto, nome, piano, **giorni residui** (badge verde/giallo/rosso), barra di ricerca, click apre dettaglio (anagrafica + foto DNI + contratto PDF/PNG firmato + rinnovo piano).
 
-- `src/lib/voice.functions.ts`
-  - `transcribeVoice({ audioBase64, mime })` → POST multipart a `https://ai.gateway.lovable.dev/v1/audio/transcriptions` con `model=openai/gpt-4o-mini-transcribe`, `language=es`. Restituisce `{ text }`.
-  - `parseVoiceIntent({ text, context: { route, products: [{id,name}], plans: [{id,name,days}] } })` → AI SDK `generateText` + `Output.object(zod)`. Schema unione discriminato sugli intent sopra. System prompt in spagnolo che spiega: matcha nomi prodotto/piano fuzzy passandoli per nome, parsing numeri, niente azioni distruttive senza conferma esplicita. Modello `google/gemini-3-flash-preview`.
-- `src/lib/ai-gateway.server.ts` — helper provider (pattern canonico).
-- Server functions montate con `requireSupabaseAuth` (lo staff è loggato; il bearer è auto-attaccato).
+## 7. Cosa NON tocco in Fase 1
 
-## Frontend
+- Voice assistant (lo rimuovo dalla UI per ora)
+- Cassa, Prodotti, Collaboratori (route disabilitate)
+- Reset password e auth (già funzionanti)
 
-- `bun add ai @ai-sdk/openai-compatible zod` (zod già presente — verificare; ai/openai-compatible nuovi).
-- `src/components/voice/VoiceAssistant.tsx` — montato dentro `MeduzaLayout`, fixed bottom-right.
-  - State machine: `off | wake | recording | transcribing | thinking | executing | error`.
-  - Web Speech API (`webkitSpeechRecognition`, lang `es-ES`, continuous, interimResults) per wake word. Quando il transcript contiene "meduza", ferma SR e parte `MediaRecorder` (mime `audio/webm` o `audio/mp4` Safari).
-  - VAD semplice: AnalyserNode RMS; chiude quando RMS < soglia per 1.5s, oppure 8s max.
-  - Toggle on/off persistente in `localStorage('meduza-voice')`.
-  - HUD: stato corrente, ultima trascrizione, ultima azione eseguita, toast con `sonner` su errori/successi.
-- `src/components/voice/VoiceContext.tsx` — context globale per i comandi che agiscono sulla pagina "Gestisci socio": espone `register({ findMember, addToCart, removeFromCart, clearCart, confirmOrder, activatePlanByQuery })`. `soci.gestisci.tsx` registra i suoi handler al mount; se la route non è quella, il router naviga lì e poi (dopo mount) richiama l'azione pendente via context.
-- `src/components/voice/VoiceRouter.ts` — funzione pura `executeIntent(intent, { navigate, voiceCtx, supabase, userId })`. Gestisce `create_member` chiamando direttamente `supabase.from('members').insert(...)` e mostrando QR con redirect a `/soci/elenco`.
+## Dettagli tecnici
 
-## Permessi e UX
+- Tabelle public con GRANT espliciti + RLS `TO authenticated`.
+- Storage privato, accesso via signed URL (`createSignedUrl`).
+- Firma: `<canvas>` touch/mouse → `toDataURL('image/png')` → upload.
+- Foto DNI: input `capture="environment"` (apre camera su mobile) + canvas resize a max 1280px / ~300KB prima dell'upload.
+- Tokens neon verde in `src/styles.css` (`--neon`, `--neon-glow`, ombre con `oklch`).
+- Niente più `gold-*`. Conservo tutto come token semantici, mai colori hardcoded nei componenti.
 
-- Toggle nel layout per accendere/spegnere il microfono globale (utenti senza permesso fotocamera/mic vedono solo l'errore).
-- Wake word fallback: pulsante mic flottante per push-to-talk (utile su Safari iOS dove SR continuo non funziona; in quel caso il toggle disabilita auto-wake e usa solo PTT).
-- Feedback udibile breve (beep WebAudio) quando viene rilevata la wake word.
-- L'assistente è invisibile finché l'utente non si logga (vive in `_authenticated` layout).
-
-## File nuovi/modificati
-
-- nuovi: `src/lib/ai-gateway.server.ts`, `src/lib/voice.functions.ts`, `src/components/voice/VoiceAssistant.tsx`, `src/components/voice/VoiceContext.tsx`, `src/components/voice/VoiceRouter.ts`
-- modificati: `src/components/MeduzaLayout.tsx` (monta VoiceAssistant + provider), `src/routes/_authenticated/soci.gestisci.tsx` (registra handlers nel context, espone state machine), `package.json` (deps).
-
-## Non incluso (lo chiediamo dopo se serve)
-
-- TTS di risposta (per ora solo testo + toast).
-- Conferma vocale a due step per ordini sopra una soglia.
-- Comandi per modificare prodotti/piani/collaboratori (solo creazione socio + dispensario + rinnovo quota + navigazione, come richiesto).
+Quando approvi parto subito con tutto questo in un colpo solo. Poi nei prossimi turni facciamo Dashboard, Cassa, ecc.
