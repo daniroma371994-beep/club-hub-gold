@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { useNavigate } from "@tanstack/react-router";
 import { Mic, Square, Loader2, X, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { agentRespond, transcribeAudio } from "@/lib/voice-agent.functions";
@@ -30,6 +31,7 @@ export function VoiceAgent() {
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const navigate = useNavigate();
 
   const transcribe = useServerFn(transcribeAudio);
   const respond = useServerFn(agentRespond);
@@ -72,8 +74,12 @@ export function VoiceAgent() {
           const history = messages;
           const nextUser: Msg = { role: "user", content: text };
           setMessages((m) => [...m, nextUser]);
-          const { reply } = await respond({ data: { transcript: text, history } });
+          const { reply, navigateTo } = await respond({ data: { transcript: text, history } });
           setMessages((m) => [...m, { role: "assistant", content: reply }]);
+          if (navigateTo) {
+            toast.success("Socio creado. Abriendo ficha para foto del DNI y firma…");
+            setTimeout(() => navigate({ to: navigateTo }), 600);
+          }
         } catch (e: any) {
           toast.error(e.message ?? "Error en el asistente");
         } finally {
