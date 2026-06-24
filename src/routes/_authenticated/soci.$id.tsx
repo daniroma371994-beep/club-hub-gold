@@ -87,6 +87,22 @@ function SocioDetail() {
     nav({ to: "/soci/gestisci" });
   }
 
+  function nuevoPedido() {
+    toast.info("Pedidos: próximamente disponible para " + (member?.first_name ?? "este socio"));
+  }
+
+  useEffect(() => {
+    function onAction(e: Event) {
+      const action = (e as CustomEvent).detail?.action;
+      if (action === "order") nuevoPedido();
+      else if (action === "renew") renew();
+      else if (action === "delete") remove();
+    }
+    window.addEventListener("snoop:member-action", onAction as EventListener);
+    return () => window.removeEventListener("snoop:member-action", onAction as EventListener);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [member, newPlanId, plans]);
+
   if (!member) {
     return <SnoopLayout title="Socio"><div className="text-muted-foreground">Cargando...</div></SnoopLayout>;
   }
