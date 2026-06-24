@@ -74,8 +74,12 @@ export function VoiceAgent() {
           const history = messages;
           const nextUser: Msg = { role: "user", content: text };
           setMessages((m) => [...m, nextUser]);
-          const { reply } = await respond({ data: { transcript: text, history } });
+          const { reply, navigateTo } = await respond({ data: { transcript: text, history } });
           setMessages((m) => [...m, { role: "assistant", content: reply }]);
+          if (navigateTo) {
+            toast.success("Socio creado. Abriendo ficha para foto del DNI y firma…");
+            setTimeout(() => navigate({ to: navigateTo }), 600);
+          }
         } catch (e: any) {
           toast.error(e.message ?? "Error en el asistente");
         } finally {
