@@ -42,7 +42,13 @@ export const transcribeAudio = createServerFn({ method: "POST" })
   });
 
 // ---------- Agent ----------
-const AgentInput = z.object({ transcript: z.string().min(1) });
+const AgentInput = z.object({
+  transcript: z.string().min(1),
+  history: z
+    .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string() }))
+    .max(40)
+    .default([]),
+});
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -202,17 +208,22 @@ export const agentRespond = createServerFn({ method: "POST" })
     };
 
     const system = `Eres el asistente de voz de SNOOP, un club social de cannabis en España.
-Hablas en español, respondes siempre breve y claro (1-3 frases).
-Tu trabajo es ayudar a gestionar el club: crear socios, buscar socios, listar planes, renovar cuotas.
-Cuando el usuario dicte datos para crear un socio, extrae los campos del audio (nombre, apellido, fecha de nacimiento, ciudad, teléfono, DNI, plan).
-Si falta algún dato obligatorio (nombre, apellido, fecha de nacimiento, DNI, plan), NO llames la herramienta: pide solo el dato que falta.
+Hablas en español, respondes siempre MUY breve y natural (1-2 frases, como hablaría una persona, sin listas ni markdown).
+Mantienes el contexto de la conversación: si el usuario ya te dio el nombre antes, NO lo vuelvas a pedir.
+Tu trabajo es gestionar el club: crear socios, buscar socios, listar planes, renovar cuotas.
+Para crear un socio necesitas: nombre, apellido, fecha de nacimiento, DNI y plan (ciudad y teléfono son opcionales).
+Ve acumulando los datos que el usuario te dicte en distintos turnos. Cuando tengas todos los obligatorios, llama create_member sin volver a preguntar.
+Si falta solo UN dato, pide solo ese dato. No repitas datos que ya tienes.
 Después de crear o modificar, confirma con el nombre del socio y la fecha de caducidad.
 Fecha de hoy: ${todayISO()}.`;
 
     const { text } = await generateText({
       model,
       system,
-      prompt: data.transcript,
+      messages: [
+        ...data.history.map((m) => ({ role: m.role, content: m.content })),
+        { role: "user" as const, content: data.transcript },
+      ],
       tools,
       stopWhen: stepCountIs(50),
     });
