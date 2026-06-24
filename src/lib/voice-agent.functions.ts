@@ -42,7 +42,13 @@ export const transcribeAudio = createServerFn({ method: "POST" })
   });
 
 // ---------- Agent ----------
-const AgentInput = z.object({ transcript: z.string().min(1) });
+const AgentInput = z.object({
+  transcript: z.string().min(1),
+  history: z
+    .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string() }))
+    .max(40)
+    .default([]),
+});
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
