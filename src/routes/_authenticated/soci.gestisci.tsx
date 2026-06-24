@@ -1,8 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { SnoopLayout } from "@/components/SnoopLayout";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Search, UserPlus } from "lucide-react";
+import { toast } from "sonner";
 import { expiryBadge } from "@/lib/snoop";
 
 export const Route = createFileRoute("/_authenticated/soci/gestisci")({
@@ -23,6 +24,9 @@ function GestisciSoci() {
   const [rows, setRows] = useState<Row[]>([]);
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const rowsRef = useRef<Row[]>([]);
+  rowsRef.current = rows;
 
   async function load() {
     setLoading(true);
@@ -38,11 +42,26 @@ function GestisciSoci() {
   useEffect(() => {
     function onVoiceSearch(e: Event) {
       const detail = (e as CustomEvent).detail as { query?: string } | undefined;
-      if (detail?.query !== undefined) setQ(detail.query);
+      const query = (detail?.query ?? "").trim();
+      if (!query) return;
+      setQ(query);
+      const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
+      const matches = rowsRef.current.filter((r) => {
+        const hay = `${r.first_name} ${r.last_name} ${r.dni_number} ${r.city ?? ""}`.toLowerCase();
+        return tokens.every((t) => hay.includes(t));
+      });
+      if (matches.length === 1) {
+        toast.success(`Abriendo ficha de ${matches[0].first_name} ${matches[0].last_name}`);
+        navigate({ to: "/soci/$id", params: { id: matches[0].id } });
+      } else if (matches.length === 0) {
+        toast.error(`No se encontró ningún socio para "${query}"`);
+      } else {
+        toast.message(`${matches.length} socios coinciden con "${query}"`);
+      }
     }
     window.addEventListener("snoop:search-members", onVoiceSearch as EventListener);
     return () => window.removeEventListener("snoop:search-members", onVoiceSearch as EventListener);
-  }, []);
+  }, [navigate]);
 
   const filtered = rows.filter((r) => {
     const query = q.trim().toLowerCase();
