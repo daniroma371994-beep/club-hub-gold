@@ -45,6 +45,13 @@ export function VoiceAgent() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, status]);
 
+  useEffect(() => {
+    function onStart() { if (status === "idle") startRec(); }
+    window.addEventListener("snoop:voice-start", onStart);
+    return () => window.removeEventListener("snoop:voice-start", onStart);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
   async function startRec() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -94,6 +101,28 @@ export function VoiceAgent() {
             window.dispatchEvent(new CustomEvent("snoop:search-members", { detail: { query: cleaned } }));
             setMessages((m) => [...m, { role: "assistant", content: `Buscando "${cleaned}"…` }]);
             return;
+          }
+
+          if (location.pathname.startsWith("/soci/") && location.pathname !== "/soci/nuovo" && location.pathname !== "/soci/gestisci") {
+            const lower = text.toLowerCase();
+            if (/(hacer|nuevo|crear|hac[eé]me|fai|fa[mt]e|fare)\s+(un\s+)?(pedido|orden|ordine|order)/i.test(lower) || /^pedido$|^ordine$|^orden$/i.test(lower.trim())) {
+              window.dispatchEvent(new CustomEvent("snoop:member-action", { detail: { action: "order" } }));
+              setMessages((m) => [...m, { role: "assistant", content: "Abriendo nuevo pedido…" }]);
+              return;
+            }
+            if (/(renovar|renueva|rinnova|renew)/i.test(lower)) {
+              window.dispatchEvent(new CustomEvent("snoop:member-action", { detail: { action: "renew" } }));
+              setMessages((m) => [...m, { role: "assistant", content: "Renovando cuota…" }]);
+              return;
+            }
+            if (/(eliminar|borrar|elimina|cancella|delete)/i.test(lower)) {
+              window.dispatchEvent(new CustomEvent("snoop:member-action", { detail: { action: "delete" } }));
+              return;
+            }
+            if (/(volver|atr[aá]s|indietro|back)/i.test(lower)) {
+              navigate({ to: "/soci/gestisci" });
+              return;
+            }
           }
 
           const { reply, navigateTo } = await respond({ data: { transcript: text, history } });

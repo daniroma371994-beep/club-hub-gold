@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { SnoopLayout } from "@/components/SnoopLayout";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, UserPlus } from "lucide-react";
+import { Search, Mic } from "lucide-react";
 import { toast } from "sonner";
 import { expiryBadge } from "@/lib/snoop";
 
@@ -83,9 +83,13 @@ function GestisciSoci() {
             className="w-full bg-input border border-border rounded-lg pl-10 pr-3 py-2.5 text-sm focus:border-neon focus:ring-2 focus:ring-neon/20 outline-none transition"
           />
         </div>
-        <Link to="/soci/nuovo" className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-neon text-primary-foreground rounded-lg font-display font-semibold uppercase tracking-[0.2em] text-xs glow-neon">
-          <UserPlus className="w-4 h-4" /> Crear socio
-        </Link>
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent("snoop:voice-start"))}
+          className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-neon text-primary-foreground rounded-lg font-display font-semibold uppercase tracking-[0.2em] text-xs glow-neon"
+        >
+          <Mic className="w-4 h-4" /> Buscar socio
+        </button>
       </div>
 
       {loading ? (
@@ -93,11 +97,6 @@ function GestisciSoci() {
       ) : filtered.length === 0 ? (
         <div className="bg-card/60 border border-border rounded-2xl p-12 text-center">
           <div className="text-muted-foreground">No hay socios{q && " que coincidan"}.</div>
-          {!q && (
-            <Link to="/soci/nuovo" className="mt-4 inline-flex items-center gap-2 text-neon hover:text-glow-neon text-sm uppercase tracking-widest">
-              <UserPlus className="w-4 h-4" /> Crear el primero
-            </Link>
-          )}
         </div>
       ) : (
         <div className="grid gap-3">
