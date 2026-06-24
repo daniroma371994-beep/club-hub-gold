@@ -86,6 +86,16 @@ export function VoiceAgent() {
             return;
           }
 
+          if (location.pathname === "/soci/gestisci" || location.pathname === "/soci") {
+            const cleaned = text
+              .replace(/^(buscar?|busca|buscame|encuentra|encontrar|cerca|cercar|trova|trovami|busca a|busca el|busca la)\s+/i, "")
+              .replace(/[.,;:!?]+$/g, "")
+              .trim();
+            window.dispatchEvent(new CustomEvent("snoop:search-members", { detail: { query: cleaned } }));
+            setMessages((m) => [...m, { role: "assistant", content: `Buscando "${cleaned}"…` }]);
+            return;
+          }
+
           const { reply, navigateTo } = await respond({ data: { transcript: text, history } });
           setMessages((m) => [...m, { role: "assistant", content: reply }]);
           if (navigateTo) {
