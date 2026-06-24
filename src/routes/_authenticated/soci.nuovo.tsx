@@ -15,6 +15,71 @@ export const Route = createFileRoute("/_authenticated/soci/nuovo")({
 
 type Plan = { id: string; name: string; duration_days: number; price_cents: number };
 
+function stripAccents(value: string) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function cleanDictatedValue(value: string) {
+  return value.replace(/^[:\-\s]+/, "").replace(/[,.\s]+$/g, "").trim();
+}
+
+function toTitle(value: string) {
+  return value
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function toDateInput(value: string) {
+  const numeric = value.match(/(\d{1,2})\s*[\/\-.]\s*(\d{1,2})\s*[\/\-.]\s*(\d{2,4})/);
+  if (numeric) {
+    let [, d, m, y] = numeric;
+    if (y.length === 2) y = (Number(y) > 30 ? "19" : "20") + y;
+    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+  return "";
+}
+
+function quickParseMemberTranscript(text: string, plans: Plan[]) {
+  const raw = text.replace(/[“”"']/g, " ").replace(/\s+/g, " ").trim();
+  const labels: Array<["first_name" | "last_name" | "birth_date" | "dni_number" | "city" | "phone" | "plan_name", RegExp]> = [
+    ["first_name", /\b(?:nombre|nome)\b\s*:?\s*/i],
+    ["last_name", /\b(?:apellidos?|apellido|cognome|cognomi)\b\s*:?\s*/i],
+    ["birth_date", /\b(?:fecha\s+de\s+nacimiento|nacimiento|data\s+di\s+nascita|nascita)\b\s*:?\s*/i],
+    ["dni_number", /\b(?:numero\s+de\s+dni|numero\s+dni|dni|nie|documento)\b\s*:?\s*/i],
+    ["city", /\b(?:ciudad|citta|residencia)\b\s*:?\s*/i],
+    ["phone", /\b(?:telefono|teléfono|phone|movil|móvil|cellulare)\b\s*:?\s*/i],
+    ["plan_name", /\b(?:plan|cuota|quota|abono)\b\s*:?\s*/i],
+  ];
+  const hits = labels
+    .map(([key, pattern]) => {
+      const match = raw.match(pattern);
+      return match?.index === undefined ? null : { key, start: match.index, valueStart: match.index + match[0].length };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a!.start - b!.start) as Array<{ key: string; start: number; valueStart: number }>;
+  const out: Record<string, string> = {};
+  for (let i = 0; i < hits.length; i++) {
+    const hit = hits[i];
+    const value = cleanDictatedValue(raw.slice(hit.valueStart, hits[i + 1]?.start ?? raw.length));
+    if (!value) continue;
+    if (["first_name", "last_name", "city"].includes(hit.key)) out[hit.key] = toTitle(value);
+    if (hit.key === "birth_date") out.birth_date = toDateInput(value);
+    if (hit.key === "dni_number") out.dni_number = value.replace(/[^0-9a-z]/gi, "").toUpperCase();
+    if (hit.key === "phone") out.phone = value.replace(/(?!^\+)[^0-9]/g, "");
+    if (hit.key === "plan_name") out.plan_name = value;
+  }
+  const normalized = stripAccents(raw.toLowerCase());
+  const plan = plans.find((p) => normalized.includes(stripAccents(p.name.toLowerCase())))
+    ?? (/mensual|mensile/.test(normalized) ? plans.find((p) => stripAccents(p.name.toLowerCase()).includes("mens")) : undefined)
+    ?? (/trimestral|trimestrale/.test(normalized) ? plans.find((p) => stripAccents(p.name.toLowerCase()).includes("trimes")) : undefined)
+    ?? (/anual|annuale/.test(normalized) ? plans.find((p) => stripAccents(p.name.toLowerCase()).includes("anual") || stripAccents(p.name.toLowerCase()).includes("ann")) : undefined);
+  if (plan) out.plan_id = plan.id;
+  return out;
+}
+
 function pickMime(): string | null {
   const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/mpeg"];
   for (const t of candidates) {
@@ -109,6 +174,17 @@ function NewSocio() {
   async function applyTranscriptToForm(text: string) {
     setLastHeard(text);
     setRecStatus("processing");
+    const quick = quickParseMemberTranscript(text, plans);
+    setForm((f) => ({
+      ...f,
+      first_name: quick.first_name || f.first_name,
+      last_name: quick.last_name || f.last_name,
+      birth_date: quick.birth_date || f.birth_date,
+      city: quick.city || f.city,
+      phone: quick.phone || f.phone,
+      dni_number: quick.dni_number || f.dni_number,
+      plan_id: quick.plan_id || f.plan_id,
+    }));
     try {
       const current = formRef.current;
       const planForId = plans.find((p) => p.id === current.plan_id);
