@@ -66,6 +66,88 @@ const FieldsSchema = z.object({
   plan_name: z.string(),
 });
 
+type MemberFields = z.infer<typeof FieldsSchema>;
+
+function stripAccents(value: string) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function cleanExtractedValue(value: string) {
+  return value
+    .replace(/^[:\-\s]+/, "")
+    .replace(/[,.\s]+$/g, "")
+    .trim();
+}
+
+function titleCase(value: string) {
+  return value
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function normalizeExtractedDate(value: string) {
+  const s = value.trim();
+  const numeric = s.match(/(\d{1,2})\s*[\/\-.]\s*(\d{1,2})\s*[\/\-.]\s*(\d{2,4})/);
+  if (numeric) {
+    let [, d, m, y] = numeric;
+    if (y.length === 2) y = (Number(y) > 30 ? "19" : "20") + y;
+    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+  const iso = s.match(/(\d{4})\s*[\/\-.]\s*(\d{1,2})\s*[\/\-.]\s*(\d{1,2})/);
+  if (iso) return `${iso[1]}-${iso[2].padStart(2, "0")}-${iso[3].padStart(2, "0")}`;
+  return "";
+}
+
+function parseMemberFieldsFromTranscript(transcript: string, availablePlans: string[]): Partial<MemberFields> {
+  const raw = transcript.replace(/[“”"']/g, " ").replace(/\s+/g, " ").trim();
+  const normalized = stripAccents(raw).toLowerCase();
+  const labels: Array<[keyof MemberFields, RegExp]> = [
+    ["first_name", /\b(?:nombre|nome)\b\s*:?\s*/i],
+    ["last_name", /\b(?:apellidos?|apellido|cognome|cognomi)\b\s*:?\s*/i],
+    ["birth_date", /\b(?:fecha\s+de\s+nacimiento|nacimiento|data\s+di\s+nascita|nascita)\b\s*:?\s*/i],
+    ["dni_number", /\b(?:numero\s+de\s+dni|numero\s+dni|dni|nie|documento)\b\s*:?\s*/i],
+    ["city", /\b(?:ciudad|citta|residencia)\b\s*:?\s*/i],
+    ["phone", /\b(?:telefono|teléfono|phone|movil|móvil|cellulare)\b\s*:?\s*/i],
+    ["plan_name", /\b(?:plan|cuota|quota|abono)\b\s*:?\s*/i],
+  ];
+
+  const hits = labels
+    .map(([key, pattern]) => {
+      const match = raw.match(pattern);
+      return match?.index === undefined ? null : { key, start: match.index, valueStart: match.index + match[0].length };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a!.start - b!.start) as Array<{ key: keyof MemberFields; start: number; valueStart: number }>;
+
+  const out: Partial<MemberFields> = {};
+  for (let i = 0; i < hits.length; i++) {
+    const hit = hits[i];
+    const nextStart = hits[i + 1]?.start ?? raw.length;
+    const value = cleanExtractedValue(raw.slice(hit.valueStart, nextStart));
+    if (!value) continue;
+    if (hit.key === "first_name" || hit.key === "last_name" || hit.key === "city") out[hit.key] = titleCase(value);
+    else if (hit.key === "birth_date") out.birth_date = normalizeExtractedDate(value);
+    else if (hit.key === "dni_number") out.dni_number = value.replace(/[^0-9a-z]/gi, "").toUpperCase();
+    else if (hit.key === "phone") out.phone = value.replace(/(?!^\+)[^0-9]/g, "");
+    else if (hit.key === "plan_name") out.plan_name = value;
+  }
+
+  const planText = stripAccents((out.plan_name || raw).toLowerCase()).replace(/^cuota\s+/, "").trim();
+  const plan = availablePlans.find((p) => {
+    const name = stripAccents(p.toLowerCase()).replace(/^cuota\s+/, "").trim();
+    return planText.includes(name) || name.includes(planText) || normalized.includes(name);
+  });
+  if (plan) out.plan_name = plan;
+  else if (/mensual|mensile|mes\b/.test(normalized)) out.plan_name = availablePlans.find((p) => stripAccents(p.toLowerCase()).includes("mens")) ?? out.plan_name;
+  else if (/trimestral|trimestrale/.test(normalized)) out.plan_name = availablePlans.find((p) => stripAccents(p.toLowerCase()).includes("trimes")) ?? out.plan_name;
+  else if (/anual|annuale|ano|anno/.test(normalized)) out.plan_name = availablePlans.find((p) => stripAccents(p.toLowerCase()).includes("anual") || stripAccents(p.toLowerCase()).includes("ann")) ?? out.plan_name;
+
+  return out;
+}
+
 export const extractMemberFields = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => ExtractInput.parse(d))
@@ -74,6 +156,7 @@ export const extractMemberFields = createServerFn({ method: "POST" })
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
     const gateway = createLovableAiGatewayProvider(key);
     const model = gateway("google/gemini-2.5-flash");
+    const deterministic = parseMemberFieldsFromTranscript(data.transcript, data.available_plans);
 
     const system = `Extraes datos de un socio dictados por voz (español o italiano) y devuelves un objeto con TODOS los campos.
 Reglas:
@@ -101,10 +184,19 @@ Estado actual: ${JSON.stringify(data.current)}`;
         const v = (object as any)[k];
         if (typeof v === "string" && v.trim()) out[k] = v.trim();
       }
+      for (const k of Object.keys(deterministic) as Array<keyof MemberFields>) {
+        const v = deterministic[k];
+        if (typeof v === "string" && v.trim()) out[k] = v.trim();
+      }
       return { fields: out };
     } catch (e: any) {
       console.error("extractMemberFields failed:", e?.message);
-      throw new Error("Extracción falló: " + (e?.message ?? "desconocido"));
+      const fallback = { ...data.current };
+      for (const k of Object.keys(deterministic) as Array<keyof MemberFields>) {
+        const v = deterministic[k];
+        if (typeof v === "string" && v.trim()) fallback[k] = v.trim();
+      }
+      return { fields: fallback };
     }
   });
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { useNavigate } from "@tanstack/react-router";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 import { Mic, Square, Loader2, X, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { agentRespond, transcribeAudio } from "@/lib/voice-agent.functions";
@@ -32,6 +32,7 @@ export function VoiceAgent() {
   const streamRef = useRef<MediaStream | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const transcribe = useServerFn(transcribeAudio);
   const respond = useServerFn(agentRespond);
@@ -74,6 +75,17 @@ export function VoiceAgent() {
           const history = messages;
           const nextUser: Msg = { role: "user", content: text };
           setMessages((m) => [...m, nextUser]);
+
+          if (location.pathname === "/soci/nuovo") {
+            window.localStorage.setItem("snoop:new-member-transcript", JSON.stringify({ text, at: Date.now() }));
+            window.dispatchEvent(new StorageEvent("storage", {
+              key: "snoop:new-member-transcript",
+              newValue: JSON.stringify({ text, at: Date.now() }),
+            }));
+            setMessages((m) => [...m, { role: "assistant", content: "Perfecto, estoy rellenando las casillas con los datos que has dictado." }]);
+            return;
+          }
+
           const { reply, navigateTo } = await respond({ data: { transcript: text, history } });
           setMessages((m) => [...m, { role: "assistant", content: reply }]);
           if (navigateTo) {

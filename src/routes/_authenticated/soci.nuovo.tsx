@@ -64,11 +64,87 @@ function NewSocio() {
     return () => { streamRef.current?.getTracks().forEach((t) => t.stop()); };
   }, []);
 
+  useEffect(() => {
+    const readTranscript = (value: string | null) => {
+      if (!value) return;
+      try {
+        const parsed = JSON.parse(value) as { text?: string };
+        if (parsed.text) applyTranscriptToForm(parsed.text);
+      } catch {
+        // Ignore malformed storage values.
+      }
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === "snoop:new-member-transcript") readTranscript(event.newValue);
+    };
+    window.addEventListener("storage", onStorage);
+    readTranscript(window.localStorage.getItem("snoop:new-member-transcript"));
+    return () => window.removeEventListener("storage", onStorage);
+  }, [plans]);
+
   function set<K extends keyof typeof form>(k: K, v: typeof form[K]) {
     setForm((f) => ({ ...f, [k]: v }));
   }
 
   const selectedPlan = plans.find((p) => p.id === form.plan_id);
+
+  function normalizePlanName(value: string) {
+    return value
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/^cuota\s+/, "")
+      .trim();
+  }
+
+  function findDictatedPlan(planName: string) {
+    const wanted = normalizePlanName(planName);
+    if (!wanted) return null;
+    return plans.find((p) => {
+      const name = normalizePlanName(p.name);
+      return name === wanted || name.includes(wanted) || wanted.includes(name);
+    }) ?? null;
+  }
+
+  async function applyTranscriptToForm(text: string) {
+    setLastHeard(text);
+    setRecStatus("processing");
+    try {
+      const current = formRef.current;
+      const planForId = plans.find((p) => p.id === current.plan_id);
+      const { fields } = await extract({
+        data: {
+          transcript: text,
+          current: {
+            first_name: current.first_name,
+            last_name: current.last_name,
+            birth_date: current.birth_date,
+            city: current.city,
+            phone: current.phone,
+            dni_number: current.dni_number,
+            plan_name: planForId?.name ?? "",
+          },
+          available_plans: plans.map((p) => p.name),
+        },
+      });
+      const matchedPlan = fields.plan_name ? findDictatedPlan(fields.plan_name) : null;
+      setForm((f) => ({
+        ...f,
+        first_name: fields.first_name || f.first_name,
+        last_name: fields.last_name || f.last_name,
+        birth_date: fields.birth_date || f.birth_date,
+        city: fields.city || f.city,
+        phone: fields.phone || f.phone,
+        dni_number: fields.dni_number || f.dni_number,
+        plan_id: matchedPlan?.id ?? f.plan_id,
+      }));
+      toast.success("Casillas rellenadas");
+    } catch (e: any) {
+      toast.error(e.message ?? "Error en dictado");
+    } finally {
+      setRecStatus("idle");
+    }
+  }
 
   async function handleDniFile(file: File) {
     try {
@@ -102,38 +178,7 @@ function NewSocio() {
           const b64 = await blobToBase64(blob);
           const { text } = await transcribe({ data: { audioBase64: b64, mimeType: rec.mimeType } });
           if (!text) { setRecStatus("idle"); toast.error("No se entendió nada."); return; }
-          setLastHeard(text);
-          const current = formRef.current;
-          const planForId = plans.find((p) => p.id === current.plan_id);
-          const { fields } = await extract({
-            data: {
-              transcript: text,
-              current: {
-                first_name: current.first_name,
-                last_name: current.last_name,
-                birth_date: current.birth_date,
-                city: current.city,
-                phone: current.phone,
-                dni_number: current.dni_number,
-                plan_name: planForId?.name ?? "",
-              },
-              available_plans: plans.map((p) => p.name),
-            },
-          });
-          const matchedPlan = fields.plan_name
-            ? plans.find((p) => p.name.toLowerCase() === fields.plan_name.toLowerCase())
-            : null;
-          setForm((f) => ({
-            ...f,
-            first_name: fields.first_name || f.first_name,
-            last_name: fields.last_name || f.last_name,
-            birth_date: fields.birth_date || f.birth_date,
-            city: fields.city || f.city,
-            phone: fields.phone || f.phone,
-            dni_number: fields.dni_number || f.dni_number,
-            plan_id: matchedPlan?.id ?? f.plan_id,
-          }));
-          toast.success("Datos actualizados");
+          await applyTranscriptToForm(text);
         } catch (e: any) {
           toast.error(e.message ?? "Error en dictado");
         } finally {
