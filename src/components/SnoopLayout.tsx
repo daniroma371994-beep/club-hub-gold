@@ -135,6 +135,8 @@ export function SnoopLayout({ children, title, subtitle }: { children: ReactNode
           {children}
         </div>
       </main>
+
+      <VoiceAgent />
     </div>
   );
 }
