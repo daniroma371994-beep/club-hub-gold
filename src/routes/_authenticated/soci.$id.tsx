@@ -3,7 +3,7 @@ import { SnoopLayout } from "@/components/SnoopLayout";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, RefreshCw, Trash2, FileCheck } from "lucide-react";
+import { ArrowLeft, RefreshCw, Trash2, FileCheck, ShoppingBag } from "lucide-react";
 import { expiryBadge, formatPrice, signedUrl } from "@/lib/snoop";
 import { useAuth } from "@/hooks/useAuth";
 
