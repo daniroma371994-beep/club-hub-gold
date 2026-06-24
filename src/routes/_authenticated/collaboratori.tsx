@@ -39,6 +39,18 @@ function Collabs() {
   const [name, setName] = useState("");
   const [perms, setPerms] = useState<string[]>(["use_cash"]);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const resetFn = useServerFn(adminResetCollabPassword);
+
+  async function resetCollabPassword(userId: string) {
+    const np = window.prompt("Nuova password (min 6 caratteri)");
+    if (!np) return;
+    try {
+      await resetFn({ data: { userId, newPassword: np } });
+      toast.success("Password aggiornata. Comunicala al collaboratore.");
+    } catch (e: any) {
+      toast.error(e.message ?? "Errore");
+    }
+  }
 
   useEffect(() => {
     voiceBus.register({
