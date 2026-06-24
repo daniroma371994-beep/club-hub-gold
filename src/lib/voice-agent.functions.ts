@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-import { generateText, tool, stepCountIs } from "ai";
+import { generateText, generateObject, tool, stepCountIs } from "ai";
 import { createLovableAiGatewayProvider } from "./ai-gateway.server";
 
 // ---------- Transcription ----------
