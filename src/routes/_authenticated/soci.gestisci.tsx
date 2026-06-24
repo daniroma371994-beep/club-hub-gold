@@ -45,13 +45,11 @@ function GestisciSoci() {
   }, []);
 
   const filtered = rows.filter((r) => {
-    if (!q.trim()) return true;
-    const s = q.toLowerCase();
-    return (
-      r.first_name.toLowerCase().includes(s) ||
-      r.last_name.toLowerCase().includes(s) ||
-      r.dni_number.toLowerCase().includes(s)
-    );
+    const query = q.trim().toLowerCase();
+    if (!query) return true;
+    const haystack = `${r.first_name} ${r.last_name} ${r.dni_number} ${r.city ?? ""}`.toLowerCase();
+    const tokens = query.split(/\s+/).filter(Boolean);
+    return tokens.every((t) => haystack.includes(t));
   });
 
   return (
