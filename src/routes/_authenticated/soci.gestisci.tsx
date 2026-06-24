@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { SnoopLayout } from "@/components/SnoopLayout";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, UserPlus } from "lucide-react";
+import { Search, Mic } from "lucide-react";
 import { toast } from "sonner";
 import { expiryBadge } from "@/lib/snoop";
 
