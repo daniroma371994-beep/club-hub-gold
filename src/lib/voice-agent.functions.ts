@@ -243,4 +243,3 @@ Fecha de hoy: ${todayISO()}.`;
 
     return { reply: text || "Hecho.", navigateTo };
   });
-  });
