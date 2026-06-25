@@ -40,7 +40,7 @@ function AuthPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) nav({ to: "/soci" });
+      if (data.session) nav({ to: "/" });
     });
   }, [nav]);
 
@@ -60,7 +60,7 @@ function AuthPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
-      nav({ to: "/soci" });
+      nav({ to: "/" });
     } catch (err: any) {
       toast.error(err.message ?? "Error de acceso");
     } finally {
