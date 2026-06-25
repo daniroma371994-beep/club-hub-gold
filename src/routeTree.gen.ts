@@ -12,7 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
-import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedPianiRouteImport } from './routes/_authenticated/piani'
 import { Route as AuthenticatedSociIndexRouteImport } from './routes/_authenticated/soci.index'
 import { Route as AuthenticatedSociNuovoRouteImport } from './routes/_authenticated/soci.nuovo'
@@ -33,10 +33,10 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AuthenticatedRouteRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedPianiRoute = AuthenticatedPianiRouteImport.update({
   id: '/piani',
@@ -66,7 +66,7 @@ const AuthenticatedSociIdRoute = AuthenticatedSociIdRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof AuthenticatedIndexRoute
+  '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/piani': typeof AuthenticatedPianiRoute
@@ -76,10 +76,10 @@ export interface FileRoutesByFullPath {
   '/soci/': typeof AuthenticatedSociIndexRoute
 }
 export interface FileRoutesByTo {
+  '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/piani': typeof AuthenticatedPianiRoute
-  '/': typeof AuthenticatedIndexRoute
   '/soci/$id': typeof AuthenticatedSociIdRoute
   '/soci/gestisci': typeof AuthenticatedSociGestisciRoute
   '/soci/nuovo': typeof AuthenticatedSociNuovoRoute
@@ -87,11 +87,11 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/piani': typeof AuthenticatedPianiRoute
-  '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/soci/$id': typeof AuthenticatedSociIdRoute
   '/_authenticated/soci/gestisci': typeof AuthenticatedSociGestisciRoute
   '/_authenticated/soci/nuovo': typeof AuthenticatedSociNuovoRoute
@@ -110,21 +110,21 @@ export interface FileRouteTypes {
     | '/soci/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/'
     | '/auth'
     | '/reset-password'
     | '/piani'
-    | '/'
     | '/soci/$id'
     | '/soci/gestisci'
     | '/soci/nuovo'
     | '/soci'
   id:
     | '__root__'
+    | '/'
     | '/_authenticated'
     | '/auth'
     | '/reset-password'
     | '/_authenticated/piani'
-    | '/_authenticated/'
     | '/_authenticated/soci/$id'
     | '/_authenticated/soci/gestisci'
     | '/_authenticated/soci/nuovo'
@@ -132,6 +132,7 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -160,12 +161,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/': {
-      id: '/_authenticated/'
+    '/': {
+      id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof AuthenticatedIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/piani': {
       id: '/_authenticated/piani'
@@ -207,7 +208,6 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedPianiRoute: typeof AuthenticatedPianiRoute
-  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedSociIdRoute: typeof AuthenticatedSociIdRoute
   AuthenticatedSociGestisciRoute: typeof AuthenticatedSociGestisciRoute
   AuthenticatedSociNuovoRoute: typeof AuthenticatedSociNuovoRoute
@@ -216,7 +216,6 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPianiRoute: AuthenticatedPianiRoute,
-  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedSociIdRoute: AuthenticatedSociIdRoute,
   AuthenticatedSociGestisciRoute: AuthenticatedSociGestisciRoute,
   AuthenticatedSociNuovoRoute: AuthenticatedSociNuovoRoute,
@@ -227,6 +226,7 @@ const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
