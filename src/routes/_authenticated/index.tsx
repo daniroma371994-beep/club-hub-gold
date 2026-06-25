@@ -1,22 +1,16 @@
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
-import { Users, BadgeEuro } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { SnoopLayout } from "@/components/SnoopLayout";
-import { supabase } from "@/integrations/supabase/client";
 import logo from "@/assets/meduza-xxiii-logo.png.asset.json";
+import { Users, BadgeEuro } from "lucide-react";
 
-export const Route = createFileRoute("/")({
-  ssr: false,
-  beforeLoad: async () => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) throw redirect({ to: "/auth" });
-  },
+export const Route = createFileRoute("/_authenticated/")({
   component: Home,
 });
 
 function Home() {
   return (
     <SnoopLayout>
-      <div className="flex min-h-[calc(100vh-7rem)] flex-col items-center justify-center text-center py-4">
+      <div className="flex flex-col items-center justify-center text-center py-4">
         <h1 className="font-display text-3xl md:text-5xl tracking-[0.25em] text-neon text-glow-neon uppercase">
           Welcome
         </h1>
@@ -27,8 +21,8 @@ function Home() {
 
         <img
           src={logo.url}
-          alt="Logo Meduza XXIII"
-          className="mt-8 w-[min(68vw,360px)] aspect-square object-contain rounded-full glow-neon-soft"
+          alt="Meduza XXIII"
+          className="mt-8 w-[min(70vw,380px)] aspect-square object-contain rounded-full glow-neon-soft"
         />
 
         <div className="mt-10 grid grid-cols-2 gap-3 w-full max-w-sm">
@@ -47,6 +41,10 @@ function Home() {
             <span className="text-xs uppercase tracking-[0.25em] font-display">Cuotas</span>
           </Link>
         </div>
+
+        <p className="mt-8 text-[11px] uppercase tracking-[0.3em] text-neon-dim">
+          Pulsa el menú ☰ para navegar
+        </p>
       </div>
     </SnoopLayout>
   );
