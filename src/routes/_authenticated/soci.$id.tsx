@@ -55,6 +55,12 @@ function SocioDetail() {
     }
     if ((m as any).dni_photo_path) setDniUrl(await signedUrl((m as any).dni_photo_path).catch(() => ""));
     if ((m as any).signature_path) setSigUrl(await signedUrl((m as any).signature_path).catch(() => ""));
+    if ((m as any).member_number) {
+      try {
+        const url = await QRCode.toDataURL(`SNOOP:${(m as any).member_number}`, { margin: 1, width: 320, color: { dark: "#39FF14", light: "#00000000" } });
+        setQrUrl(url);
+      } catch {}
+    }
   }
   useEffect(() => {
     load();
