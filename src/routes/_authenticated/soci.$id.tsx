@@ -40,6 +40,7 @@ function SocioDetail() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [dniUrl, setDniUrl] = useState<string>("");
   const [sigUrl, setSigUrl] = useState<string>("");
+  const [qrUrl, setQrUrl] = useState<string>("");
   const [renewing, setRenewing] = useState(false);
   const [newPlanId, setNewPlanId] = useState("");
 
