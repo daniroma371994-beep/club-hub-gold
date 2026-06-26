@@ -3,9 +3,10 @@ import { SnoopLayout } from "@/components/SnoopLayout";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, RefreshCw, Trash2, FileCheck, ShoppingBag } from "lucide-react";
+import { ArrowLeft, RefreshCw, Trash2, FileCheck, ShoppingBag, QrCode } from "lucide-react";
 import { expiryBadge, formatPrice, signedUrl } from "@/lib/snoop";
 import { useAuth } from "@/hooks/useAuth";
+import QRCode from "qrcode";
 
 export const Route = createFileRoute("/_authenticated/soci/$id")({
   component: SocioDetail,
@@ -14,6 +15,7 @@ export const Route = createFileRoute("/_authenticated/soci/$id")({
 type Plan = { id: string; name: string; duration_days: number; price_cents: number };
 type Member = {
   id: string;
+  member_number: string;
   first_name: string;
   last_name: string;
   birth_date: string;
@@ -38,6 +40,7 @@ function SocioDetail() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [dniUrl, setDniUrl] = useState<string>("");
   const [sigUrl, setSigUrl] = useState<string>("");
+  const [qrUrl, setQrUrl] = useState<string>("");
   const [renewing, setRenewing] = useState(false);
   const [newPlanId, setNewPlanId] = useState("");
 
@@ -52,6 +55,12 @@ function SocioDetail() {
     }
     if ((m as any).dni_photo_path) setDniUrl(await signedUrl((m as any).dni_photo_path).catch(() => ""));
     if ((m as any).signature_path) setSigUrl(await signedUrl((m as any).signature_path).catch(() => ""));
+    if ((m as any).member_number) {
+      try {
+        const url = await QRCode.toDataURL(`SNOOP:${(m as any).member_number}`, { margin: 1, width: 320, color: { dark: "#39FF14", light: "#00000000" } });
+        setQrUrl(url);
+      } catch {}
+    }
   }
   useEffect(() => {
     load();
@@ -121,7 +130,9 @@ function SocioDetail() {
           <div className="bg-card/60 border border-neon/20 rounded-2xl p-6 backdrop-blur">
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div>
-                <h1 className="font-display text-3xl text-foreground">{member.first_name} {member.last_name}</h1>
+                <div className="text-[10px] uppercase tracking-[0.3em] text-neon-dim">Nº socio</div>
+                <div className="font-display text-2xl text-neon tracking-[0.25em] mt-0.5">{member.member_number}</div>
+                <h1 className="font-display text-3xl text-foreground mt-3">{member.first_name} {member.last_name}</h1>
                 <div className="text-sm text-muted-foreground mt-1">{member.dni_number}</div>
               </div>
               <span className={`text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-full border ${badge.color}`}>{badge.label}</span>
@@ -164,6 +175,20 @@ function SocioDetail() {
 
         {/* Right: actions */}
         <div className="space-y-6">
+          <div className="bg-card/60 border border-neon/20 rounded-2xl p-6 flex flex-col items-center text-center">
+            <div className="flex items-center gap-2 mb-3">
+              <QrCode className="w-4 h-4 text-neon" />
+              <div className="text-[10px] uppercase tracking-[0.3em] text-neon-dim">Carnet QR</div>
+            </div>
+            {qrUrl ? (
+              <img src={qrUrl} alt={`QR socio ${member.member_number}`} className="w-44 h-44" />
+            ) : (
+              <div className="w-44 h-44 flex items-center justify-center text-muted-foreground text-xs">Generando…</div>
+            )}
+            <div className="font-display text-neon tracking-[0.3em] mt-3">{member.member_number}</div>
+            <p className="text-[10px] text-muted-foreground mt-1">Escanea el QR o dicta el número para abrir esta ficha.</p>
+          </div>
+
           <button
             onClick={nuevoPedido}
             className="w-full flex items-center justify-center gap-2 bg-gradient-neon text-primary-foreground py-3 rounded-xl font-display font-semibold uppercase tracking-[0.2em] text-xs glow-neon"

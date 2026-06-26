@@ -268,14 +268,14 @@ export const agentRespond = createServerFn({ method: "POST" })
         },
       }),
       find_members: tool({
-        description: "Busca socios por nombre, apellido o DNI.",
+        description: "Busca socios por número de socio (7 dígitos), nombre, apellido o DNI.",
         inputSchema: z.object({ query: z.string().min(1) }),
         execute: async ({ query }) => {
           const q = `%${query}%`;
           const { data, error } = await supabase
             .from("members")
-            .select("id,first_name,last_name,phone,city,expires_at,plan_id,dni_number")
-            .or(`first_name.ilike.${q},last_name.ilike.${q},dni_number.ilike.${q}`)
+            .select("id,member_number,first_name,last_name,phone,city,expires_at,plan_id,dni_number")
+            .or(`first_name.ilike.${q},last_name.ilike.${q},dni_number.ilike.${q},member_number.ilike.${q}`)
             .limit(10);
           if (error) return { error: error.message };
           return { members: data };

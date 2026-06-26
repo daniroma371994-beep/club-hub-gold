@@ -29,6 +29,7 @@ export type Database = {
           id: string
           joined_at: string
           last_name: string
+          member_number: string
           notes: string | null
           phone: string | null
           plan_id: string | null
@@ -49,6 +50,7 @@ export type Database = {
           id?: string
           joined_at?: string
           last_name: string
+          member_number?: string
           notes?: string | null
           phone?: string | null
           plan_id?: string | null
@@ -69,6 +71,7 @@ export type Database = {
           id?: string
           joined_at?: string
           last_name?: string
+          member_number?: string
           notes?: string | null
           phone?: string | null
           plan_id?: string | null
