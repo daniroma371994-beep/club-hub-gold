@@ -175,6 +175,20 @@ function SocioDetail() {
 
         {/* Right: actions */}
         <div className="space-y-6">
+          <div className="bg-card/60 border border-neon/20 rounded-2xl p-6 flex flex-col items-center text-center">
+            <div className="flex items-center gap-2 mb-3">
+              <QrCode className="w-4 h-4 text-neon" />
+              <div className="text-[10px] uppercase tracking-[0.3em] text-neon-dim">Carnet QR</div>
+            </div>
+            {qrUrl ? (
+              <img src={qrUrl} alt={`QR socio ${member.member_number}`} className="w-44 h-44" />
+            ) : (
+              <div className="w-44 h-44 flex items-center justify-center text-muted-foreground text-xs">Generando…</div>
+            )}
+            <div className="font-display text-neon tracking-[0.3em] mt-3">{member.member_number}</div>
+            <p className="text-[10px] text-muted-foreground mt-1">Escanea el QR o dicta el número para abrir esta ficha.</p>
+          </div>
+
           <button
             onClick={nuevoPedido}
             className="w-full flex items-center justify-center gap-2 bg-gradient-neon text-primary-foreground py-3 rounded-xl font-display font-semibold uppercase tracking-[0.2em] text-xs glow-neon"
