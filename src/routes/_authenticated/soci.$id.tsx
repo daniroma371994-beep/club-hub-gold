@@ -15,6 +15,7 @@ export const Route = createFileRoute("/_authenticated/soci/$id")({
 type Plan = { id: string; name: string; duration_days: number; price_cents: number };
 type Member = {
   id: string;
+  member_number: string;
   first_name: string;
   last_name: string;
   birth_date: string;
