@@ -130,7 +130,9 @@ function SocioDetail() {
           <div className="bg-card/60 border border-neon/20 rounded-2xl p-6 backdrop-blur">
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div>
-                <h1 className="font-display text-3xl text-foreground">{member.first_name} {member.last_name}</h1>
+                <div className="text-[10px] uppercase tracking-[0.3em] text-neon-dim">Nº socio</div>
+                <div className="font-display text-2xl text-neon tracking-[0.25em] mt-0.5">{member.member_number}</div>
+                <h1 className="font-display text-3xl text-foreground mt-3">{member.first_name} {member.last_name}</h1>
                 <div className="text-sm text-muted-foreground mt-1">{member.dni_number}</div>
               </div>
               <span className={`text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-full border ${badge.color}`}>{badge.label}</span>
