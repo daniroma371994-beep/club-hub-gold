@@ -183,36 +183,43 @@ function GestisciSoci() {
 
 function QrScannerModal({ onClose, onResult }: { onClose: () => void; onResult: (text: string) => void }) {
   const elId = "snoop-qr-reader";
-  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const onResultRef = useRef(onResult);
+  onResultRef.current = onResult;
   const [error, setError] = useState<string>("");
 
   useEffect(() => {
     let cancelled = false;
-    const start = async () => {
+    let started = false;
+    const scanner = new Html5Qrcode(elId);
+
+    const safeStop = async () => {
       try {
-        const scanner = new Html5Qrcode(elId);
-        scannerRef.current = scanner;
-        await scanner.start(
-          { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 240, height: 240 } },
-          (decoded) => {
-            if (cancelled) return;
-            cancelled = true;
-            scanner.stop().catch(() => {}).finally(() => onResult(decoded));
-          },
-          () => {},
-        );
-      } catch (e: any) {
-        setError(e?.message ?? "No se pudo abrir la cámara");
-      }
+        // @ts-ignore - getState exists at runtime: 2 = SCANNING
+        const state = typeof scanner.getState === "function" ? scanner.getState() : 0;
+        if (started && state === 2) await scanner.stop();
+      } catch {}
+      try { scanner.clear(); } catch {}
     };
-    start();
+
+    scanner
+      .start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 240, height: 240 } },
+        (decoded) => {
+          if (cancelled) return;
+          cancelled = true;
+          safeStop().finally(() => onResultRef.current(decoded));
+        },
+        () => {},
+      )
+      .then(() => { started = true; if (cancelled) safeStop(); })
+      .catch((e: any) => setError(e?.message ?? "No se pudo abrir la cámara. Concede permiso o usa HTTPS."));
+
     return () => {
       cancelled = true;
-      scannerRef.current?.stop().catch(() => {});
-      try { scannerRef.current?.clear(); } catch {}
+      safeStop();
     };
-  }, [onResult]);
+  }, []);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur flex items-center justify-center p-4">
