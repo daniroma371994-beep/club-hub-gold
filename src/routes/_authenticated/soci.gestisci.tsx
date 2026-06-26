@@ -210,7 +210,7 @@ function QrScannerModal({ onClose, onResult }: { onClose: () => void; onResult: 
     return () => {
       cancelled = true;
       scannerRef.current?.stop().catch(() => {});
-      scannerRef.current?.clear().catch(() => {});
+      try { scannerRef.current?.clear(); } catch {}
     };
   }, [onResult]);
 
