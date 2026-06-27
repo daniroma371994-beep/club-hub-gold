@@ -111,6 +111,7 @@ export type Database = {
           created_by: string | null
           dni_number: string
           dni_photo_path: string | null
+          email: string | null
           expires_at: string
           first_name: string
           id: string
@@ -132,6 +133,7 @@ export type Database = {
           created_by?: string | null
           dni_number: string
           dni_photo_path?: string | null
+          email?: string | null
           expires_at: string
           first_name: string
           id?: string
@@ -153,6 +155,7 @@ export type Database = {
           created_by?: string | null
           dni_number?: string
           dni_photo_path?: string | null
+          email?: string | null
           expires_at?: string
           first_name?: string
           id?: string
