@@ -44,13 +44,14 @@ function toDateInput(value: string) {
 
 function quickParseMemberTranscript(text: string, plans: Plan[]) {
   const raw = text.replace(/[“”"']/g, " ").replace(/\s+/g, " ").trim();
-  const labels: Array<["first_name" | "last_name" | "birth_date" | "dni_number" | "city" | "phone" | "plan_name", RegExp]> = [
+  const labels: Array<["first_name" | "last_name" | "birth_date" | "dni_number" | "city" | "phone" | "email" | "plan_name", RegExp]> = [
     ["first_name", /\b(?:nombre|nome)\b\s*:?\s*/i],
     ["last_name", /\b(?:apellidos?|apellido|cognome|cognomi)\b\s*:?\s*/i],
     ["birth_date", /\b(?:fecha\s+de\s+nacimiento|nacimiento|data\s+di\s+nascita|nascita)\b\s*:?\s*/i],
     ["dni_number", /\b(?:numero\s+de\s+dni|numero\s+dni|dni|nie|documento)\b\s*:?\s*/i],
     ["city", /\b(?:ciudad|citta|residencia)\b\s*:?\s*/i],
     ["phone", /\b(?:telefono|teléfono|phone|movil|móvil|cellulare)\b\s*:?\s*/i],
+    ["email", /\b(?:email|correo|e-?mail|mail)\b\s*:?\s*/i],
     ["plan_name", /\b(?:plan|cuota|quota|abono)\b\s*:?\s*/i],
   ];
   const hits = labels
@@ -69,6 +70,7 @@ function quickParseMemberTranscript(text: string, plans: Plan[]) {
     if (hit.key === "birth_date") out.birth_date = toDateInput(value);
     if (hit.key === "dni_number") out.dni_number = value.replace(/[^0-9a-z]/gi, "").toUpperCase();
     if (hit.key === "phone") out.phone = value.replace(/(?!^\+)[^0-9]/g, "");
+    if (hit.key === "email") out.email = value.replace(/\s+/g, "").toLowerCase();
     if (hit.key === "plan_name") out.plan_name = value;
   }
   const normalized = stripAccents(raw.toLowerCase());
@@ -105,6 +107,7 @@ function NewSocio() {
     birth_date: "",
     city: "",
     phone: "",
+    email: "",
     plan_id: "",
     dni_number: "",
     dni_file: null as File | null,
@@ -182,6 +185,7 @@ function NewSocio() {
       birth_date: quick.birth_date || f.birth_date,
       city: quick.city || f.city,
       phone: quick.phone || f.phone,
+      email: quick.email || f.email,
       dni_number: quick.dni_number || f.dni_number,
       plan_id: quick.plan_id || f.plan_id,
     }));
@@ -197,6 +201,7 @@ function NewSocio() {
             birth_date: current.birth_date,
             city: current.city,
             phone: current.phone,
+            email: current.email,
             dni_number: current.dni_number,
             plan_name: planForId?.name ?? "",
           },
@@ -211,6 +216,7 @@ function NewSocio() {
         birth_date: fields.birth_date || f.birth_date,
         city: fields.city || f.city,
         phone: fields.phone || f.phone,
+        email: (fields as any).email || f.email,
         dni_number: fields.dni_number || f.dni_number,
         plan_id: matchedPlan?.id ?? f.plan_id,
       }));
@@ -308,6 +314,7 @@ function NewSocio() {
         birth_date: form.birth_date,
         city: form.city.trim(),
         phone: form.phone.trim(),
+        email: form.email.trim() || null,
         dni_number: form.dni_number.trim().toUpperCase(),
         dni_photo_path: dniPath,
         plan_id: form.plan_id,
@@ -370,6 +377,7 @@ function NewSocio() {
             <Inp label="Número de DNI / NIE *" value={form.dni_number} onChange={(v) => set("dni_number", v.toUpperCase())} placeholder="12345678A" />
             <Inp label="Ciudad *" value={form.city} onChange={(v) => set("city", v)} />
             <Inp label="Teléfono *" type="tel" value={form.phone} onChange={(v) => set("phone", v)} />
+            <Inp label="Email" type="email" value={form.email} onChange={(v) => set("email", v)} placeholder="socio@email.com" />
           </div>
         </section>
 

@@ -50,6 +50,7 @@ const ExtractInput = z.object({
     birth_date: z.string().default(""),
     city: z.string().default(""),
     phone: z.string().default(""),
+    email: z.string().default(""),
     dni_number: z.string().default(""),
     plan_name: z.string().default(""),
   }),
@@ -62,6 +63,7 @@ const FieldsSchema = z.object({
   birth_date: z.string(),
   city: z.string(),
   phone: z.string(),
+  email: z.string(),
   dni_number: z.string(),
   plan_name: z.string(),
 });
@@ -111,6 +113,7 @@ function parseMemberFieldsFromTranscript(transcript: string, availablePlans: str
     ["dni_number", /\b(?:numero\s+de\s+dni|numero\s+dni|dni|nie|documento)\b\s*:?\s*/i],
     ["city", /\b(?:ciudad|citta|residencia)\b\s*:?\s*/i],
     ["phone", /\b(?:telefono|teléfono|phone|movil|móvil|cellulare)\b\s*:?\s*/i],
+    ["email", /\b(?:email|correo|e-?mail|mail)\b\s*:?\s*/i],
     ["plan_name", /\b(?:plan|cuota|quota|abono)\b\s*:?\s*/i],
   ];
 
@@ -132,6 +135,7 @@ function parseMemberFieldsFromTranscript(transcript: string, availablePlans: str
     else if (hit.key === "birth_date") out.birth_date = normalizeExtractedDate(value);
     else if (hit.key === "dni_number") out.dni_number = value.replace(/[^0-9a-z]/gi, "").toUpperCase();
     else if (hit.key === "phone") out.phone = value.replace(/(?!^\+)[^0-9]/g, "");
+    else if (hit.key === "email") out.email = value.replace(/\s+/g, "").toLowerCase();
     else if (hit.key === "plan_name") out.plan_name = value;
   }
 
@@ -165,6 +169,7 @@ Reglas:
 - birth_date: formato estricto YYYY-MM-DD. Acepta dictados tipo "24 del 7 del 1995", "24/07/1995", "veinticuatro de julio de mil novecientos noventa y cinco" → "1995-07-24".
 - dni_number: solo dígitos y letra final en mayúscula, sin espacios (ej "12345678A"). Acepta dictado tipo "uno dos tres cuatro cinco seis siete ocho A".
 - phone: solo dígitos (puede empezar por +). Acepta dictado tipo "seis seis seis siete siete siete ocho ocho ocho".
+- email: minúsculas, sin espacios, formato "x@y.z". Si no se menciona, devuelve "".
 - city: nombre de ciudad.
 - plan_name: DEBE coincidir EXACTAMENTE con uno de [${data.available_plans.join(", ") || "ninguno"}]. Mapea sinónimos (mensual→Mensual, trimestral→Trimestral, anual→Anual). Si no encaja, devuelve "".
 - NUNCA inventes datos que no se hayan dicho.
