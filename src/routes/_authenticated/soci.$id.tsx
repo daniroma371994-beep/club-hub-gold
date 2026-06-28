@@ -21,6 +21,7 @@ type Member = {
   birth_date: string;
   city: string | null;
   phone: string | null;
+  email: string | null;
   dni_number: string;
   dni_photo_path: string | null;
   signature_path: string | null;
