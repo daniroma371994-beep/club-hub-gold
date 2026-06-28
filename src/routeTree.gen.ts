@@ -13,6 +13,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedProductosRouteImport } from './routes/_authenticated/productos'
 import { Route as AuthenticatedPianiRouteImport } from './routes/_authenticated/piani'
 import { Route as AuthenticatedSociIndexRouteImport } from './routes/_authenticated/soci.index'
 import { Route as AuthenticatedSociNuovoRouteImport } from './routes/_authenticated/soci.nuovo'
@@ -37,6 +38,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedProductosRoute = AuthenticatedProductosRouteImport.update({
+  id: '/productos',
+  path: '/productos',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedPianiRoute = AuthenticatedPianiRouteImport.update({
@@ -77,6 +83,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/piani': typeof AuthenticatedPianiRoute
+  '/productos': typeof AuthenticatedProductosRoute
   '/soci/$id': typeof AuthenticatedSociIdRoute
   '/soci/gestisci': typeof AuthenticatedSociGestisciRoute
   '/soci/nuovo': typeof AuthenticatedSociNuovoRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/piani': typeof AuthenticatedPianiRoute
+  '/productos': typeof AuthenticatedProductosRoute
   '/': typeof AuthenticatedIndexRoute
   '/soci/$id': typeof AuthenticatedSociIdRoute
   '/soci/gestisci': typeof AuthenticatedSociGestisciRoute
@@ -100,6 +108,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/piani': typeof AuthenticatedPianiRoute
+  '/_authenticated/productos': typeof AuthenticatedProductosRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/soci/$id': typeof AuthenticatedSociIdRoute
   '/_authenticated/soci/gestisci': typeof AuthenticatedSociGestisciRoute
@@ -114,6 +123,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/piani'
+    | '/productos'
     | '/soci/$id'
     | '/soci/gestisci'
     | '/soci/nuovo'
@@ -124,6 +134,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/piani'
+    | '/productos'
     | '/'
     | '/soci/$id'
     | '/soci/gestisci'
@@ -136,6 +147,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/_authenticated/piani'
+    | '/_authenticated/productos'
     | '/_authenticated/'
     | '/_authenticated/soci/$id'
     | '/_authenticated/soci/gestisci'
@@ -179,6 +191,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/productos': {
+      id: '/_authenticated/productos'
+      path: '/productos'
+      fullPath: '/productos'
+      preLoaderRoute: typeof AuthenticatedProductosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/piani': {
@@ -228,6 +247,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedPianiRoute: typeof AuthenticatedPianiRoute
+  AuthenticatedProductosRoute: typeof AuthenticatedProductosRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedSociIdRoute: typeof AuthenticatedSociIdRoute
   AuthenticatedSociGestisciRoute: typeof AuthenticatedSociGestisciRoute
@@ -237,6 +257,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPianiRoute: AuthenticatedPianiRoute,
+  AuthenticatedProductosRoute: AuthenticatedProductosRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedSociIdRoute: AuthenticatedSociIdRoute,
   AuthenticatedSociGestisciRoute: AuthenticatedSociGestisciRoute,

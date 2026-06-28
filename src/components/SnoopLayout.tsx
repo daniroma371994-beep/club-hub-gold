@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Home, Users, BadgeEuro, LogOut, Menu, X } from "lucide-react";
+import { Home, Users, BadgeEuro, Package, LogOut, Menu, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import logoAsset from "@/assets/snoop-logo.png.asset.json";
@@ -10,6 +10,7 @@ import { VoiceAgent } from "@/components/VoiceAgent";
 const NAV = [
   { to: "/", label: "Inicio", icon: Home, adminOnly: false },
   { to: "/soci", label: "Socios", icon: Users, adminOnly: false },
+  { to: "/productos", label: "Productos", icon: Package, adminOnly: false },
   { to: "/piani", label: "Cuotas", icon: BadgeEuro, adminOnly: true },
 ];
 
