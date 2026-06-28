@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SnoopLayout } from "@/components/SnoopLayout";
 import logo from "@/assets/meduza-xxiii-logo.png.asset.json";
-import { Users, BadgeEuro } from "lucide-react";
+import { Package, BadgeEuro } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/")({
   component: Home,
@@ -27,11 +27,11 @@ function Home() {
 
         <div className="mt-10 grid grid-cols-2 gap-3 w-full max-w-sm">
           <Link
-            to="/soci"
+            to="/productos"
             className="flex flex-col items-center gap-2 px-4 py-5 rounded-xl border border-neon/40 bg-card/60 backdrop-blur text-neon hover:bg-neon/10 transition"
           >
-            <Users className="w-6 h-6" />
-            <span className="text-xs uppercase tracking-[0.25em] font-display">Socios</span>
+            <Package className="w-6 h-6" />
+            <span className="text-xs uppercase tracking-[0.25em] font-display">Productos</span>
           </Link>
           <Link
             to="/piani"
