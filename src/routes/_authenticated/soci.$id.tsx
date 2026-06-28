@@ -161,18 +161,54 @@ function SocioDetail() {
                 <h1 className="font-display text-3xl text-foreground mt-3">{member.first_name} {member.last_name}</h1>
                 <div className="text-sm text-muted-foreground mt-1">{member.dni_number}</div>
               </div>
-              <span className={`text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-full border ${badge.color}`}>{badge.label}</span>
+              <div className="flex flex-col items-end gap-2">
+                <span className={`text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-full border ${badge.color}`}>{badge.label}</span>
+                {!editing && (
+                  <button
+                    onClick={() => { setForm(member); setEditing(true); }}
+                    className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest px-3 py-1.5 rounded-full border border-neon/40 text-neon hover:bg-neon/10"
+                  >
+                    <Pencil className="w-3 h-3" /> Editar
+                  </button>
+                )}
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-6 text-sm">
-              <Stat label="F. nacimiento" value={member.birth_date} />
-              <Stat label="Ciudad" value={member.city ?? "—"} />
-              <Stat label="Teléfono" value={member.phone ?? "—"} />
-              <Stat label="Alta" value={member.joined_at} />
-              <Stat label="Caducidad" value={member.expires_at} />
-              <Stat label="Cuota" value={plan ? `${plan.name} · ${formatPrice(plan.price_cents)}` : "—"} />
-            </div>
+            {editing ? (
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-3">
+                <EditField label="Nombre" value={form.first_name ?? ""} onChange={(v) => setForm({ ...form, first_name: v })} />
+                <EditField label="Apellido" value={form.last_name ?? ""} onChange={(v) => setForm({ ...form, last_name: v })} />
+                <EditField label="DNI / NIE" value={form.dni_number ?? ""} onChange={(v) => setForm({ ...form, dni_number: v })} />
+                <EditField label="F. nacimiento" type="date" value={form.birth_date ?? ""} onChange={(v) => setForm({ ...form, birth_date: v })} />
+                <EditField label="Ciudad" value={form.city ?? ""} onChange={(v) => setForm({ ...form, city: v })} />
+                <EditField label="Teléfono" value={form.phone ?? ""} onChange={(v) => setForm({ ...form, phone: v })} />
+                <div className="md:col-span-2">
+                  <EditField label="Email" type="email" value={form.email ?? ""} onChange={(v) => setForm({ ...form, email: v })} />
+                </div>
+                <div className="md:col-span-2 flex justify-end gap-2 mt-1">
+                  <button onClick={() => setEditing(false)}
+                    className="px-3 py-2 text-xs uppercase tracking-widest border border-border rounded-lg text-muted-foreground hover:text-foreground">
+                    <X className="w-3 h-3 inline mr-1" /> Cancelar
+                  </button>
+                  <button onClick={saveEdit} disabled={savingEdit}
+                    className="px-4 py-2 text-xs uppercase tracking-widest bg-gradient-neon text-primary-foreground rounded-lg font-semibold glow-neon disabled:opacity-50">
+                    <Save className="w-3 h-3 inline mr-1" /> {savingEdit ? "Guardando…" : "Guardar"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-6 text-sm">
+                <Stat label="F. nacimiento" value={member.birth_date} />
+                <Stat label="Ciudad" value={member.city ?? "—"} />
+                <Stat label="Teléfono" value={member.phone ?? "—"} />
+                <Stat label="Email" value={member.email ?? "—"} />
+                <Stat label="Alta" value={member.joined_at} />
+                <Stat label="Caducidad" value={member.expires_at} />
+                <Stat label="Cuota" value={plan ? `${plan.name} · ${formatPrice(plan.price_cents)}` : "—"} />
+              </div>
+            )}
           </div>
+
 
           {/* DNI */}
           <div className="bg-card/60 border border-neon/20 rounded-2xl p-6">
