@@ -211,6 +211,80 @@ export type Database = {
         }
         Relationships: []
       }
+      product_categories: {
+        Row: {
+          created_at: string
+          id: string
+          is_smokeable: boolean
+          name: string
+          unit_type: Database["public"]["Enums"]["product_unit"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_smokeable?: boolean
+          name: string
+          unit_type?: Database["public"]["Enums"]["product_unit"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_smokeable?: boolean
+          name?: string
+          unit_type?: Database["public"]["Enums"]["product_unit"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          buy_price: number
+          category_id: string
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          sell_price: number
+          stock: number
+          strain: Database["public"]["Enums"]["strain_type"] | null
+          updated_at: string
+        }
+        Insert: {
+          buy_price?: number
+          category_id: string
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          sell_price?: number
+          stock?: number
+          strain?: Database["public"]["Enums"]["strain_type"] | null
+          updated_at?: string
+        }
+        Update: {
+          buy_price?: number
+          category_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          sell_price?: number
+          stock?: number
+          strain?: Database["public"]["Enums"]["strain_type"] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "product_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -331,6 +405,8 @@ export type Database = {
         | "use_cash"
       app_role: "admin" | "collaborator"
       product_type: "per_gram" | "per_piece"
+      product_unit: "gr" | "unit"
+      strain_type: "indica" | "sativa" | "hibrida"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -467,6 +543,8 @@ export const Constants = {
       ],
       app_role: ["admin", "collaborator"],
       product_type: ["per_gram", "per_piece"],
+      product_unit: ["gr", "unit"],
+      strain_type: ["indica", "sativa", "hibrida"],
     },
   },
 } as const
