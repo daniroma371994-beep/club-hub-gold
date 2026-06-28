@@ -44,6 +44,31 @@ function SocioDetail() {
   const [qrUrl, setQrUrl] = useState<string>("");
   const [renewing, setRenewing] = useState(false);
   const [newPlanId, setNewPlanId] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState<Partial<Member>>({});
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  async function saveEdit() {
+    if (!member) return;
+    setSavingEdit(true);
+    const { error } = await supabase
+      .from("members")
+      .update({
+        first_name: form.first_name?.trim(),
+        last_name: form.last_name?.trim(),
+        birth_date: form.birth_date,
+        dni_number: form.dni_number?.trim(),
+        city: form.city?.trim() || null,
+        phone: form.phone?.trim() || null,
+        email: form.email?.trim() || null,
+      })
+      .eq("id", member.id);
+    setSavingEdit(false);
+    if (error) return toast.error(error.message);
+    toast.success("Datos actualizados");
+    setEditing(false);
+    load();
+  }
 
   async function load() {
     const { data: m } = await supabase.from("members").select("*").eq("id", id).maybeSingle();
