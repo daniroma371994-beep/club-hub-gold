@@ -294,7 +294,32 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <div className="text-[10px] uppercase tracking-[0.25em] text-neon-dim">{label}</div>
-      <div className="mt-1 text-foreground">{value}</div>
+      <div className="mt-1 text-foreground break-words">{value}</div>
     </div>
   );
 }
+
+function EditField({
+  label,
+  value,
+  onChange,
+  type = "text",
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  type?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="text-[10px] uppercase tracking-[0.25em] text-neon-dim">{label}</span>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1 w-full bg-input border border-border rounded-lg px-3 py-2 text-sm focus:border-neon outline-none"
+      />
+    </label>
+  );
+}
+
