@@ -20,6 +20,7 @@ import { Route as AuthenticatedSociNuovoRouteImport } from './routes/_authentica
 import { Route as AuthenticatedSociGestisciRouteImport } from './routes/_authenticated/soci.gestisci'
 import { Route as AuthenticatedSociIdRouteImport } from './routes/_authenticated/soci.$id'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
+import { Route as AuthenticatedSociIdPedidoRouteImport } from './routes/_authenticated/soci.$id.pedido'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -77,6 +78,12 @@ const LovableEmailQueueProcessRoute =
     path: '/lovable/email/queue/process',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AuthenticatedSociIdPedidoRoute =
+  AuthenticatedSociIdPedidoRouteImport.update({
+    id: '/pedido',
+    path: '/pedido',
+    getParentRoute: () => AuthenticatedSociIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -84,10 +91,11 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/piani': typeof AuthenticatedPianiRoute
   '/productos': typeof AuthenticatedProductosRoute
-  '/soci/$id': typeof AuthenticatedSociIdRoute
+  '/soci/$id': typeof AuthenticatedSociIdRouteWithChildren
   '/soci/gestisci': typeof AuthenticatedSociGestisciRoute
   '/soci/nuovo': typeof AuthenticatedSociNuovoRoute
   '/soci/': typeof AuthenticatedSociIndexRoute
+  '/soci/$id/pedido': typeof AuthenticatedSociIdPedidoRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesByTo {
@@ -96,10 +104,11 @@ export interface FileRoutesByTo {
   '/piani': typeof AuthenticatedPianiRoute
   '/productos': typeof AuthenticatedProductosRoute
   '/': typeof AuthenticatedIndexRoute
-  '/soci/$id': typeof AuthenticatedSociIdRoute
+  '/soci/$id': typeof AuthenticatedSociIdRouteWithChildren
   '/soci/gestisci': typeof AuthenticatedSociGestisciRoute
   '/soci/nuovo': typeof AuthenticatedSociNuovoRoute
   '/soci': typeof AuthenticatedSociIndexRoute
+  '/soci/$id/pedido': typeof AuthenticatedSociIdPedidoRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesById {
@@ -110,10 +119,11 @@ export interface FileRoutesById {
   '/_authenticated/piani': typeof AuthenticatedPianiRoute
   '/_authenticated/productos': typeof AuthenticatedProductosRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
-  '/_authenticated/soci/$id': typeof AuthenticatedSociIdRoute
+  '/_authenticated/soci/$id': typeof AuthenticatedSociIdRouteWithChildren
   '/_authenticated/soci/gestisci': typeof AuthenticatedSociGestisciRoute
   '/_authenticated/soci/nuovo': typeof AuthenticatedSociNuovoRoute
   '/_authenticated/soci/': typeof AuthenticatedSociIndexRoute
+  '/_authenticated/soci/$id/pedido': typeof AuthenticatedSociIdPedidoRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRouteTypes {
@@ -128,6 +138,7 @@ export interface FileRouteTypes {
     | '/soci/gestisci'
     | '/soci/nuovo'
     | '/soci/'
+    | '/soci/$id/pedido'
     | '/lovable/email/queue/process'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -140,6 +151,7 @@ export interface FileRouteTypes {
     | '/soci/gestisci'
     | '/soci/nuovo'
     | '/soci'
+    | '/soci/$id/pedido'
     | '/lovable/email/queue/process'
   id:
     | '__root__'
@@ -153,6 +165,7 @@ export interface FileRouteTypes {
     | '/_authenticated/soci/gestisci'
     | '/_authenticated/soci/nuovo'
     | '/_authenticated/soci/'
+    | '/_authenticated/soci/$id/pedido'
     | '/lovable/email/queue/process'
   fileRoutesById: FileRoutesById
 }
@@ -242,14 +255,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/soci/$id/pedido': {
+      id: '/_authenticated/soci/$id/pedido'
+      path: '/pedido'
+      fullPath: '/soci/$id/pedido'
+      preLoaderRoute: typeof AuthenticatedSociIdPedidoRouteImport
+      parentRoute: typeof AuthenticatedSociIdRoute
+    }
   }
 }
+
+interface AuthenticatedSociIdRouteChildren {
+  AuthenticatedSociIdPedidoRoute: typeof AuthenticatedSociIdPedidoRoute
+}
+
+const AuthenticatedSociIdRouteChildren: AuthenticatedSociIdRouteChildren = {
+  AuthenticatedSociIdPedidoRoute: AuthenticatedSociIdPedidoRoute,
+}
+
+const AuthenticatedSociIdRouteWithChildren =
+  AuthenticatedSociIdRoute._addFileChildren(AuthenticatedSociIdRouteChildren)
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedPianiRoute: typeof AuthenticatedPianiRoute
   AuthenticatedProductosRoute: typeof AuthenticatedProductosRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
-  AuthenticatedSociIdRoute: typeof AuthenticatedSociIdRoute
+  AuthenticatedSociIdRoute: typeof AuthenticatedSociIdRouteWithChildren
   AuthenticatedSociGestisciRoute: typeof AuthenticatedSociGestisciRoute
   AuthenticatedSociNuovoRoute: typeof AuthenticatedSociNuovoRoute
   AuthenticatedSociIndexRoute: typeof AuthenticatedSociIndexRoute
@@ -259,7 +290,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPianiRoute: AuthenticatedPianiRoute,
   AuthenticatedProductosRoute: AuthenticatedProductosRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
-  AuthenticatedSociIdRoute: AuthenticatedSociIdRoute,
+  AuthenticatedSociIdRoute: AuthenticatedSociIdRouteWithChildren,
   AuthenticatedSociGestisciRoute: AuthenticatedSociGestisciRoute,
   AuthenticatedSociNuovoRoute: AuthenticatedSociNuovoRoute,
   AuthenticatedSociIndexRoute: AuthenticatedSociIndexRoute,

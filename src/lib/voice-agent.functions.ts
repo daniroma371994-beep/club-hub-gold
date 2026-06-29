@@ -407,3 +407,72 @@ Fecha de hoy: ${todayISO()}.`;
 
     return { reply: text || "Hecho.", navigateTo };
   });
+
+// ---------- Order item parsing ----------
+const ParseOrderInput = z.object({
+  transcript: z.string().min(1),
+  products: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      unit_type: z.string(),
+      sell_price: z.number(),
+      stock: z.number(),
+    }),
+  ).default([]),
+});
+
+const ParsedItemsSchema = z.object({
+  items: z.array(
+    z.object({
+      product_id: z.string().describe("ID exacto del producto del catálogo, o vacío si no hay match."),
+      product_name: z.string(),
+      quantity: z.number().positive(),
+      unit_type: z.enum(["gr", "unit"]),
+    }),
+  ),
+});
+
+export const parseOrderItems = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => ParseOrderInput.parse(d))
+  .handler(async ({ data }) => {
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key) throw new Error("Missing LOVABLE_API_KEY");
+    const gateway = createLovableAiGatewayProvider(key);
+    const model = gateway("google/gemini-2.5-flash");
+
+    const catalog = data.products
+      .map((p) => `- id=${p.id} | "${p.name}" | unidad=${p.unit_type} | precio=${(p.sell_price / 100).toFixed(2)}€ | stock=${p.stock}`)
+      .join("\n");
+
+    const system = `Extraes pedidos de un socio dictados en español/italiano.
+Devuelves SOLO productos que existan en el catálogo. Para cada item:
+- product_id: el id EXACTO del catálogo. Si no hay match claro, item se omite.
+- quantity: cantidad numérica. Si el producto se vende en "gr", la cantidad es en gramos (acepta "medio gramo"=0.5, "un gramo"=1, "dos gramos"=2, "3.5"=3.5, "cinco euros de X" → calcula gramos = euros/precio_por_gramo). Si es "unit", cantidad entera de unidades.
+- unit_type: "gr" o "unit", coincidente con el catálogo.
+
+Catálogo disponible:
+${catalog || "(vacío)"}
+
+Ejemplos:
+- "un gramo de amnesia y dos cervezas" → [{amnesia, 1, gr}, {cerveza, 2, unit}]
+- "diez euros de critical" si critical cuesta 10€/g → [{critical, 1, gr}]
+- "medio de og kush" → [{og kush, 0.5, gr}]`;
+
+    try {
+      const { object } = await generateObject({
+        model,
+        system,
+        schema: ParsedItemsSchema,
+        prompt: `Dictado: "${data.transcript}"`,
+      });
+      // Validate ids exist in catalog
+      const validIds = new Set(data.products.map((p) => p.id));
+      const items = object.items.filter((i) => validIds.has(i.product_id));
+      return { items };
+    } catch (e: any) {
+      console.error("parseOrderItems failed:", e?.message);
+      return { items: [] as Array<{ product_id: string; product_name: string; quantity: number; unit_type: "gr" | "unit" }> };
+    }
+  });
