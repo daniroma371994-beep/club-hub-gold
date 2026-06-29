@@ -123,7 +123,7 @@ function SocioDetail() {
   }
 
   function nuevoPedido() {
-    toast.info("Pedidos: próximamente disponible para " + (member?.first_name ?? "este socio"));
+    nav({ to: "/soci/$id/pedido", params: { id } });
   }
 
   useEffect(() => {
