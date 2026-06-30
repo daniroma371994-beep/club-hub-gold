@@ -40,6 +40,7 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
   const processingRef = useRef(false);
   const speakingRef = useRef(false);
   const greetedRef = useRef(false);
+  const muteUntilRef = useRef(0);
   const navigate = useNavigate();
   const location = useLocation();
   const locRef = useRef(location);
@@ -69,6 +70,7 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
       audioRef.current = audio;
       audio.onended = () => {
         speakingRef.current = false;
+        muteUntilRef.current = Date.now() + 700; // ignora eco residual
         setStatus(wantOnRef.current ? "listening" : "off");
       };
       await audio.play().catch(() => {});
@@ -97,9 +99,7 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
       // --- 1) Global navigation intents (always win — user said a section name) ---
       const navHit = NAV_INTENTS.find((n) => n.rx.test(lower));
       if (navHit && path !== navHit.to) {
-        const r = `Voy a ${navHit.label}.`;
-        setMessages((m) => [...m, { role: "assistant", content: r }]);
-        speak(r); // don't await — navigate immediately
+        setMessages((m) => [...m, { role: "assistant", content: `→ ${navHit.label}` }]);
         navigate({ to: navHit.to as any });
         return;
       }
@@ -107,6 +107,7 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
       // --- 2) Productos: any voice = category filter OR search ---
       if (path === "/productos") {
         window.dispatchEvent(new CustomEvent("snoop:productos-voice", { detail: { text } }));
+        setMessages((m) => [...m, { role: "assistant", content: `→ ${text}` }]);
         return;
       }
 
@@ -115,9 +116,7 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
       if (catMatch && /\b(flores?|extracci|hash|comestibles?|bebidas?|merch|vapes?|cigarr|joints?|prerolls?|edibles?)/i.test(catMatch[1])) {
         const cat = catMatch[1].trim();
         try { window.localStorage.setItem("snoop:productos-pending", JSON.stringify({ text: cat, at: Date.now() })); } catch {}
-        const r = `Abro ${cat} en productos.`;
-        setMessages((m) => [...m, { role: "assistant", content: r }]);
-        speak(r);
+        setMessages((m) => [...m, { role: "assistant", content: `→ Productos · ${cat}` }]);
         navigate({ to: "/productos" });
         return;
       }
@@ -127,9 +126,7 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
         const payload = JSON.stringify({ text, at: Date.now() });
         window.localStorage.setItem("snoop:new-member-transcript", payload);
         window.dispatchEvent(new StorageEvent("storage", { key: "snoop:new-member-transcript", newValue: payload }));
-        const reply = "Perfecto, voy rellenando.";
-        setMessages((m) => [...m, { role: "assistant", content: reply }]);
-        await speak(reply);
+        setMessages((m) => [...m, { role: "assistant", content: "→ rellenando" }]);
         return;
       }
 
@@ -139,9 +136,7 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
           .replace(/[.,;:!?]+$/g, "")
           .trim();
         window.dispatchEvent(new CustomEvent("snoop:search-members", { detail: { query: cleaned } }));
-        const reply = `Buscando ${cleaned}.`;
-        setMessages((m) => [...m, { role: "assistant", content: reply }]);
-        await speak(reply);
+        setMessages((m) => [...m, { role: "assistant", content: `→ Buscando ${cleaned}` }]);
         return;
       }
 
@@ -153,12 +148,12 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
       if (path.startsWith("/soci/") && path !== "/soci/nuovo" && path !== "/soci/gestisci") {
         if (/(hacer|nuevo|crear)\s+(un\s+)?(pedido|orden|ordine)/i.test(lower) || /^(pedido|ordine|orden)\.?$/i.test(lower.trim())) {
           window.dispatchEvent(new CustomEvent("snoop:member-action", { detail: { action: "order" } }));
-          const r = "Abro un pedido."; setMessages((m) => [...m, { role: "assistant", content: r }]); await speak(r);
+          setMessages((m) => [...m, { role: "assistant", content: "→ pedido" }]);
           return;
         }
         if (/(renovar|renueva|rinnova)/i.test(lower)) {
           window.dispatchEvent(new CustomEvent("snoop:member-action", { detail: { action: "renew" } }));
-          const r = "Renovando."; setMessages((m) => [...m, { role: "assistant", content: r }]); await speak(r);
+          setMessages((m) => [...m, { role: "assistant", content: "→ renovar" }]);
           return;
         }
         if (/(volver|atr[aá]s|indietro|back)/i.test(lower)) {
@@ -192,6 +187,11 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
     rec.interimResults = true;
     rec.lang = "es-ES";
     rec.onresult = (e: any) => {
+      // HARD MUTE while Snoop habla (y un pequeño margen después) para evitar
+      // que el micro recoja su propia voz y se dispare en bucle ("hola hola hola").
+      if (speakingRef.current || Date.now() < muteUntilRef.current) {
+        return;
+      }
       let finalText = "";
       let interimText = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -200,16 +200,13 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
         if (r.isFinal) finalText += t + " ";
         else interimText += t;
       }
-      // Barge-in: if Snoop is speaking and user starts talking, cut audio.
-      if ((interimText.trim().length > 2 || finalText.trim()) && speakingRef.current) {
-        stopSpeaking();
-      }
       if (interimText) setInterim(interimText);
       if (finalText.trim()) {
         const txt = finalText.trim();
-        // wake word stripping
         const cleaned = txt.replace(WAKE_RX, "").trim();
         if (!cleaned) return;
+        // Ignora frases muy cortas que suelen ser ruido / eco
+        if (cleaned.length < 2) return;
         handleTranscript(cleaned);
       }
     };
@@ -255,9 +252,9 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
     try { rec.start(); } catch {}
     if (!greetedRef.current) {
       greetedRef.current = true;
-      const greet = `¡Hola${clubName ? " " + clubName : ""}! ¿En qué te puedo ayudar?`;
+      const greet = `Listo${clubName ? ", " + clubName : ""}. Dime.`;
       setMessages((m) => [...m, { role: "assistant", content: greet }]);
-      speak(greet);
+      // No TTS aquí — evita que el micro recoja el saludo y entre en bucle.
     }
   }, [clubName, ensureRec, speak]);
 
