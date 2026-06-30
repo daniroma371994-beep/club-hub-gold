@@ -92,8 +92,37 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
 
     try {
       const path = locRef.current.pathname;
+      const lower = text.toLowerCase();
 
-      // Route-specific shortcuts
+      // --- 1) Global navigation intents (always win — user said a section name) ---
+      const navHit = NAV_INTENTS.find((n) => n.rx.test(lower));
+      if (navHit && path !== navHit.to) {
+        const r = `Voy a ${navHit.label}.`;
+        setMessages((m) => [...m, { role: "assistant", content: r }]);
+        speak(r); // don't await — navigate immediately
+        navigate({ to: navHit.to as any });
+        return;
+      }
+
+      // --- 2) Productos: any voice = category filter OR search ---
+      if (path === "/productos") {
+        window.dispatchEvent(new CustomEvent("snoop:productos-voice", { detail: { text } }));
+        return;
+      }
+
+      // From elsewhere: "categoría flores", "ver flores en productos", etc.
+      const catMatch = lower.match(/(?:categor[ií]a|ver|mostrar|abre|abrir|ir a|ve a)\s+([a-záéíóúñ\s]+?)(?:\s+en\s+productos)?\.?$/i);
+      if (catMatch && /\b(flores?|extracci|hash|comestibles?|bebidas?|merch|vapes?|cigarr|joints?|prerolls?|edibles?)/i.test(catMatch[1])) {
+        const cat = catMatch[1].trim();
+        try { window.localStorage.setItem("snoop:productos-pending", JSON.stringify({ text: cat, at: Date.now() })); } catch {}
+        const r = `Abro ${cat} en productos.`;
+        setMessages((m) => [...m, { role: "assistant", content: r }]);
+        speak(r);
+        navigate({ to: "/productos" });
+        return;
+      }
+
+      // --- 3) Route-specific shortcuts ---
       if (path === "/soci/nuovo") {
         const payload = JSON.stringify({ text, at: Date.now() });
         window.localStorage.setItem("snoop:new-member-transcript", payload);
@@ -122,7 +151,6 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
       }
 
       if (path.startsWith("/soci/") && path !== "/soci/nuovo" && path !== "/soci/gestisci") {
-        const lower = text.toLowerCase();
         if (/(hacer|nuevo|crear)\s+(un\s+)?(pedido|orden|ordine)/i.test(lower) || /^(pedido|ordine|orden)\.?$/i.test(lower.trim())) {
           window.dispatchEvent(new CustomEvent("snoop:member-action", { detail: { action: "order" } }));
           const r = "Abro un pedido."; setMessages((m) => [...m, { role: "assistant", content: r }]); await speak(r);
@@ -139,18 +167,7 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
         }
       }
 
-      // Navigation intents (work from anywhere, very fast)
-      const lower = text.toLowerCase();
-      const hit = NAV_INTENTS.find((n) => n.rx.test(lower));
-      if (hit) {
-        const r = `Voy a ${hit.label}.`;
-        setMessages((m) => [...m, { role: "assistant", content: r }]);
-        await speak(r);
-        navigate({ to: hit.to as any });
-        return;
-      }
-
-      // Fallback: full agent
+      // --- 4) Fallback: full agent ---
       const { reply, navigateTo } = await respond({
         data: { transcript: text, history: messagesRef.current.slice(-20) },
       });
