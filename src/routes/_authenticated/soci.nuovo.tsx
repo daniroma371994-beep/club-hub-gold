@@ -406,75 +406,97 @@ function NewSocio() {
           <div className="grid md:grid-cols-2 gap-4">
             <Inp label="Nombre *" value={form.first_name} onChange={(v) => set("first_name", v)} />
             <Inp label="Apellidos *" value={form.last_name} onChange={(v) => set("last_name", v)} />
-            <Inp label="Fecha de nacimiento *" type="date" value={form.birth_date} onChange={(v) => set("birth_date", v)} />
-            <Inp label="Número de DNI / NIE *" value={form.dni_number} onChange={(v) => set("dni_number", v.toUpperCase())} placeholder="12345678A" />
-            <Inp label="Ciudad *" value={form.city} onChange={(v) => set("city", v)} />
-            <Inp label="Teléfono *" type="tel" value={form.phone} onChange={(v) => set("phone", v)} />
-            <Inp label="Email" type="email" value={form.email} onChange={(v) => set("email", v)} placeholder="socio@email.com" />
+            {fieldCfg.birth_date.visible && (
+              <Inp label={`Fecha de nacimiento${fieldCfg.birth_date.required ? " *" : ""}`} type="date" value={form.birth_date} onChange={(v) => set("birth_date", v)} />
+            )}
+            {fieldCfg.dni_number.visible && (
+              <Inp label={`Número de DNI / NIE${fieldCfg.dni_number.required ? " *" : ""}`} value={form.dni_number} onChange={(v) => set("dni_number", v.toUpperCase())} placeholder="12345678A" />
+            )}
+            {fieldCfg.address.visible && (
+              <Inp label={`Dirección${fieldCfg.address.required ? " *" : ""}`} value={form.address} onChange={(v) => set("address", v)} />
+            )}
+            {fieldCfg.city.visible && (
+              <Inp label={`Ciudad${fieldCfg.city.required ? " *" : ""}`} value={form.city} onChange={(v) => set("city", v)} />
+            )}
+            {fieldCfg.postal_code.visible && (
+              <Inp label={`Código postal${fieldCfg.postal_code.required ? " *" : ""}`} value={form.postal_code} onChange={(v) => set("postal_code", v)} />
+            )}
+            {fieldCfg.phone.visible && (
+              <Inp label={`Teléfono${fieldCfg.phone.required ? " *" : ""}`} type="tel" value={form.phone} onChange={(v) => set("phone", v)} />
+            )}
+            {fieldCfg.email.visible && (
+              <Inp label={`Email${fieldCfg.email.required ? " *" : ""}`} type="email" value={form.email} onChange={(v) => set("email", v)} placeholder="socio@email.com" />
+            )}
           </div>
         </section>
 
         {/* Plan */}
-        <section>
-          <h3 className="text-[11px] uppercase tracking-[0.3em] text-neon mb-4">Cuota</h3>
-          <div className="grid sm:grid-cols-3 gap-3">
-            {plans.length === 0 && <div className="text-muted-foreground text-sm col-span-3">No hay cuotas. Pide al admin que las cree.</div>}
-            {plans.map((p) => {
-              const active = form.plan_id === p.id;
-              return (
-                <button key={p.id} type="button" onClick={() => set("plan_id", p.id)}
-                  className={`text-left rounded-xl p-4 border transition ${active ? "border-neon bg-neon/10 glow-neon-soft" : "border-border bg-input hover:border-neon/50"}`}>
-                  <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">{p.duration_days} días</div>
-                  <div className="font-display text-base mt-1">{p.name}</div>
-                  <div className={`mt-2 font-display text-xl ${active ? "text-neon" : "text-foreground"}`}>{formatPrice(p.price_cents)}</div>
-                </button>
-              );
-            })}
-          </div>
-        </section>
+        {fieldCfg.plan.visible && (
+          <section>
+            <h3 className="text-[11px] uppercase tracking-[0.3em] text-neon mb-4">Cuota{fieldCfg.plan.required ? " *" : ""}</h3>
+            <div className="grid sm:grid-cols-3 gap-3">
+              {plans.length === 0 && <div className="text-muted-foreground text-sm col-span-3">No hay cuotas. Pide al admin que las cree.</div>}
+              {plans.map((p) => {
+                const active = form.plan_id === p.id;
+                return (
+                  <button key={p.id} type="button" onClick={() => set("plan_id", p.id)}
+                    className={`text-left rounded-xl p-4 border transition ${active ? "border-neon bg-neon/10 glow-neon-soft" : "border-border bg-input hover:border-neon/50"}`}>
+                    <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">{p.duration_days} días</div>
+                    <div className="font-display text-base mt-1">{p.name}</div>
+                    <div className={`mt-2 font-display text-xl ${active ? "text-neon" : "text-foreground"}`}>{formatPrice(p.price_cents)}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* DNI photo */}
-        <section>
-          <h3 className="text-[11px] uppercase tracking-[0.3em] text-neon mb-4">Foto del DNI (frontal) *</h3>
-          {form.dni_preview ? (
-            <div className="relative inline-block">
-              <img src={form.dni_preview} alt="DNI" className="max-w-full max-h-64 rounded-lg border border-neon/30" />
-              <label className="absolute bottom-2 right-2 cursor-pointer bg-card/90 border border-neon/40 text-neon text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-md">
-                Cambiar
+        {fieldCfg.dni_photo.visible && (
+          <section>
+            <h3 className="text-[11px] uppercase tracking-[0.3em] text-neon mb-4">Foto del DNI (frontal){fieldCfg.dni_photo.required ? " *" : ""}</h3>
+            {form.dni_preview ? (
+              <div className="relative inline-block">
+                <img src={form.dni_preview} alt="DNI" className="max-w-full max-h-64 rounded-lg border border-neon/30" />
+                <label className="absolute bottom-2 right-2 cursor-pointer bg-card/90 border border-neon/40 text-neon text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-md">
+                  Cambiar
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handleDniFile(e.target.files[0])} />
+                </label>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center gap-2 h-44 rounded-lg border-2 border-dashed border-neon/30 hover:border-neon/60 hover:bg-neon/5 transition cursor-pointer">
+                <Camera className="w-8 h-8 text-neon" />
+                <div className="text-sm text-foreground font-display">Tomar foto / Subir imagen</div>
+                <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Se comprimirá automáticamente</div>
                 <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handleDniFile(e.target.files[0])} />
               </label>
-            </div>
-          ) : (
-            <label className="flex flex-col items-center justify-center gap-2 h-44 rounded-lg border-2 border-dashed border-neon/30 hover:border-neon/60 hover:bg-neon/5 transition cursor-pointer">
-              <Camera className="w-8 h-8 text-neon" />
-              <div className="text-sm text-foreground font-display">Tomar foto / Subir imagen</div>
-              <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Se comprimirá automáticamente</div>
-              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handleDniFile(e.target.files[0])} />
-            </label>
-          )}
-        </section>
+            )}
+          </section>
+        )}
 
         {/* Contrato + firma (único paso separado) */}
-        <section className="border-t border-border pt-6">
-          <h3 className="text-[11px] uppercase tracking-[0.3em] text-neon mb-4">Contrato y firma — versión {CONTRACT_VERSION}</h3>
-          <div
-            onScroll={(e) => {
-              const el = e.currentTarget;
-              if (el.scrollTop + el.clientHeight >= el.scrollHeight - 10) set("contract_read", true);
-            }}
-            className="bg-input border border-border rounded-lg p-5 h-56 overflow-y-auto text-sm leading-relaxed whitespace-pre-wrap text-foreground/90"
-          >
-            {CONTRACT_TEXT_ES}
-          </div>
-          <label className="flex items-start gap-3 text-sm mt-3">
-            <input type="checkbox" checked={form.contract_read} onChange={(e) => set("contract_read", e.target.checked)} className="mt-1 accent-[oklch(0.86_0.28_145)]" />
-            <span>He leído y acepto íntegramente las normas, el contrato y la política de protección de datos.</span>
-          </label>
-          <div className="mt-4">
-            <div className="text-[10px] uppercase tracking-[0.3em] text-neon-dim mb-2">Firma del socio</div>
-            <SignaturePad ref={sigRef} height={220} />
-          </div>
-        </section>
+        {fieldCfg.signature.visible && (
+          <section className="border-t border-border pt-6">
+            <h3 className="text-[11px] uppercase tracking-[0.3em] text-neon mb-4">Contrato y firma — versión {CONTRACT_VERSION}</h3>
+            <div
+              onScroll={(e) => {
+                const el = e.currentTarget;
+                if (el.scrollTop + el.clientHeight >= el.scrollHeight - 10) set("contract_read", true);
+              }}
+              className="bg-input border border-border rounded-lg p-5 h-56 overflow-y-auto text-sm leading-relaxed whitespace-pre-wrap text-foreground/90"
+            >
+              {CONTRACT_TEXT_ES}
+            </div>
+            <label className="flex items-start gap-3 text-sm mt-3">
+              <input type="checkbox" checked={form.contract_read} onChange={(e) => set("contract_read", e.target.checked)} className="mt-1 accent-[oklch(0.86_0.28_145)]" />
+              <span>He leído y acepto íntegramente las normas, el contrato y la política de protección de datos.</span>
+            </label>
+            <div className="mt-4">
+              <div className="text-[10px] uppercase tracking-[0.3em] text-neon-dim mb-2">Firma del socio</div>
+              <SignaturePad ref={sigRef} height={220} />
+            </div>
+          </section>
+        )}
 
         <div className="flex items-center justify-end pt-4 border-t border-border">
           <button type="button" disabled={saving} onClick={submit}
