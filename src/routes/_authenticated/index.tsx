@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SnoopLayout } from "@/components/SnoopLayout";
 import fallbackLogo from "@/assets/meduza-xxiii-logo.png.asset.json";
-import { Package, BadgeEuro, Users, Building2, ShieldCheck } from "lucide-react";
+import { Package, BadgeEuro, Users, Building2, ShieldCheck, Banknote } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/_authenticated/")({
