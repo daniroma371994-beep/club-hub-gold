@@ -3,10 +3,11 @@ import { SnoopLayout } from "@/components/SnoopLayout";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Package, Tag, Plus, Trash2, Pencil, Save, X, Mic, Search, Loader2 } from "lucide-react";
+import { Package, Tag, Plus, Trash2, Pencil, Save, X, Mic, Search, Loader2, Sparkles, ImageIcon } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { transcribeAudio } from "@/lib/voice-agent.functions";
 import { parseProductCommand } from "@/lib/products-voice.functions";
+import { enrichProduct } from "@/lib/products-enrich.functions";
 
 export const Route = createFileRoute("/_authenticated/productos")({
   component: ProductosPage,
