@@ -9,18 +9,22 @@ type Status = "off" | "listening" | "processing" | "speaking";
 type Msg = { role: "user" | "assistant"; content: string };
 
 // Client-side navigation intents (so home wake word can dispatch commands quickly).
-const NAV_INTENTS: Array<{ to: string; rx: RegExp; label: string }> = [
-  { to: "/productos", rx: /\b(producto|productos|prodotti|inventario|stock)\b/i, label: "Productos" },
-  { to: "/caja", rx: /\b(caja|cassa|cash|ventas del d[ií]a|informe)\b/i, label: "Caja" },
-  { to: "/ajustes", rx: /\b(ajustes|configuraci[oó]n|settings|impostazioni)\b/i, label: "Ajustes" },
-  { to: "/ajustes/cuotas", rx: /\b(cuotas|cuotas? mensual|planes)\b/i, label: "Cuotas" },
-  { to: "/ajustes/colaboradores", rx: /\b(colaboradores|colaborador|colaboradoras|staff|equipo)\b/i, label: "Colaboradores" },
+// Order matters: more specific intents first.
+const NAV_INTENTS: Array<{ to: string; rx: RegExp; label: string; tab?: string }> = [
+  { to: "/productos", rx: /\b(crear?|nuevo|alta|nueva|a[nñ]adir|agregar|registrar)\s+(un\s+)?producto\b/i, label: "Crear producto", tab: "nuevo" },
+  { to: "/productos", rx: /\b(crear?|nueva|alta|a[nñ]adir|agregar)\s+(una\s+)?categor[ií]a\b/i, label: "Crear categoría", tab: "categoria" },
   { to: "/soci/nuovo", rx: /\b(nuevo socio|crear socio|alta socio|registrar socio)\b/i, label: "Nuevo socio" },
   { to: "/soci/gestisci", rx: /\b(gestionar socios?|buscar socios?|socios|ver socios)\b/i, label: "Gestionar socios" },
+  { to: "/ajustes/cuotas", rx: /\b(cuotas|cuotas? mensual|planes)\b/i, label: "Cuotas" },
+  { to: "/ajustes/colaboradores", rx: /\b(colaboradores|colaborador|colaboradoras|staff|equipo)\b/i, label: "Colaboradores" },
+  { to: "/ajustes", rx: /\b(ajustes|configuraci[oó]n|settings|impostazioni)\b/i, label: "Ajustes" },
+  { to: "/caja", rx: /\b(caja|cassa|cash|ventas del d[ií]a|informe)\b/i, label: "Caja" },
+  { to: "/productos", rx: /\b(producto|productos|prodotti|inventario|stock)\b/i, label: "Productos" },
   { to: "/", rx: /\b(inicio|home|principal|men[uú] principal)\b/i, label: "Inicio" },
 ];
 
-const WAKE_RX = /\b(hola|oye|hey|ok)\s*,?\s*snoop\b/i;
+// Acepta "snoop ..." a secas, además de "hola/oye/hey/ok snoop".
+const WAKE_RX = /\b(?:hola|oye|hey|ok|okay|vale)?\s*,?\s*snoop\b[\s,:]*/i;
 
 function getSpeechRecognition(): any {
   if (typeof window === "undefined") return null;
