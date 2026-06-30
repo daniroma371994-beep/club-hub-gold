@@ -439,9 +439,6 @@ function PedidoPage() {
           {pending && (
             <div className="bg-neon/5 border-2 border-neon/60 rounded-2xl p-5 glow-neon">
               <div className="text-[10px] uppercase tracking-[0.3em] text-neon mb-2">Confirmar lo que entendí</div>
-              {pending.transcript && (
-                <div className="text-[11px] italic text-muted-foreground mb-3">"{pending.transcript}"</div>
-              )}
               <ul className="space-y-1.5 mb-4">
                 {pending.items.map((it, i) => (
                   <li key={i} className="flex items-center justify-between gap-3 text-sm">
