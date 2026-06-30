@@ -41,6 +41,8 @@ type Product = {
   sell_price: number;
   strain: Strain | null;
   notes: string | null;
+  image_url: string | null;
+  description: string | null;
 };
 
 const TABS = [
