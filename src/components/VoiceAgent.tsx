@@ -265,9 +265,10 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
     try { rec.start(); } catch {}
     if (!greetedRef.current) {
       greetedRef.current = true;
-      const greet = `Listo${clubName ? ", " + clubName : ""}. Dime.`;
+      const greet = `Hola ${clubName || "club"}, ¿cómo te puedo ayudar?`;
       setMessages((m) => [...m, { role: "assistant", content: greet }]);
-      // No TTS aquí — evita que el micro recoja el saludo y entre en bucle.
+      // Solo aquí hablamos en voz alta — el resto de comandos es silencioso.
+      speak(greet);
     }
   }, [clubName, ensureRec, speak]);
 
