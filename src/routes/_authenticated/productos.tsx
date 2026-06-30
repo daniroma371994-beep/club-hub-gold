@@ -55,6 +55,64 @@ function ProductosPage() {
   const [cats, setCats] = useState<Category[]>([]);
   const [prods, setProds] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [stockSearch, setStockSearch] = useState("");
+  const [prefillProduct, setPrefillProduct] = useState<any>(null);
+  const [prefillCategory, setPrefillCategory] = useState<any>(null);
+
+  // Voice command (AI)
+  const transcribe = useServerFn(transcribeAudio);
+  const parseCmd = useServerFn(parseProductCommand);
+  const [recording, setRecording] = useState(false);
+  const [thinking, setThinking] = useState(false);
+  const mediaRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+
+  async function startCommand() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream);
+      chunksRef.current = [];
+      mr.ondataavailable = (e) => e.data.size && chunksRef.current.push(e.data);
+      mr.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        setRecording(false);
+        setThinking(true);
+        try {
+          const blob = new Blob(chunksRef.current, { type: mr.mimeType || "audio/webm" });
+          const buf = await blob.arrayBuffer();
+          let bin = ""; const u8 = new Uint8Array(buf);
+          for (let i = 0; i < u8.length; i++) bin += String.fromCharCode(u8[i]);
+          const b64 = btoa(bin);
+          const { text } = await transcribe({ data: { audioBase64: b64, mimeType: blob.type } });
+          if (!text) { toast.error("No te he oído"); return; }
+          toast.message("Escuché", { description: text });
+          const cmd = await parseCmd({ data: { transcript: text, categories: cats.map((c) => ({ id: c.id, name: c.name, unit_type: c.unit_type, is_smokeable: c.is_smokeable })) } });
+          if (cmd.action === "search") {
+            setTab("stock"); setStockSearch(cmd.query || text);
+          } else if (cmd.action === "create_category") {
+            setPrefillCategory({ name: cmd.category_name, unit_type: cmd.unit_type || "unit", is_smokeable: cmd.is_smokeable });
+            setTab("categoria");
+          } else if (cmd.action === "create_product") {
+            setPrefillProduct({
+              category_id: cmd.category_id,
+              name: cmd.product_name,
+              stock: cmd.stock, buy_price: cmd.buy_price, sell_price: cmd.sell_price,
+              strain: cmd.strain || "",
+            });
+            setTab("nuevo");
+          } else {
+            toast.error("No he entendido el comando");
+          }
+        } catch (e: any) {
+          toast.error(e?.message || "Error de voz");
+        } finally { setThinking(false); }
+      };
+      mediaRef.current = mr; mr.start(); setRecording(true);
+    } catch {
+      toast.error("No se pudo acceder al micrófono");
+    }
+  }
+  function stopCommand() { try { mediaRef.current?.stop(); } catch {} }
 
   async function load() {
     setLoading(true);
@@ -66,12 +124,27 @@ function ProductosPage() {
     setProds((p as any) ?? []);
     setLoading(false);
   }
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
   return (
     <SnoopLayout title="Productos" subtitle="Stock, categorías y altas">
+      {/* Voice command bar */}
+      <div className="mb-4 flex items-center gap-2 bg-card/60 border border-neon/20 rounded-2xl p-3">
+        <button
+          onClick={recording ? stopCommand : startCommand}
+          disabled={thinking}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs uppercase tracking-[0.2em] font-display border transition ${
+            recording ? "border-neon text-neon bg-neon/10 glow-neon" : "border-neon/40 text-neon hover:bg-neon/10"
+          } disabled:opacity-50`}
+        >
+          {thinking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mic className="w-4 h-4" />}
+          {thinking ? "Procesando…" : recording ? "Detener" : "Comando voz"}
+        </button>
+        <span className="text-[11px] text-muted-foreground leading-tight">
+          Di "buscar amnesia", "crear categoría flores fumable gramos", "crear producto X en flores stock 50 compra 5 venta 10".
+        </span>
+      </div>
+
       <div className="flex gap-2 mb-6 flex-wrap">
         {TABS.map((t) => (
           <button
@@ -91,11 +164,11 @@ function ProductosPage() {
       {loading ? (
         <div className="text-muted-foreground">Cargando…</div>
       ) : tab === "stock" ? (
-        <Stock cats={cats} prods={prods} onChange={load} />
+        <Stock cats={cats} prods={prods} onChange={load} search={stockSearch} setSearch={setStockSearch} />
       ) : tab === "nuevo" ? (
-        <NuevoProducto cats={cats} onCreated={load} />
+        <NuevoProducto cats={cats} onCreated={load} prefill={prefillProduct} clearPrefill={() => setPrefillProduct(null)} />
       ) : (
-        <NuevaCategoria onCreated={load} />
+        <NuevaCategoria onCreated={load} prefill={prefillCategory} clearPrefill={() => setPrefillCategory(null)} />
       )}
     </SnoopLayout>
   );
