@@ -422,7 +422,46 @@ function PedidoPage() {
                 {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 Añadir al carrito
               </button>
+          </div>
+
+          {/* Confirmation panel for voice/text input */}
+          {pending && (
+            <div className="bg-neon/5 border-2 border-neon/60 rounded-2xl p-5 glow-neon">
+              <div className="text-[10px] uppercase tracking-[0.3em] text-neon mb-2">Confirmar lo que entendí</div>
+              {pending.transcript && (
+                <div className="text-[11px] italic text-muted-foreground mb-3">"{pending.transcript}"</div>
+              )}
+              <ul className="space-y-1.5 mb-4">
+                {pending.items.map((it, i) => (
+                  <li key={i} className="flex items-center justify-between gap-3 text-sm">
+                    <span className="text-foreground truncate">{it.product_name}</span>
+                    <span className="text-neon font-display whitespace-nowrap">
+                      {it.quantity}{it.unit_type === "gr" ? " g" : " ud"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={applyPending}
+                  className="flex-1 min-w-[120px] px-4 py-2 rounded-lg bg-gradient-neon text-primary-foreground text-xs uppercase tracking-widest font-display glow-neon"
+                >
+                  Confirmar
+                </button>
+                <button
+                  onClick={() => setPending(null)}
+                  className="flex-1 min-w-[120px] px-4 py-2 rounded-lg border border-destructive text-destructive text-xs uppercase tracking-widest font-display hover:bg-destructive/10"
+                >
+                  Cancelar
+                </button>
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-3">
+                💡 También puedes decir <span className="text-neon">"sí"</span> o <span className="text-neon">"no"</span> por micrófono.
+              </div>
             </div>
+          )}
+
+
           </div>
 
           {/* Quick catalog */}
