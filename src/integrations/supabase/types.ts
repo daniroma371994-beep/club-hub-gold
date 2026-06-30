@@ -14,6 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      cash_sessions: {
+        Row: {
+          closed_at: string | null
+          closing_cash_cents: number | null
+          club_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          opened_at: string
+          opening_cash_cents: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          closed_at?: string | null
+          closing_cash_cents?: number | null
+          club_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opening_cash_cents?: number
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          closed_at?: string | null
+          closing_cash_cents?: number | null
+          club_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opening_cash_cents?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_sessions_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clubs: {
         Row: {
           active: boolean
@@ -331,6 +381,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          cash_session_id: string | null
           club_id: string
           created_at: string
           created_by: string | null
@@ -342,6 +393,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cash_session_id?: string | null
           club_id: string
           created_at?: string
           created_by?: string | null
@@ -353,6 +405,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cash_session_id?: string | null
           club_id?: string
           created_at?: string
           created_by?: string | null
@@ -364,6 +417,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_cash_session_id_fkey"
+            columns: ["cash_session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_club_id_fkey"
             columns: ["club_id"]
@@ -562,6 +622,7 @@ export type Database = {
         Returns: string
       }
       current_club_id: { Args: never; Returns: string }
+      current_open_cash_session: { Args: never; Returns: string }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
