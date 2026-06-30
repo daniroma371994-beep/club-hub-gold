@@ -1,13 +1,33 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { SnoopLayout } from "@/components/SnoopLayout";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Package, Tag, Plus, Trash2, Pencil, Save, X, Mic } from "lucide-react";
+import { Package, Tag, Plus, Trash2, Pencil, Save, X, Mic, Search, Loader2 } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { transcribeAudio } from "@/lib/voice-agent.functions";
+import { parseProductCommand } from "@/lib/products-voice.functions";
 
 export const Route = createFileRoute("/_authenticated/productos")({
   component: ProductosPage,
 });
+
+// Lightweight Web Speech dictation hook for the search box
+function useDictation(onText: (t: string) => void, lang = "es-ES") {
+  const [listening, setListening] = useState(false);
+  const recRef = useRef<any>(null);
+  function start() {
+    const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { toast.error("Tu navegador no soporta dictado"); return; }
+    const r = new SR(); r.lang = lang; r.interimResults = false; r.continuous = false;
+    r.onresult = (e: any) => onText(e.results[0][0].transcript);
+    r.onend = () => setListening(false);
+    r.onerror = () => setListening(false);
+    recRef.current = r; setListening(true); r.start();
+  }
+  function stop() { try { recRef.current?.stop(); } catch {} setListening(false); }
+  return { listening, start, stop };
+}
 
 type UnitType = "gr" | "unit";
 type Strain = "indica" | "sativa" | "hibrida";
