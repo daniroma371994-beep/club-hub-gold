@@ -320,7 +320,7 @@ function PedidoPage() {
     if (!isNaN(qty) && qty > 0) q = qty;
     else if (!isNaN(eur) && eur > 0 && p.sell_price_eur > 0) q = eur / p.sell_price_eur;
     if (q <= 0) { toast.error("Indica gramos o euros"); return; }
-    addToCart(p.id, q);
+    addToCart(p.id, q, { autoTolerance: true });
     setGrInput((s) => ({ ...s, [p.id]: { qty: "", eur: "" } }));
   }
 
