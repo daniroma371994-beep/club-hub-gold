@@ -120,43 +120,64 @@ function PedidoPage() {
     return Math.round(p.sell_price_eur * 100);
   }
 
-  function addToCart(productId: string, quantity: number) {
+  /** For gr items: split actual weight into billed + merma (tolerance 0.05 g per 1 g billed). */
+  function splitGrTolerance(q: number): { billed: number; merma: number } {
+    if (q <= 0) return { billed: 0, merma: 0 };
+    const candidates = [Math.floor(q), Math.floor(q * 2) / 2, Math.round(q)];
+    const valid = candidates.filter((b) => b > 0 && q + 1e-9 >= b && q - b <= 0.05 * b + 1e-9);
+    const billed = valid.length ? Math.max(...valid) : q;
+    const merma = Math.round((q - billed) * 1000) / 1000;
+    return { billed: Math.round(billed * 1000) / 1000, merma };
+  }
+
+  function addToCart(productId: string, quantity: number, opts?: { autoTolerance?: boolean }) {
     const p = products.find((x) => x.id === productId);
     if (!p) return;
     if (quantity <= 0) return;
     quantity = Math.round(quantity * 1000) / 1000;
-    if (quantity > p.stock) {
+    let billed = quantity;
+    let autoMerma = 0;
+    if (p.unit_type === "gr" && opts?.autoTolerance) {
+      const s = splitGrTolerance(quantity);
+      billed = s.billed;
+      autoMerma = s.merma;
+    }
+    if (billed + autoMerma > p.stock) {
       toast.error(`Stock insuficiente de ${p.name} (disponible: ${p.stock})`);
       return;
     }
     const unitC = priceCents(p);
-    const line_total_cents = Math.round(unitC * quantity);
+    const line_total_cents = Math.round(unitC * billed);
     setCart((prev) => {
       const i = prev.findIndex((c) => c.product_id === productId);
       if (i >= 0) {
         const merged = [...prev];
-        const newQty = Math.round((merged[i].quantity + quantity) * 1000) / 1000;
-        if (newQty + merged[i].merma > p.stock) {
+        const newQty = Math.round((merged[i].quantity + billed) * 1000) / 1000;
+        const newMerma = Math.round((merged[i].merma + autoMerma) * 1000) / 1000;
+        if (newQty + newMerma > p.stock) {
           toast.error(`Stock insuficiente de ${p.name}`);
           return prev;
         }
         merged[i] = {
           ...merged[i],
           quantity: newQty,
+          merma: newMerma,
           line_total_cents: Math.round(unitC * newQty),
         };
+        if (autoMerma > 0) setMermaText((s) => ({ ...s, [productId]: String(newMerma) }));
         return merged;
       }
+      if (autoMerma > 0) setMermaText((s) => ({ ...s, [productId]: String(autoMerma) }));
       return [
         ...prev,
         {
           product_id: p.id,
           product_name: p.name,
           unit_type: p.unit_type,
-          quantity,
+          quantity: billed,
           unit_price_cents: unitC,
           line_total_cents,
-          merma: 0,
+          merma: autoMerma,
         },
       ];
     });
