@@ -40,6 +40,7 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
   const processingRef = useRef(false);
   const speakingRef = useRef(false);
   const greetedRef = useRef(false);
+  const muteUntilRef = useRef(0);
   const navigate = useNavigate();
   const location = useLocation();
   const locRef = useRef(location);
