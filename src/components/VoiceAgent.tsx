@@ -159,6 +159,15 @@ export function VoiceAgent() {
     else if (status === "idle") startRec();
   }
 
+  // Only show the floating mic where it actually does something useful
+  const path = location.pathname;
+  const showMic =
+    path === "/soci/nuovo" ||
+    path === "/soci/gestisci" ||
+    path === "/soci" ||
+    /^\/soci\/[^/]+/.test(path);
+  if (!showMic) return null;
+
   return (
     <>
       <button
