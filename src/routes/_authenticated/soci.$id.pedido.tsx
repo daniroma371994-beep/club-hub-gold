@@ -60,6 +60,8 @@ function PedidoPage() {
   const [activeCat, setActiveCat] = useState<string>("all");
   // per-product input state for gr items: { [productId]: { qty, eur } }
   const [grInput, setGrInput] = useState<Record<string, { qty: string; eur: string }>>({});
+  // raw text for merma input keyed by product_id (so user can type "0", "0.", "0,05")
+  const [mermaText, setMermaText] = useState<Record<string, string>>({});
   const recRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
@@ -118,43 +120,64 @@ function PedidoPage() {
     return Math.round(p.sell_price_eur * 100);
   }
 
-  function addToCart(productId: string, quantity: number) {
+  /** For gr items: split actual weight into billed + merma (tolerance 0.05 g per 1 g billed). */
+  function splitGrTolerance(q: number): { billed: number; merma: number } {
+    if (q <= 0) return { billed: 0, merma: 0 };
+    const candidates = [Math.floor(q), Math.floor(q * 2) / 2, Math.round(q)];
+    const valid = candidates.filter((b) => b > 0 && q + 1e-9 >= b && q - b <= 0.05 * b + 1e-9);
+    const billed = valid.length ? Math.max(...valid) : q;
+    const merma = Math.round((q - billed) * 1000) / 1000;
+    return { billed: Math.round(billed * 1000) / 1000, merma };
+  }
+
+  function addToCart(productId: string, quantity: number, opts?: { autoTolerance?: boolean }) {
     const p = products.find((x) => x.id === productId);
     if (!p) return;
     if (quantity <= 0) return;
     quantity = Math.round(quantity * 1000) / 1000;
-    if (quantity > p.stock) {
+    let billed = quantity;
+    let autoMerma = 0;
+    if (p.unit_type === "gr" && opts?.autoTolerance) {
+      const s = splitGrTolerance(quantity);
+      billed = s.billed;
+      autoMerma = s.merma;
+    }
+    if (billed + autoMerma > p.stock) {
       toast.error(`Stock insuficiente de ${p.name} (disponible: ${p.stock})`);
       return;
     }
     const unitC = priceCents(p);
-    const line_total_cents = Math.round(unitC * quantity);
+    const line_total_cents = Math.round(unitC * billed);
     setCart((prev) => {
       const i = prev.findIndex((c) => c.product_id === productId);
       if (i >= 0) {
         const merged = [...prev];
-        const newQty = Math.round((merged[i].quantity + quantity) * 1000) / 1000;
-        if (newQty + merged[i].merma > p.stock) {
+        const newQty = Math.round((merged[i].quantity + billed) * 1000) / 1000;
+        const newMerma = Math.round((merged[i].merma + autoMerma) * 1000) / 1000;
+        if (newQty + newMerma > p.stock) {
           toast.error(`Stock insuficiente de ${p.name}`);
           return prev;
         }
         merged[i] = {
           ...merged[i],
           quantity: newQty,
+          merma: newMerma,
           line_total_cents: Math.round(unitC * newQty),
         };
+        if (autoMerma > 0) setMermaText((s) => ({ ...s, [productId]: String(newMerma) }));
         return merged;
       }
+      if (autoMerma > 0) setMermaText((s) => ({ ...s, [productId]: String(autoMerma) }));
       return [
         ...prev,
         {
           product_id: p.id,
           product_name: p.name,
           unit_type: p.unit_type,
-          quantity,
+          quantity: billed,
           unit_price_cents: unitC,
           line_total_cents,
-          merma: 0,
+          merma: autoMerma,
         },
       ];
     });
@@ -175,27 +198,69 @@ function PedidoPage() {
     });
   }
 
+  /** Local fallback: match product names in transcript when AI returns nothing. */
+  function localMatch(transcript: string): Array<{ product_id: string; quantity: number }> {
+    const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const t = " " + norm(transcript).replace(/[^\w\s.,]/g, " ").replace(/\s+/g, " ") + " ";
+    const numWords: Record<string, number> = {
+      medio: 0.5, media: 0.5, mezzo: 0.5, mezza: 0.5,
+      un: 1, una: 1, uno: 1, dos: 2, due: 2, tres: 3, tre: 3,
+      cuatro: 4, quattro: 4, cinco: 5, cinque: 5, seis: 6, sei: 6,
+    };
+    const out: Array<{ product_id: string; quantity: number }> = [];
+    const seen = new Set<string>();
+    for (const p of products) {
+      const tokens = norm(p.name).split(/\s+/).filter((x) => x.length >= 3);
+      if (!tokens.length) continue;
+      let idx = -1;
+      for (const tok of tokens) {
+        const at = t.indexOf(" " + tok);
+        if (at >= 0) { idx = at; break; }
+      }
+      if (idx < 0 || seen.has(p.id)) continue;
+      seen.add(p.id);
+      const before = t.slice(Math.max(0, idx - 40), idx);
+      let qty = 1;
+      const num = before.match(/(\d+(?:[.,]\d+)?)\s*(?:gr|g|gramos?|grammi)?\s*(?:de|di|del|della)?\s*$/);
+      if (num) qty = parseFloat(num[1].replace(",", "."));
+      else {
+        for (const [w, v] of Object.entries(numWords)) {
+          if (new RegExp(`\\b${w}\\b\\s*(?:gramos?|grammi|gr|g)?\\s*(?:de|di|del|della)?\\s*$`).test(before)) {
+            qty = v; break;
+          }
+        }
+      }
+      if (qty > 0) out.push({ product_id: p.id, quantity: qty });
+    }
+    return out;
+  }
+
   async function processTranscript(t: string) {
     if (!t.trim()) return;
     setBusy(true);
     try {
-      const { items } = await parse({
-        data: {
-          transcript: t,
-          products: products.map((p) => ({
-            id: p.id,
-            name: p.name,
-            unit_type: p.unit_type,
-            sell_price: priceCents(p),
-            stock: p.stock,
-          })),
-        },
-      });
+      let items: Array<{ product_id: string; quantity: number }> = [];
+      try {
+        const r = await parse({
+          data: {
+            transcript: t,
+            products: products.map((p) => ({
+              id: p.id, name: p.name, unit_type: p.unit_type,
+              sell_price: priceCents(p), stock: p.stock,
+            })),
+          },
+        });
+        items = r.items;
+      } catch {}
+      if (!items.length) items = localMatch(t);
       if (!items.length) {
-        toast.error("No encontré productos en lo que dictaste");
+        toast.error("No encontré productos. Prueba: \"dos gramos de amnesia, una cerveza\"");
         return;
       }
-      for (const it of items) addToCart(it.product_id, it.quantity);
+      for (const it of items) {
+        const p = products.find((x) => x.id === it.product_id);
+        addToCart(it.product_id, it.quantity, { autoTolerance: p?.unit_type === "gr" });
+      }
       toast.success(`Añadidos ${items.length} item${items.length > 1 ? "s" : ""}`);
       setText("");
     } catch (e: any) {
@@ -255,7 +320,7 @@ function PedidoPage() {
     if (!isNaN(qty) && qty > 0) q = qty;
     else if (!isNaN(eur) && eur > 0 && p.sell_price_eur > 0) q = eur / p.sell_price_eur;
     if (q <= 0) { toast.error("Indica gramos o euros"); return; }
-    addToCart(p.id, q);
+    addToCart(p.id, q, { autoTolerance: true });
     setGrInput((s) => ({ ...s, [p.id]: { qty: "", eur: "" } }));
   }
 
@@ -465,10 +530,13 @@ function PedidoPage() {
                         <label className="text-[10px] uppercase tracking-widest text-neon-dim">Merma</label>
                         <input
                           inputMode="decimal"
-                          value={c.merma || ""}
+                          value={mermaText[c.product_id] ?? (c.merma ? String(c.merma) : "")}
                           onChange={(e) => {
-                            const v = parseFloat(e.target.value.replace(",", "."));
-                            updateLine(i, { merma: isNaN(v) ? 0 : v });
+                            const raw = e.target.value;
+                            setMermaText((s) => ({ ...s, [c.product_id]: raw }));
+                            if (raw.trim() === "") { updateLine(i, { merma: 0 }); return; }
+                            const v = parseFloat(raw.replace(",", "."));
+                            if (!isNaN(v) && v >= 0) updateLine(i, { merma: v });
                           }}
                           placeholder="0,05"
                           className="w-20 bg-input border border-border rounded px-2 py-1 text-xs focus:border-neon outline-none"
