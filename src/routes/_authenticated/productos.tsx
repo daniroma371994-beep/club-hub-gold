@@ -176,18 +176,21 @@ function ProductosPage() {
 
 /* ---------------- STOCK ---------------- */
 
-function Stock({ cats, prods, onChange }: { cats: Category[]; prods: Product[]; onChange: () => void }) {
+function Stock({ cats, prods, onChange, search, setSearch }: { cats: Category[]; prods: Product[]; onChange: () => void; search: string; setSearch: (v: string) => void }) {
   const [filter, setFilter] = useState<string>("all");
+  const dict = useDictation((t) => setSearch(t));
+  const q = search.trim().toLowerCase();
   const grouped = useMemo(() => {
     const map = new Map<string, Product[]>();
     for (const p of prods) {
       if (filter !== "all" && p.category_id !== filter) continue;
+      if (q && !p.name.toLowerCase().includes(q)) continue;
       const arr = map.get(p.category_id) ?? [];
       arr.push(p);
       map.set(p.category_id, arr);
     }
     return map;
-  }, [prods, filter]);
+  }, [prods, filter, q]);
 
   if (cats.length === 0)
     return (
