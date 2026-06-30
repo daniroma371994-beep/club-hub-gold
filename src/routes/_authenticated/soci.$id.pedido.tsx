@@ -60,6 +60,8 @@ function PedidoPage() {
   const [activeCat, setActiveCat] = useState<string>("all");
   // per-product input state for gr items: { [productId]: { qty, eur } }
   const [grInput, setGrInput] = useState<Record<string, { qty: string; eur: string }>>({});
+  // raw text for merma input keyed by product_id (so user can type "0", "0.", "0,05")
+  const [mermaText, setMermaText] = useState<Record<string, string>>({});
   const recRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
