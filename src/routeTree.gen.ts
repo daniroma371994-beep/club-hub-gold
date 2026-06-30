@@ -21,6 +21,7 @@ import { Route as AuthenticatedSociIndexRouteImport } from './routes/_authentica
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as AuthenticatedSociNuovoRouteImport } from './routes/_authenticated/soci.nuovo'
 import { Route as AuthenticatedSociGestisciRouteImport } from './routes/_authenticated/soci.gestisci'
+import { Route as AuthenticatedSociColaboratoriRouteImport } from './routes/_authenticated/soci.colaboratori'
 import { Route as AuthenticatedSociIdRouteImport } from './routes/_authenticated/soci.$id'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
@@ -87,6 +88,12 @@ const AuthenticatedSociGestisciRoute =
     path: '/soci/gestisci',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedSociColaboratoriRoute =
+  AuthenticatedSociColaboratoriRouteImport.update({
+    id: '/soci/colaboratori',
+    path: '/soci/colaboratori',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSociIdRoute = AuthenticatedSociIdRouteImport.update({
   id: '/soci/$id',
   path: '/soci/$id',
@@ -126,6 +133,7 @@ export interface FileRoutesByFullPath {
   '/snoop-admin': typeof AuthenticatedSnoopAdminRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/soci/$id': typeof AuthenticatedSociIdRouteWithChildren
+  '/soci/colaboratori': typeof AuthenticatedSociColaboratoriRoute
   '/soci/gestisci': typeof AuthenticatedSociGestisciRoute
   '/soci/nuovo': typeof AuthenticatedSociNuovoRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -144,6 +152,7 @@ export interface FileRoutesByTo {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/': typeof AuthenticatedIndexRoute
   '/soci/$id': typeof AuthenticatedSociIdRouteWithChildren
+  '/soci/colaboratori': typeof AuthenticatedSociColaboratoriRoute
   '/soci/gestisci': typeof AuthenticatedSociGestisciRoute
   '/soci/nuovo': typeof AuthenticatedSociNuovoRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -164,6 +173,7 @@ export interface FileRoutesById {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/soci/$id': typeof AuthenticatedSociIdRouteWithChildren
+  '/_authenticated/soci/colaboratori': typeof AuthenticatedSociColaboratoriRoute
   '/_authenticated/soci/gestisci': typeof AuthenticatedSociGestisciRoute
   '/_authenticated/soci/nuovo': typeof AuthenticatedSociNuovoRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -184,6 +194,7 @@ export interface FileRouteTypes {
     | '/snoop-admin'
     | '/email/unsubscribe'
     | '/soci/$id'
+    | '/soci/colaboratori'
     | '/soci/gestisci'
     | '/soci/nuovo'
     | '/lovable/email/suppression'
@@ -202,6 +213,7 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/'
     | '/soci/$id'
+    | '/soci/colaboratori'
     | '/soci/gestisci'
     | '/soci/nuovo'
     | '/lovable/email/suppression'
@@ -221,6 +233,7 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/_authenticated/'
     | '/_authenticated/soci/$id'
+    | '/_authenticated/soci/colaboratori'
     | '/_authenticated/soci/gestisci'
     | '/_authenticated/soci/nuovo'
     | '/lovable/email/suppression'
@@ -328,6 +341,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSociGestisciRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/soci/colaboratori': {
+      id: '/_authenticated/soci/colaboratori'
+      path: '/soci/colaboratori'
+      fullPath: '/soci/colaboratori'
+      preLoaderRoute: typeof AuthenticatedSociColaboratoriRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/soci/$id': {
       id: '/_authenticated/soci/$id'
       path: '/soci/$id'
@@ -383,6 +403,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSnoopAdminRoute: typeof AuthenticatedSnoopAdminRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedSociIdRoute: typeof AuthenticatedSociIdRouteWithChildren
+  AuthenticatedSociColaboratoriRoute: typeof AuthenticatedSociColaboratoriRoute
   AuthenticatedSociGestisciRoute: typeof AuthenticatedSociGestisciRoute
   AuthenticatedSociNuovoRoute: typeof AuthenticatedSociNuovoRoute
   AuthenticatedSociIndexRoute: typeof AuthenticatedSociIndexRoute
@@ -394,6 +415,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSnoopAdminRoute: AuthenticatedSnoopAdminRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedSociIdRoute: AuthenticatedSociIdRouteWithChildren,
+  AuthenticatedSociColaboratoriRoute: AuthenticatedSociColaboratoriRoute,
   AuthenticatedSociGestisciRoute: AuthenticatedSociGestisciRoute,
   AuthenticatedSociNuovoRoute: AuthenticatedSociNuovoRoute,
   AuthenticatedSociIndexRoute: AuthenticatedSociIndexRoute,
