@@ -73,18 +73,32 @@ function GestisciSoci() {
       if (num) { openByMemberNumber(num); return; }
 
       setQ(query);
-      const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
-      const matches = rowsRef.current.filter((r) => {
-        const hay = `${r.first_name} ${r.last_name} ${r.dni_number} ${r.member_number} ${r.city ?? ""}`.toLowerCase();
-        return tokens.every((t) => hay.includes(t));
-      });
-      if (matches.length === 1) {
-        toast.success(`Abriendo ficha de ${matches[0].first_name} ${matches[0].last_name}`);
-        navigate({ to: "/soci/$id", params: { id: matches[0].id } });
-      } else if (matches.length === 0) {
+      const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const tokens = norm(query).split(/\s+/).filter(Boolean);
+      const scored = rowsRef.current.map((r) => {
+        const hay = norm(`${r.first_name} ${r.last_name} ${r.dni_number} ${r.member_number} ${r.city ?? ""}`);
+        let score = 0;
+        for (const t of tokens) {
+          if (hay.includes(t)) score += 2;
+          else if (t.length >= 3) {
+            // partial: any word in hay starts with token or vice versa
+            const words = hay.split(/\s+/);
+            if (words.some((w) => w.startsWith(t.slice(0, 3)) || t.startsWith(w.slice(0, 3)))) score += 1;
+          }
+        }
+        return { r, score };
+      }).filter((x) => x.score > 0).sort((a, b) => b.score - a.score);
+      const exact = scored.filter((x) => x.score === tokens.length * 2);
+      if (exact.length === 1) {
+        toast.success(`Abriendo ficha de ${exact[0].r.first_name} ${exact[0].r.last_name}`);
+        navigate({ to: "/soci/$id", params: { id: exact[0].r.id } });
+      } else if (scored.length === 0) {
         toast.error(`No se encontró ningún socio para "${query}"`);
+      } else if (scored.length === 1) {
+        toast.success(`Abriendo ficha de ${scored[0].r.first_name} ${scored[0].r.last_name}`);
+        navigate({ to: "/soci/$id", params: { id: scored[0].r.id } });
       } else {
-        toast.message(`${matches.length} socios coinciden con "${query}"`);
+        toast.message(`${scored.length} resultados similares a "${query}"`);
       }
     }
     window.addEventListener("snoop:search-members", onVoiceSearch as EventListener);
