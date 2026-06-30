@@ -102,9 +102,18 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
 
       // --- 1) Global navigation intents (always win — user said a section name) ---
       const navHit = NAV_INTENTS.find((n) => n.rx.test(lower));
-      if (navHit && path !== navHit.to) {
+      if (navHit) {
         setMessages((m) => [...m, { role: "assistant", content: `→ ${navHit.label}` }]);
-        navigate({ to: navHit.to as any });
+        if (navHit.tab) {
+          try { window.localStorage.setItem("snoop:productos-tab", navHit.tab); } catch {}
+          // Forward the full transcript so the destination page can auto-parse it
+          try { window.localStorage.setItem("snoop:productos-cmd", JSON.stringify({ text, at: Date.now() })); } catch {}
+        }
+        if (path !== navHit.to) navigate({ to: navHit.to as any });
+        else {
+          // ya estamos ahí: dispara evento por si la página quiere reaccionar
+          window.dispatchEvent(new CustomEvent("snoop:productos-voice", { detail: { text } }));
+        }
         return;
       }
 
