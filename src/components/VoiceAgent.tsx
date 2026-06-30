@@ -99,9 +99,7 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
       // --- 1) Global navigation intents (always win — user said a section name) ---
       const navHit = NAV_INTENTS.find((n) => n.rx.test(lower));
       if (navHit && path !== navHit.to) {
-        const r = `Voy a ${navHit.label}.`;
-        setMessages((m) => [...m, { role: "assistant", content: r }]);
-        speak(r); // don't await — navigate immediately
+        setMessages((m) => [...m, { role: "assistant", content: `→ ${navHit.label}` }]);
         navigate({ to: navHit.to as any });
         return;
       }
@@ -109,6 +107,7 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
       // --- 2) Productos: any voice = category filter OR search ---
       if (path === "/productos") {
         window.dispatchEvent(new CustomEvent("snoop:productos-voice", { detail: { text } }));
+        setMessages((m) => [...m, { role: "assistant", content: `→ ${text}` }]);
         return;
       }
 
@@ -117,9 +116,7 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
       if (catMatch && /\b(flores?|extracci|hash|comestibles?|bebidas?|merch|vapes?|cigarr|joints?|prerolls?|edibles?)/i.test(catMatch[1])) {
         const cat = catMatch[1].trim();
         try { window.localStorage.setItem("snoop:productos-pending", JSON.stringify({ text: cat, at: Date.now() })); } catch {}
-        const r = `Abro ${cat} en productos.`;
-        setMessages((m) => [...m, { role: "assistant", content: r }]);
-        speak(r);
+        setMessages((m) => [...m, { role: "assistant", content: `→ Productos · ${cat}` }]);
         navigate({ to: "/productos" });
         return;
       }
@@ -129,9 +126,7 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
         const payload = JSON.stringify({ text, at: Date.now() });
         window.localStorage.setItem("snoop:new-member-transcript", payload);
         window.dispatchEvent(new StorageEvent("storage", { key: "snoop:new-member-transcript", newValue: payload }));
-        const reply = "Perfecto, voy rellenando.";
-        setMessages((m) => [...m, { role: "assistant", content: reply }]);
-        await speak(reply);
+        setMessages((m) => [...m, { role: "assistant", content: "→ rellenando" }]);
         return;
       }
 
@@ -141,9 +136,7 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
           .replace(/[.,;:!?]+$/g, "")
           .trim();
         window.dispatchEvent(new CustomEvent("snoop:search-members", { detail: { query: cleaned } }));
-        const reply = `Buscando ${cleaned}.`;
-        setMessages((m) => [...m, { role: "assistant", content: reply }]);
-        await speak(reply);
+        setMessages((m) => [...m, { role: "assistant", content: `→ Buscando ${cleaned}` }]);
         return;
       }
 
@@ -155,12 +148,12 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
       if (path.startsWith("/soci/") && path !== "/soci/nuovo" && path !== "/soci/gestisci") {
         if (/(hacer|nuevo|crear)\s+(un\s+)?(pedido|orden|ordine)/i.test(lower) || /^(pedido|ordine|orden)\.?$/i.test(lower.trim())) {
           window.dispatchEvent(new CustomEvent("snoop:member-action", { detail: { action: "order" } }));
-          const r = "Abro un pedido."; setMessages((m) => [...m, { role: "assistant", content: r }]); await speak(r);
+          setMessages((m) => [...m, { role: "assistant", content: "→ pedido" }]);
           return;
         }
         if (/(renovar|renueva|rinnova)/i.test(lower)) {
           window.dispatchEvent(new CustomEvent("snoop:member-action", { detail: { action: "renew" } }));
-          const r = "Renovando."; setMessages((m) => [...m, { role: "assistant", content: r }]); await speak(r);
+          setMessages((m) => [...m, { role: "assistant", content: "→ renovar" }]);
           return;
         }
         if (/(volver|atr[aá]s|indietro|back)/i.test(lower)) {
