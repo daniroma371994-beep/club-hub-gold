@@ -9,18 +9,22 @@ type Status = "off" | "listening" | "processing" | "speaking";
 type Msg = { role: "user" | "assistant"; content: string };
 
 // Client-side navigation intents (so home wake word can dispatch commands quickly).
-const NAV_INTENTS: Array<{ to: string; rx: RegExp; label: string }> = [
-  { to: "/productos", rx: /\b(producto|productos|prodotti|inventario|stock)\b/i, label: "Productos" },
-  { to: "/caja", rx: /\b(caja|cassa|cash|ventas del d[ií]a|informe)\b/i, label: "Caja" },
-  { to: "/ajustes", rx: /\b(ajustes|configuraci[oó]n|settings|impostazioni)\b/i, label: "Ajustes" },
-  { to: "/ajustes/cuotas", rx: /\b(cuotas|cuotas? mensual|planes)\b/i, label: "Cuotas" },
-  { to: "/ajustes/colaboradores", rx: /\b(colaboradores|colaborador|colaboradoras|staff|equipo)\b/i, label: "Colaboradores" },
+// Order matters: more specific intents first.
+const NAV_INTENTS: Array<{ to: string; rx: RegExp; label: string; tab?: string }> = [
+  { to: "/productos", rx: /\b(crear?|nuevo|alta|nueva|a[nñ]adir|agregar|registrar)\s+(un\s+)?producto\b/i, label: "Crear producto", tab: "nuevo" },
+  { to: "/productos", rx: /\b(crear?|nueva|alta|a[nñ]adir|agregar)\s+(una\s+)?categor[ií]a\b/i, label: "Crear categoría", tab: "categoria" },
   { to: "/soci/nuovo", rx: /\b(nuevo socio|crear socio|alta socio|registrar socio)\b/i, label: "Nuevo socio" },
   { to: "/soci/gestisci", rx: /\b(gestionar socios?|buscar socios?|socios|ver socios)\b/i, label: "Gestionar socios" },
+  { to: "/ajustes/cuotas", rx: /\b(cuotas|cuotas? mensual|planes)\b/i, label: "Cuotas" },
+  { to: "/ajustes/colaboradores", rx: /\b(colaboradores|colaborador|colaboradoras|staff|equipo)\b/i, label: "Colaboradores" },
+  { to: "/ajustes", rx: /\b(ajustes|configuraci[oó]n|settings|impostazioni)\b/i, label: "Ajustes" },
+  { to: "/caja", rx: /\b(caja|cassa|cash|ventas del d[ií]a|informe)\b/i, label: "Caja" },
+  { to: "/productos", rx: /\b(producto|productos|prodotti|inventario|stock)\b/i, label: "Productos" },
   { to: "/", rx: /\b(inicio|home|principal|men[uú] principal)\b/i, label: "Inicio" },
 ];
 
-const WAKE_RX = /\b(hola|oye|hey|ok)\s*,?\s*snoop\b/i;
+// Acepta "snoop ..." a secas, además de "hola/oye/hey/ok snoop".
+const WAKE_RX = /\b(?:hola|oye|hey|ok|okay|vale)?\s*,?\s*snoop\b[\s,:]*/i;
 
 function getSpeechRecognition(): any {
   if (typeof window === "undefined") return null;
@@ -98,9 +102,18 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
 
       // --- 1) Global navigation intents (always win — user said a section name) ---
       const navHit = NAV_INTENTS.find((n) => n.rx.test(lower));
-      if (navHit && path !== navHit.to) {
+      if (navHit) {
         setMessages((m) => [...m, { role: "assistant", content: `→ ${navHit.label}` }]);
-        navigate({ to: navHit.to as any });
+        if (navHit.tab) {
+          try { window.localStorage.setItem("snoop:productos-tab", navHit.tab); } catch {}
+          // Forward the full transcript so the destination page can auto-parse it
+          try { window.localStorage.setItem("snoop:productos-cmd", JSON.stringify({ text, at: Date.now() })); } catch {}
+        }
+        if (path !== navHit.to) navigate({ to: navHit.to as any });
+        else {
+          // ya estamos ahí: dispara evento por si la página quiere reaccionar
+          window.dispatchEvent(new CustomEvent("snoop:productos-voice", { detail: { text } }));
+        }
         return;
       }
 
@@ -167,8 +180,8 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
         data: { transcript: text, history: messagesRef.current.slice(-20) },
       });
       setMessages((m) => [...m, { role: "assistant", content: reply }]);
-      await speak(reply);
-      if (navigateTo) setTimeout(() => navigate({ to: navigateTo as any }), 1000);
+      // Voz solo en el saludo inicial; las respuestas del agente se muestran en pantalla.
+      if (navigateTo) setTimeout(() => navigate({ to: navigateTo as any }), 400);
     } catch (e: any) {
       toast.error(e.message ?? "Error en el asistente");
     } finally {
@@ -252,9 +265,10 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
     try { rec.start(); } catch {}
     if (!greetedRef.current) {
       greetedRef.current = true;
-      const greet = `Listo${clubName ? ", " + clubName : ""}. Dime.`;
+      const greet = `Hola ${clubName || "club"}, ¿cómo te puedo ayudar?`;
       setMessages((m) => [...m, { role: "assistant", content: greet }]);
-      // No TTS aquí — evita que el micro recoja el saludo y entre en bucle.
+      // Solo aquí hablamos en voz alta — el resto de comandos es silencioso.
+      speak(greet);
     }
   }, [clubName, ensureRec, speak]);
 

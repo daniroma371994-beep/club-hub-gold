@@ -61,7 +61,7 @@ export const template = {
     email: "daniele@example.com",
     temporary_password: "Snoop-1234-Ab",
     role_label: "administrador",
-    club_name: "MEDUZA XXIII",
+    club_name: "Medusa 23",
     login_url: "https://snoop.app/auth",
   },
 } satisfies TemplateEntry;

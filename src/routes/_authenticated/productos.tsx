@@ -129,6 +129,45 @@ function ProductosPage() {
   }
   useEffect(() => { load(); }, []);
 
+  // Reacciona a Snoop cuando navega aquí pidiendo un tab y/o un comando
+  useEffect(() => {
+    if (loading) return;
+    try {
+      const wantedTab = window.localStorage.getItem("snoop:productos-tab");
+      if (wantedTab === "nuevo" || wantedTab === "categoria" || wantedTab === "stock") {
+        setTab(wantedTab as TabId);
+        window.localStorage.removeItem("snoop:productos-tab");
+      }
+      const cmdRaw = window.localStorage.getItem("snoop:productos-cmd");
+      if (cmdRaw) {
+        const { text, at } = JSON.parse(cmdRaw);
+        window.localStorage.removeItem("snoop:productos-cmd");
+        if (Date.now() - at < 15000 && cats.length > 0) {
+          // Auto-parse del comando dictado desde otra página
+          (async () => {
+            try {
+              const cmd = await parseCmd({ data: { transcript: text, categories: cats.map((c) => ({ id: c.id, name: c.name, unit_type: c.unit_type, is_smokeable: c.is_smokeable })) } });
+              if (cmd.action === "create_category") {
+                setPrefillCategory({ name: cmd.category_name, unit_type: cmd.unit_type || "unit", is_smokeable: cmd.is_smokeable });
+                setTab("categoria");
+              } else if (cmd.action === "create_product") {
+                setPrefillProduct({
+                  category_id: cmd.category_id, name: cmd.product_name,
+                  stock: cmd.stock, buy_price: cmd.buy_price, sell_price: cmd.sell_price,
+                  strain: cmd.strain || "",
+                });
+                setTab("nuevo");
+              } else if (cmd.action === "search") {
+                setTab("stock"); setStockSearch(cmd.query || text);
+              }
+            } catch { /* silencio: el usuario rellena a mano */ }
+          })();
+        }
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, cats]);
+
   return (
     <SnoopLayout title="Productos" subtitle="Stock, categorías y altas">
       {/* Voice command bar */}
