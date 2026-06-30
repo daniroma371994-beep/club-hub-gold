@@ -112,13 +112,14 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
       // --- 1) Global navigation intents (always win — user said a section name) ---
       const navHit = NAV_INTENTS.find((n) => n.rx.test(lower) || n.rx.test(normalized));
       if (navHit) {
-        if (navHit.tab) {
-          try { window.localStorage.setItem("snoop:productos-tab", navHit.tab); } catch {}
-          // Forward the full transcript so the destination page can auto-parse it
-          try { window.localStorage.setItem("snoop:productos-cmd", JSON.stringify({ text, at: Date.now() })); } catch {}
-        }
-        if (path !== navHit.to) navigate({ to: navHit.to as any });
-        else {
+        if (path !== navHit.to) {
+          if (navHit.tab) {
+            try { window.localStorage.setItem("snoop:productos-tab", navHit.tab); } catch {}
+            // Forward the full transcript so the destination page can auto-parse it
+            try { window.localStorage.setItem("snoop:productos-cmd", JSON.stringify({ text, at: Date.now() })); } catch {}
+          }
+          navigate({ to: navHit.to as any });
+        } else {
           // ya estamos ahí: dispara evento por si la página quiere reaccionar
           if (navHit.tab) window.dispatchEvent(new CustomEvent("snoop:productos-command", { detail: { text, tab: navHit.tab } }));
           else window.dispatchEvent(new CustomEvent("snoop:productos-voice", { detail: { text } }));
