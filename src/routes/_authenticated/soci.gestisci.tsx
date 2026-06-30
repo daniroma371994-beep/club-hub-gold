@@ -45,12 +45,16 @@ function GestisciSoci() {
     setLoading(true);
     const { data } = await supabase
       .from("members")
-      .select("id, member_number, first_name, last_name, dni_number, city, expires_at, plan:membership_plans(name)")
+      .select(
+        "id, member_number, first_name, last_name, dni_number, city, expires_at, plan:membership_plans(name)",
+      )
       .order("member_number");
     setRows((data as any) ?? []);
     setLoading(false);
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   function openByMemberNumber(num: string) {
     const match = rowsRef.current.find((r) => r.member_number === num);
@@ -62,60 +66,92 @@ function GestisciSoci() {
     }
   }
 
-  useEffect(() => {
-    function onVoiceSearch(e: Event) {
-      const detail = (e as CustomEvent).detail as { query?: string } | undefined;
-      const query = (detail?.query ?? "").trim();
-      if (!query) return;
+  function runVoiceSearch(query: string) {
+    // Try member number first (QR or dictated digits)
+    const num = extractMemberNumber(query);
+    if (num) {
+      openByMemberNumber(num);
+      return;
+    }
 
-      // Try member number first (QR or dictated digits)
-      const num = extractMemberNumber(query);
-      if (num) { openByMemberNumber(num); return; }
-
-      setQ(query);
-      const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      const tokens = norm(query).split(/\s+/).filter(Boolean);
-      const scored = rowsRef.current.map((r) => {
-        const hay = norm(`${r.first_name} ${r.last_name} ${r.dni_number} ${r.member_number} ${r.city ?? ""}`);
+    setQ(query);
+    const norm = (s: string) =>
+      s
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+    const tokens = norm(query).split(/\s+/).filter(Boolean);
+    const scored = rowsRef.current
+      .map((r) => {
+        const hay = norm(
+          `${r.first_name} ${r.last_name} ${r.dni_number} ${r.member_number} ${r.city ?? ""}`,
+        );
         let score = 0;
         for (const t of tokens) {
           if (hay.includes(t)) score += 2;
           else if (t.length >= 3) {
             // partial: any word in hay starts with token or vice versa
             const words = hay.split(/\s+/);
-            if (words.some((w) => w.startsWith(t.slice(0, 3)) || t.startsWith(w.slice(0, 3)))) score += 1;
+            if (words.some((w) => w.startsWith(t.slice(0, 3)) || t.startsWith(w.slice(0, 3))))
+              score += 1;
           }
         }
         return { r, score };
-      }).filter((x) => x.score > 0).sort((a, b) => b.score - a.score);
-      const exact = scored.filter((x) => x.score === tokens.length * 2);
-      if (exact.length === 1) {
-        toast.success(`Abriendo ficha de ${exact[0].r.first_name} ${exact[0].r.last_name}`);
-        navigate({ to: "/soci/$id", params: { id: exact[0].r.id } });
-      } else if (scored.length === 0) {
-        toast.error(`No se encontró ningún socio para "${query}"`);
-      } else if (scored.length === 1) {
-        toast.success(`Abriendo ficha de ${scored[0].r.first_name} ${scored[0].r.last_name}`);
-        navigate({ to: "/soci/$id", params: { id: scored[0].r.id } });
-      } else {
-        toast.message(`${scored.length} resultados similares a "${query}"`);
-      }
+      })
+      .filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score);
+    const exact = scored.filter((x) => x.score === tokens.length * 2);
+    if (exact.length === 1) {
+      toast.success(`Abriendo ficha de ${exact[0].r.first_name} ${exact[0].r.last_name}`);
+      navigate({ to: "/soci/$id", params: { id: exact[0].r.id } });
+    } else if (scored.length === 0) {
+      toast.error("No se encontró ningún socio");
+    } else if (scored.length === 1) {
+      toast.success(`Abriendo ficha de ${scored[0].r.first_name} ${scored[0].r.last_name}`);
+      navigate({ to: "/soci/$id", params: { id: scored[0].r.id } });
+    } else {
+      toast.message(`${scored.length} resultados similares`);
+    }
+  }
+
+  useEffect(() => {
+    function onVoiceSearch(e: Event) {
+      const detail = (e as CustomEvent).detail as { query?: string } | undefined;
+      const query = (detail?.query ?? "").trim();
+      if (!query) return;
+      runVoiceSearch(query);
     }
     window.addEventListener("snoop:search-members", onVoiceSearch as EventListener);
     return () => window.removeEventListener("snoop:search-members", onVoiceSearch as EventListener);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
+  useEffect(() => {
+    if (loading) return;
+    try {
+      const raw = window.localStorage.getItem("snoop:member-search-pending");
+      if (!raw) return;
+      window.localStorage.removeItem("snoop:member-search-pending");
+      const { query, at } = JSON.parse(raw);
+      if (query && Date.now() - at < 15000) runVoiceSearch(String(query));
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, rows]);
+
   const filtered = rows.filter((r) => {
     const query = q.trim().toLowerCase();
     if (!query) return true;
-    const haystack = `${r.first_name} ${r.last_name} ${r.dni_number} ${r.member_number} ${r.city ?? ""}`.toLowerCase();
+    const haystack =
+      `${r.first_name} ${r.last_name} ${r.dni_number} ${r.member_number} ${r.city ?? ""}`.toLowerCase();
     const tokens = query.split(/\s+/).filter(Boolean);
     return tokens.every((t) => haystack.includes(t));
   });
 
   return (
-    <SnoopLayout title="Gestionar socios" subtitle={`${rows.length} socio${rows.length === 1 ? "" : "s"} registrado${rows.length === 1 ? "" : "s"}`}>
+    <SnoopLayout
+      title="Gestionar socios"
+      subtitle={`${rows.length} socio${rows.length === 1 ? "" : "s"} registrado${rows.length === 1 ? "" : "s"}`}
+    >
       <div className="flex flex-col md:flex-row gap-3 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neon-dim" />
@@ -160,18 +196,27 @@ function GestisciSoci() {
                 className="flex items-center gap-4 bg-card/60 hover:bg-card border border-border hover:border-neon/50 rounded-xl p-4 transition group"
               >
                 <div className="w-11 h-11 rounded-full bg-neon/10 border border-neon/30 flex items-center justify-center font-display text-neon">
-                  {r.first_name[0]?.toUpperCase()}{r.last_name[0]?.toUpperCase()}
+                  {r.first_name[0]?.toUpperCase()}
+                  {r.last_name[0]?.toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-display text-[11px] tracking-[0.25em] text-neon">#{r.member_number}</span>
-                    <span className="font-display text-foreground truncate">{r.first_name} {r.last_name}</span>
+                    <span className="font-display text-[11px] tracking-[0.25em] text-neon">
+                      #{r.member_number}
+                    </span>
+                    <span className="font-display text-foreground truncate">
+                      {r.first_name} {r.last_name}
+                    </span>
                   </div>
                   <div className="text-xs text-muted-foreground truncate">
-                    {r.dni_number}{r.city && ` · ${r.city}`}{r.plan?.name && ` · ${r.plan.name}`}
+                    {r.dni_number}
+                    {r.city && ` · ${r.city}`}
+                    {r.plan?.name && ` · ${r.plan.name}`}
                   </div>
                 </div>
-                <span className={`shrink-0 text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full border ${badge.color}`}>
+                <span
+                  className={`shrink-0 text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full border ${badge.color}`}
+                >
                   {badge.label}
                 </span>
               </Link>
@@ -195,7 +240,13 @@ function GestisciSoci() {
   );
 }
 
-function QrScannerModal({ onClose, onResult }: { onClose: () => void; onResult: (text: string) => void }) {
+function QrScannerModal({
+  onClose,
+  onResult,
+}: {
+  onClose: () => void;
+  onResult: (text: string) => void;
+}) {
   const elId = "snoop-qr-reader";
   const onResultRef = useRef(onResult);
   onResultRef.current = onResult;
@@ -212,7 +263,9 @@ function QrScannerModal({ onClose, onResult }: { onClose: () => void; onResult: 
         const state = typeof scanner.getState === "function" ? scanner.getState() : 0;
         if (started && state === 2) await scanner.stop();
       } catch {}
-      try { scanner.clear(); } catch {}
+      try {
+        scanner.clear();
+      } catch {}
     };
 
     scanner
@@ -226,8 +279,13 @@ function QrScannerModal({ onClose, onResult }: { onClose: () => void; onResult: 
         },
         () => {},
       )
-      .then(() => { started = true; if (cancelled) safeStop(); })
-      .catch((e: any) => setError(e?.message ?? "No se pudo abrir la cámara. Concede permiso o usa HTTPS."));
+      .then(() => {
+        started = true;
+        if (cancelled) safeStop();
+      })
+      .catch((e: any) =>
+        setError(e?.message ?? "No se pudo abrir la cámara. Concede permiso o usa HTTPS."),
+      );
 
     return () => {
       cancelled = true;
@@ -239,8 +297,14 @@ function QrScannerModal({ onClose, onResult }: { onClose: () => void; onResult: 
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-card border border-neon/40 rounded-2xl p-5 glow-neon-soft">
         <div className="flex items-center justify-between mb-3">
-          <div className="text-[10px] uppercase tracking-[0.3em] text-neon-dim font-display">Escanear QR del socio</div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-neon" aria-label="Cerrar">
+          <div className="text-[10px] uppercase tracking-[0.3em] text-neon-dim font-display">
+            Escanear QR del socio
+          </div>
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-neon"
+            aria-label="Cerrar"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>

@@ -3,9 +3,21 @@ import { SnoopLayout } from "@/components/SnoopLayout";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Package, Tag, Plus, Trash2, Pencil, Save, X, Mic, Search, Loader2, Sparkles, ImageIcon } from "lucide-react";
+import {
+  Package,
+  Tag,
+  Plus,
+  Trash2,
+  Pencil,
+  Save,
+  X,
+  Mic,
+  Search,
+  Loader2,
+  Sparkles,
+  ImageIcon,
+} from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { transcribeAudio } from "@/lib/voice-agent.functions";
 import { parseProductCommand } from "@/lib/products-voice.functions";
 import { enrichProduct } from "@/lib/products-enrich.functions";
 
@@ -19,14 +31,27 @@ function useDictation(onText: (t: string) => void, lang = "es-ES") {
   const recRef = useRef<any>(null);
   function start() {
     const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) { toast.error("Tu navegador no soporta dictado"); return; }
-    const r = new SR(); r.lang = lang; r.interimResults = false; r.continuous = false;
+    if (!SR) {
+      toast.error("Tu navegador no soporta dictado");
+      return;
+    }
+    const r = new SR();
+    r.lang = lang;
+    r.interimResults = false;
+    r.continuous = false;
     r.onresult = (e: any) => onText(e.results[0][0].transcript);
     r.onend = () => setListening(false);
     r.onerror = () => setListening(false);
-    recRef.current = r; setListening(true); r.start();
+    recRef.current = r;
+    setListening(true);
+    r.start();
   }
-  function stop() { try { recRef.current?.stop(); } catch {} setListening(false); }
+  function stop() {
+    try {
+      recRef.current?.stop();
+    } catch {}
+    setListening(false);
+  }
   return { listening, start, stop };
 }
 
@@ -63,59 +88,67 @@ function ProductosPage() {
   const [prefillCategory, setPrefillCategory] = useState<any>(null);
 
   // Voice command (AI)
-  const transcribe = useServerFn(transcribeAudio);
   const parseCmd = useServerFn(parseProductCommand);
-  const [recording, setRecording] = useState(false);
-  const [thinking, setThinking] = useState(false);
-  const mediaRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
 
-  async function startCommand() {
+  function cleanProductNameFromCommand(text: string) {
+    return text
+      .replace(/\bsnoop\b/gi, "")
+      .replace(/\b(portami|lleva(?:me)?|apr[eimi]*|abrir|abre|vai|ve|ir|a)\b/gi, "")
+      .replace(/\b(crea|crear|creare|nuevo|nuovo|nueva|alta|a[nñ]adir|agregar|registrar)\b/gi, "")
+      .replace(/\b(prod(?:u[cç]?t[oa]|ott[oi])|produvto|productos?)\b/gi, "")
+      .replace(/\b(en|nel|nella|nello|categoria|categor[ií]a)\b.*$/i, "")
+      .replace(/[.,;:!?]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  async function applyProductCommand(text: string, requestedTab?: TabId) {
+    if (requestedTab === "nuevo" || requestedTab === "categoria" || requestedTab === "stock")
+      setTab(requestedTab);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mr = new MediaRecorder(stream);
-      chunksRef.current = [];
-      mr.ondataavailable = (e) => e.data.size && chunksRef.current.push(e.data);
-      mr.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
-        setRecording(false);
-        setThinking(true);
-        try {
-          const blob = new Blob(chunksRef.current, { type: mr.mimeType || "audio/webm" });
-          const buf = await blob.arrayBuffer();
-          let bin = ""; const u8 = new Uint8Array(buf);
-          for (let i = 0; i < u8.length; i++) bin += String.fromCharCode(u8[i]);
-          const b64 = btoa(bin);
-          const { text } = await transcribe({ data: { audioBase64: b64, mimeType: blob.type } });
-          if (!text) { toast.error("No te he oído"); return; }
-          toast.message("Escuché", { description: text });
-          const cmd = await parseCmd({ data: { transcript: text, categories: cats.map((c) => ({ id: c.id, name: c.name, unit_type: c.unit_type, is_smokeable: c.is_smokeable })) } });
-          if (cmd.action === "search") {
-            setTab("stock"); setStockSearch(cmd.query || text);
-          } else if (cmd.action === "create_category") {
-            setPrefillCategory({ name: cmd.category_name, unit_type: cmd.unit_type || "unit", is_smokeable: cmd.is_smokeable });
-            setTab("categoria");
-          } else if (cmd.action === "create_product") {
-            setPrefillProduct({
-              category_id: cmd.category_id,
-              name: cmd.product_name,
-              stock: cmd.stock, buy_price: cmd.buy_price, sell_price: cmd.sell_price,
-              strain: cmd.strain || "",
-            });
-            setTab("nuevo");
-          } else {
-            toast.error("No he entendido el comando");
-          }
-        } catch (e: any) {
-          toast.error(e?.message || "Error de voz");
-        } finally { setThinking(false); }
-      };
-      mediaRef.current = mr; mr.start(); setRecording(true);
-    } catch {
-      toast.error("No se pudo acceder al micrófono");
+      const cmd = await parseCmd({
+        data: {
+          transcript: text,
+          categories: cats.map((c) => ({
+            id: c.id,
+            name: c.name,
+            unit_type: c.unit_type,
+            is_smokeable: c.is_smokeable,
+          })),
+        },
+      });
+      if (cmd.action === "search") {
+        setTab("stock");
+        setStockSearch(cmd.query || text);
+      } else if (cmd.action === "create_category") {
+        setPrefillCategory({
+          name: cmd.category_name,
+          unit_type: cmd.unit_type || "unit",
+          is_smokeable: cmd.is_smokeable,
+        });
+        setTab("categoria");
+      } else if (cmd.action === "create_product") {
+        setPrefillProduct({
+          category_id: cmd.category_id,
+          name: cmd.product_name || cleanProductNameFromCommand(text),
+          stock: cmd.stock,
+          buy_price: cmd.buy_price,
+          sell_price: cmd.sell_price,
+          strain: cmd.strain || "",
+        });
+        setTab("nuevo");
+      } else if (requestedTab) {
+        if (requestedTab === "nuevo")
+          setPrefillProduct({ name: cleanProductNameFromCommand(text) });
+        setTab(requestedTab);
+      }
+    } catch (e: any) {
+      if (requestedTab === "nuevo") {
+        setPrefillProduct({ name: cleanProductNameFromCommand(text) });
+        setTab("nuevo");
+      } else if (!requestedTab) toast.error(e?.message || "Error de voz");
     }
   }
-  function stopCommand() { try { mediaRef.current?.stop(); } catch {} }
 
   async function load() {
     setLoading(true);
@@ -127,7 +160,9 @@ function ProductosPage() {
     setProds((p as any) ?? []);
     setLoading(false);
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   // Reacciona a Snoop cuando navega aquí pidiendo un tab y/o un comando
   useEffect(() => {
@@ -142,51 +177,29 @@ function ProductosPage() {
       if (cmdRaw) {
         const { text, at } = JSON.parse(cmdRaw);
         window.localStorage.removeItem("snoop:productos-cmd");
-        if (Date.now() - at < 15000 && cats.length > 0) {
-          // Auto-parse del comando dictado desde otra página
-          (async () => {
-            try {
-              const cmd = await parseCmd({ data: { transcript: text, categories: cats.map((c) => ({ id: c.id, name: c.name, unit_type: c.unit_type, is_smokeable: c.is_smokeable })) } });
-              if (cmd.action === "create_category") {
-                setPrefillCategory({ name: cmd.category_name, unit_type: cmd.unit_type || "unit", is_smokeable: cmd.is_smokeable });
-                setTab("categoria");
-              } else if (cmd.action === "create_product") {
-                setPrefillProduct({
-                  category_id: cmd.category_id, name: cmd.product_name,
-                  stock: cmd.stock, buy_price: cmd.buy_price, sell_price: cmd.sell_price,
-                  strain: cmd.strain || "",
-                });
-                setTab("nuevo");
-              } else if (cmd.action === "search") {
-                setTab("stock"); setStockSearch(cmd.query || text);
-              }
-            } catch { /* silencio: el usuario rellena a mano */ }
-          })();
+        if (Date.now() - at < 15000) {
+          applyProductCommand(text, wantedTab as TabId | undefined);
         }
       }
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, cats]);
 
+  useEffect(() => {
+    if (loading) return;
+    function onCommand(e: Event) {
+      const detail = (e as CustomEvent).detail as { text?: string; tab?: TabId } | undefined;
+      const text = detail?.text?.trim();
+      if (!text) return;
+      applyProductCommand(text, detail?.tab);
+    }
+    window.addEventListener("snoop:productos-command", onCommand as EventListener);
+    return () => window.removeEventListener("snoop:productos-command", onCommand as EventListener);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, cats]);
+
   return (
     <SnoopLayout title="Productos" subtitle="Stock, categorías y altas">
-      {/* Voice command bar */}
-      <div className="mb-4 flex items-center gap-2 bg-card/60 border border-neon/20 rounded-2xl p-3">
-        <button
-          onClick={recording ? stopCommand : startCommand}
-          disabled={thinking}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs uppercase tracking-[0.2em] font-display border transition ${
-            recording ? "border-neon text-neon bg-neon/10 glow-neon" : "border-neon/40 text-neon hover:bg-neon/10"
-          } disabled:opacity-50`}
-        >
-          {thinking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mic className="w-4 h-4" />}
-          {thinking ? "Procesando…" : recording ? "Detener" : "Comando voz"}
-        </button>
-        <span className="text-[11px] text-muted-foreground leading-tight">
-          Di "buscar amnesia", "crear categoría flores fumable gramos", "crear producto X en flores stock 50 compra 5 venta 10".
-        </span>
-      </div>
-
       <div className="flex gap-2 mb-6 flex-wrap">
         {TABS.map((t) => (
           <button
@@ -206,11 +219,26 @@ function ProductosPage() {
       {loading ? (
         <div className="text-muted-foreground">Cargando…</div>
       ) : tab === "stock" ? (
-        <Stock cats={cats} prods={prods} onChange={load} search={stockSearch} setSearch={setStockSearch} />
+        <Stock
+          cats={cats}
+          prods={prods}
+          onChange={load}
+          search={stockSearch}
+          setSearch={setStockSearch}
+        />
       ) : tab === "nuevo" ? (
-        <NuevoProducto cats={cats} onCreated={load} prefill={prefillProduct} clearPrefill={() => setPrefillProduct(null)} />
+        <NuevoProducto
+          cats={cats}
+          onCreated={load}
+          prefill={prefillProduct}
+          clearPrefill={() => setPrefillProduct(null)}
+        />
       ) : (
-        <NuevaCategoria onCreated={load} prefill={prefillCategory} clearPrefill={() => setPrefillCategory(null)} />
+        <NuevaCategoria
+          onCreated={load}
+          prefill={prefillCategory}
+          clearPrefill={() => setPrefillCategory(null)}
+        />
       )}
     </SnoopLayout>
   );
@@ -218,17 +246,42 @@ function ProductosPage() {
 
 /* ---------------- STOCK ---------------- */
 
-function Stock({ cats, prods, onChange, search, setSearch }: { cats: Category[]; prods: Product[]; onChange: () => void; search: string; setSearch: (v: string) => void }) {
+function Stock({
+  cats,
+  prods,
+  onChange,
+  search,
+  setSearch,
+}: {
+  cats: Category[];
+  prods: Product[];
+  onChange: () => void;
+  search: string;
+  setSearch: (v: string) => void;
+}) {
   const [filter, setFilter] = useState<string>("all");
   const dict = useDictation((t) => setSearch(t));
   const q = search.trim().toLowerCase();
 
-  function norm(s: string) { return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim(); }
+  function norm(s: string) {
+    return s
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+  }
   function applyVoice(text: string) {
-    const t = norm(text).replace(/[.,;:!?]+$/g, "").trim();
+    const t = norm(text)
+      .replace(/[.,;:!?]+$/g, "")
+      .trim();
     if (!t) return;
     // Strip filler verbs
-    const cleaned = t.replace(/^(ver|mostrar|abre|abrir|categor[ií]a|filtra|filtrar|ir a|ve a|busca|buscar|buscame)\s+/i, "").trim();
+    const cleaned = t
+      .replace(
+        /^(ver|mostrar|abre|abrir|categor[ií]a|filtra|filtrar|ir a|ve a|busca|buscar|buscame)\s+/i,
+        "",
+      )
+      .trim();
     // Try exact / contains match against categories first
     const match = cats.find((c) => {
       const n = norm(c.name);
@@ -241,7 +294,11 @@ function Stock({ cats, prods, onChange, search, setSearch }: { cats: Category[];
       return;
     }
     // Reserved word "todas"
-    if (/^(todas|todo|todos|all)$/i.test(cleaned)) { setFilter("all"); setSearch(""); return; }
+    if (/^(todas|todo|todos|all)$/i.test(cleaned)) {
+      setFilter("all");
+      setSearch("");
+      return;
+    }
     // Fallback: treat as product search across all
     setFilter("all");
     setSearch(cleaned);
@@ -249,7 +306,9 @@ function Stock({ cats, prods, onChange, search, setSearch }: { cats: Category[];
 
   // Listen to voice agent broadcasts
   useEffect(() => {
-    function onVoice(e: any) { applyVoice(String(e?.detail?.text || "")); }
+    function onVoice(e: any) {
+      applyVoice(String(e?.detail?.text || ""));
+    }
     window.addEventListener("snoop:productos-voice", onVoice);
     // Pending filter from another route
     try {
@@ -281,7 +340,8 @@ function Stock({ cats, prods, onChange, search, setSearch }: { cats: Category[];
       <div className="bg-card/60 border border-neon/20 rounded-2xl p-8 text-center">
         <Tag className="w-8 h-8 mx-auto text-neon mb-3" />
         <p className="text-sm text-muted-foreground">
-          Aún no hay categorías. Crea una primero desde <strong className="text-neon">Crear categoría</strong>.
+          Aún no hay categorías. Crea una primero desde{" "}
+          <strong className="text-neon">Crear categoría</strong>.
         </p>
       </div>
     );
@@ -298,7 +358,10 @@ function Stock({ cats, prods, onChange, search, setSearch }: { cats: Category[];
           className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground"
         />
         {search && (
-          <button onClick={() => setSearch("")} className="text-muted-foreground hover:text-foreground">
+          <button
+            onClick={() => setSearch("")}
+            className="text-muted-foreground hover:text-foreground"
+          >
             <X className="w-4 h-4" />
           </button>
         )}
@@ -415,7 +478,10 @@ function ProductRow({ p, cat, onChange }: { p: Product; cat: Category; onChange:
       } else {
         const { error } = await supabase.from("products").update(patch).eq("id", p.id);
         if (error) toast.error(error.message);
-        else { toast.success("Enriquecido con IA"); onChange(); }
+        else {
+          toast.success("Enriquecido con IA");
+          onChange();
+        }
       }
     } catch (e: any) {
       toast.error(e?.message ?? "Error enriqueciendo");
@@ -438,16 +504,24 @@ function ProductRow({ p, cat, onChange }: { p: Product; cat: Category; onChange:
           <div className="text-sm text-foreground truncate">
             {p.name}
             {p.strain && (
-              <span className="ml-2 text-[10px] uppercase tracking-widest text-neon-dim">{p.strain}</span>
+              <span className="ml-2 text-[10px] uppercase tracking-widest text-neon-dim">
+                {p.strain}
+              </span>
             )}
           </div>
           <div className="text-[11px] text-muted-foreground">
-            Stock: <span className="text-foreground">{Number(p.stock)} {cat.unit_type === "gr" ? "gr" : "u"}</span>
-            {" · "}Compra: €{Number(p.buy_price).toFixed(2)} · Venta: €{Number(p.sell_price).toFixed(2)}
+            Stock:{" "}
+            <span className="text-foreground">
+              {Number(p.stock)} {cat.unit_type === "gr" ? "gr" : "u"}
+            </span>
+            {" · "}Compra: €{Number(p.buy_price).toFixed(2)} · Venta: €
+            {Number(p.sell_price).toFixed(2)}
           </div>
           {p.description && (
             <div className="text-[11px] text-muted-foreground mt-1">
-              <div className={expanded ? "whitespace-pre-wrap" : "line-clamp-2"}>{p.description}</div>
+              <div className={expanded ? "whitespace-pre-wrap" : "line-clamp-2"}>
+                {p.description}
+              </div>
               <button
                 type="button"
                 onClick={() => setExpanded((v) => !v)}
@@ -459,10 +533,22 @@ function ProductRow({ p, cat, onChange }: { p: Product; cat: Category; onChange:
           )}
         </div>
         <div className="flex gap-1 shrink-0">
-          <button onClick={runEnrich} disabled={enriching} className="p-2 text-muted-foreground hover:text-neon disabled:opacity-50" title="Enriquecer con IA (foto + descripción)">
-            {enriching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+          <button
+            onClick={runEnrich}
+            disabled={enriching}
+            className="p-2 text-muted-foreground hover:text-neon disabled:opacity-50"
+            title="Enriquecer con IA (foto + descripción)"
+          >
+            {enriching ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Sparkles className="w-4 h-4" />
+            )}
           </button>
-          <button onClick={() => setEdit(true)} className="p-2 text-muted-foreground hover:text-neon">
+          <button
+            onClick={() => setEdit(true)}
+            className="p-2 text-muted-foreground hover:text-neon"
+          >
             <Pencil className="w-4 h-4" />
           </button>
           <button onClick={remove} className="p-2 text-muted-foreground hover:text-destructive">
@@ -481,9 +567,21 @@ function ProductRow({ p, cat, onChange }: { p: Product; cat: Category; onChange:
         onChange={(e) => setForm({ ...form, name: e.target.value })}
       />
       <div className="grid grid-cols-3 gap-2">
-        <NumField label={`Stock (${cat.unit_type})`} value={form.stock} onChange={(v) => setForm({ ...form, stock: v })} />
-        <NumField label="Compra €" value={form.buy_price} onChange={(v) => setForm({ ...form, buy_price: v })} />
-        <NumField label="Venta €" value={form.sell_price} onChange={(v) => setForm({ ...form, sell_price: v })} />
+        <NumField
+          label={`Stock (${cat.unit_type})`}
+          value={form.stock}
+          onChange={(v) => setForm({ ...form, stock: v })}
+        />
+        <NumField
+          label="Compra €"
+          value={form.buy_price}
+          onChange={(v) => setForm({ ...form, buy_price: v })}
+        />
+        <NumField
+          label="Venta €"
+          value={form.sell_price}
+          onChange={(v) => setForm({ ...form, sell_price: v })}
+        />
       </div>
       {cat.is_smokeable && (
         <select
@@ -498,10 +596,19 @@ function ProductRow({ p, cat, onChange }: { p: Product; cat: Category; onChange:
         </select>
       )}
       <div className="flex gap-2 justify-end">
-        <button onClick={() => { setEdit(false); setForm(p); }} className="px-3 py-1.5 text-xs border border-border rounded">
+        <button
+          onClick={() => {
+            setEdit(false);
+            setForm(p);
+          }}
+          className="px-3 py-1.5 text-xs border border-border rounded"
+        >
           <X className="w-3 h-3 inline mr-1" /> Cancelar
         </button>
-        <button onClick={save} className="px-3 py-1.5 text-xs bg-gradient-neon text-primary-foreground rounded font-semibold">
+        <button
+          onClick={save}
+          className="px-3 py-1.5 text-xs bg-gradient-neon text-primary-foreground rounded font-semibold"
+        >
           <Save className="w-3 h-3 inline mr-1" /> Guardar
         </button>
       </div>
@@ -509,7 +616,15 @@ function ProductRow({ p, cat, onChange }: { p: Product; cat: Category; onChange:
   );
 }
 
-function NumField({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+function NumField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+}) {
   return (
     <label className="block">
       <span className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</span>
@@ -526,7 +641,17 @@ function NumField({ label, value, onChange }: { label: string; value: number; on
 
 /* ---------------- NUEVO PRODUCTO ---------------- */
 
-function NuevoProducto({ cats, onCreated, prefill, clearPrefill }: { cats: Category[]; onCreated: () => void; prefill: any; clearPrefill: () => void }) {
+function NuevoProducto({
+  cats,
+  onCreated,
+  prefill,
+  clearPrefill,
+}: {
+  cats: Category[];
+  onCreated: () => void;
+  prefill: any;
+  clearPrefill: () => void;
+}) {
   const [categoryId, setCategoryId] = useState("");
   const [name, setName] = useState("");
   const [stock, setStock] = useState(0);
@@ -545,7 +670,6 @@ function NuevoProducto({ cats, onCreated, prefill, clearPrefill }: { cats: Categ
     if (prefill.sell_price) setSell(prefill.sell_price);
     if (prefill.strain) setStrain(prefill.strain);
     clearPrefill();
-    toast.success("Datos rellenados por voz — revisa y guarda");
   }, [prefill]);
 
   // voice input for product name
@@ -571,7 +695,10 @@ function NuevoProducto({ cats, onCreated, prefill, clearPrefill }: { cats: Categ
     setSaving(true);
     const { getCurrentClubId } = await import("@/lib/club");
     const clubId = await getCurrentClubId();
-    if (!clubId) { setSaving(false); return toast.error("No tienes un club asignado"); }
+    if (!clubId) {
+      setSaving(false);
+      return toast.error("No tienes un club asignado");
+    }
     const productName = name.trim();
     const { data: inserted, error } = await supabase
       .from("products")
@@ -586,9 +713,16 @@ function NuevoProducto({ cats, onCreated, prefill, clearPrefill }: { cats: Categ
       })
       .select("id")
       .single();
-    if (error) { setSaving(false); return toast.error(error.message); }
+    if (error) {
+      setSaving(false);
+      return toast.error(error.message);
+    }
     toast.success("Producto creado · enriqueciendo con IA…");
-    setName(""); setStock(0); setBuy(0); setSell(0); setStrain("");
+    setName("");
+    setStock(0);
+    setBuy(0);
+    setSell(0);
+    setStrain("");
     setSaving(false);
     onCreated();
     // Fire-and-forget enrichment
@@ -660,23 +794,41 @@ function NuevoProducto({ cats, onCreated, prefill, clearPrefill }: { cats: Categ
 
       <div className="grid grid-cols-3 gap-3">
         <Field label={`Stock${cat ? ` (${cat.unit_type})` : ""}`}>
-          <input type="number" step="0.01" value={stock} onChange={(e) => setStock(parseFloat(e.target.value) || 0)}
-            className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm" />
+          <input
+            type="number"
+            step="0.01"
+            value={stock}
+            onChange={(e) => setStock(parseFloat(e.target.value) || 0)}
+            className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm"
+          />
         </Field>
         <Field label="P. compra €">
-          <input type="number" step="0.01" value={buy} onChange={(e) => setBuy(parseFloat(e.target.value) || 0)}
-            className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm" />
+          <input
+            type="number"
+            step="0.01"
+            value={buy}
+            onChange={(e) => setBuy(parseFloat(e.target.value) || 0)}
+            className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm"
+          />
         </Field>
         <Field label="P. venta €">
-          <input type="number" step="0.01" value={sell} onChange={(e) => setSell(parseFloat(e.target.value) || 0)}
-            className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm" />
+          <input
+            type="number"
+            step="0.01"
+            value={sell}
+            onChange={(e) => setSell(parseFloat(e.target.value) || 0)}
+            className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm"
+          />
         </Field>
       </div>
 
       {cat?.is_smokeable && (
         <Field label="Tipo (fumable)">
-          <select value={strain} onChange={(e) => setStrain(e.target.value as Strain | "")}
-            className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm focus:border-neon outline-none">
+          <select
+            value={strain}
+            onChange={(e) => setStrain(e.target.value as Strain | "")}
+            className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm focus:border-neon outline-none"
+          >
             <option value="">— sin especificar —</option>
             <option value="indica">Indica</option>
             <option value="sativa">Sativa</option>
@@ -698,7 +850,15 @@ function NuevoProducto({ cats, onCreated, prefill, clearPrefill }: { cats: Categ
 
 /* ---------------- NUEVA CATEGORIA ---------------- */
 
-function NuevaCategoria({ onCreated, prefill, clearPrefill }: { onCreated: () => void; prefill: any; clearPrefill: () => void }) {
+function NuevaCategoria({
+  onCreated,
+  prefill,
+  clearPrefill,
+}: {
+  onCreated: () => void;
+  prefill: any;
+  clearPrefill: () => void;
+}) {
   const [name, setName] = useState("");
   const [unit, setUnit] = useState<UnitType>("unit");
   const [smokeable, setSmokeable] = useState(false);
@@ -710,16 +870,17 @@ function NuevaCategoria({ onCreated, prefill, clearPrefill }: { onCreated: () =>
     if (prefill.unit_type) setUnit(prefill.unit_type);
     if (typeof prefill.is_smokeable === "boolean") setSmokeable(prefill.is_smokeable);
     clearPrefill();
-    toast.success("Datos rellenados por voz — revisa y guarda");
   }, [prefill]);
-
 
   async function submit() {
     if (!name.trim()) return toast.error("Nombre obligatorio");
     setSaving(true);
     const { getCurrentClubId } = await import("@/lib/club");
     const clubId = await getCurrentClubId();
-    if (!clubId) { setSaving(false); return toast.error("No tienes un club asignado"); }
+    if (!clubId) {
+      setSaving(false);
+      return toast.error("No tienes un club asignado");
+    }
     const { error } = await supabase.from("product_categories").insert({
       club_id: clubId,
       name: name.trim(),
@@ -740,12 +901,20 @@ function NuevaCategoria({ onCreated, prefill, clearPrefill }: { onCreated: () =>
   return (
     <div className="max-w-xl bg-card/60 border border-neon/20 rounded-2xl p-6 space-y-4">
       <Field label="Nombre">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="ej. Flores"
-          className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm focus:border-neon outline-none" />
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="ej. Flores"
+          className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm focus:border-neon outline-none"
+        />
         <div className="mt-2 flex flex-wrap gap-1">
           {ejemplos.map((ex) => (
-            <button key={ex} type="button" onClick={() => setName(ex)}
-              className="text-[10px] uppercase tracking-widest px-2 py-1 rounded-full border border-border text-muted-foreground hover:text-neon hover:border-neon/40">
+            <button
+              key={ex}
+              type="button"
+              onClick={() => setName(ex)}
+              className="text-[10px] uppercase tracking-widest px-2 py-1 rounded-full border border-border text-muted-foreground hover:text-neon hover:border-neon/40"
+            >
               {ex}
             </button>
           ))}
@@ -755,10 +924,16 @@ function NuevaCategoria({ onCreated, prefill, clearPrefill }: { onCreated: () =>
       <Field label="Unidad de medida">
         <div className="grid grid-cols-2 gap-2">
           {(["gr", "unit"] as UnitType[]).map((u) => (
-            <button key={u} type="button" onClick={() => setUnit(u)}
+            <button
+              key={u}
+              type="button"
+              onClick={() => setUnit(u)}
               className={`py-2.5 rounded-lg text-xs uppercase tracking-widest border ${
-                unit === u ? "border-neon text-neon bg-neon/10" : "border-border text-muted-foreground"
-              }`}>
+                unit === u
+                  ? "border-neon text-neon bg-neon/10"
+                  : "border-border text-muted-foreground"
+              }`}
+            >
               {u === "gr" ? "Gramos" : "Unidades"}
             </button>
           ))}
@@ -766,13 +941,20 @@ function NuevaCategoria({ onCreated, prefill, clearPrefill }: { onCreated: () =>
       </Field>
 
       <label className="flex items-center gap-3 cursor-pointer">
-        <input type="checkbox" checked={smokeable} onChange={(e) => setSmokeable(e.target.checked)}
-          className="w-4 h-4 accent-[var(--neon)]" />
+        <input
+          type="checkbox"
+          checked={smokeable}
+          onChange={(e) => setSmokeable(e.target.checked)}
+          className="w-4 h-4 accent-[var(--neon)]"
+        />
         <span className="text-sm">Producto fumable (mostrará indica / sativa / híbrida)</span>
       </label>
 
-      <button onClick={submit} disabled={saving}
-        className="w-full bg-gradient-neon text-primary-foreground py-3 rounded-xl font-display font-semibold uppercase tracking-[0.2em] text-xs glow-neon disabled:opacity-50">
+      <button
+        onClick={submit}
+        disabled={saving}
+        className="w-full bg-gradient-neon text-primary-foreground py-3 rounded-xl font-display font-semibold uppercase tracking-[0.2em] text-xs glow-neon disabled:opacity-50"
+      >
         <Plus className="w-4 h-4 inline mr-2" /> {saving ? "Creando…" : "Crear categoría"}
       </button>
     </div>

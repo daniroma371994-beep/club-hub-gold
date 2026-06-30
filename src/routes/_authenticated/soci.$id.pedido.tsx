@@ -4,7 +4,17 @@ import { useServerFn } from "@tanstack/react-start";
 import { SnoopLayout } from "@/components/SnoopLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Mic, Square, Loader2, Trash2, Plus, ShoppingBag, Send, Search } from "lucide-react";
+import {
+  ArrowLeft,
+  Mic,
+  Square,
+  Loader2,
+  Trash2,
+  Plus,
+  ShoppingBag,
+  Send,
+  Search,
+} from "lucide-react";
 import { parseOrderItems, transcribeAudio } from "@/lib/voice-agent.functions";
 import { formatPrice } from "@/lib/snoop";
 
@@ -35,7 +45,8 @@ type Cart = {
 
 function pickMime(): string | null {
   const c = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/mpeg"];
-  for (const t of c) if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(t)) return t;
+  for (const t of c)
+    if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(t)) return t;
   return null;
 }
 async function blobToBase64(blob: Blob) {
@@ -48,7 +59,11 @@ async function blobToBase64(blob: Blob) {
 function PedidoPage() {
   const { id } = Route.useParams();
   const nav = useNavigate();
-  const [member, setMember] = useState<{ first_name: string; last_name: string; member_number: string } | null>(null);
+  const [member, setMember] = useState<{
+    first_name: string;
+    last_name: string;
+    member_number: string;
+  } | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<Cart[]>([]);
   const [text, setText] = useState("");
@@ -57,7 +72,15 @@ function PedidoPage() {
   const [processing, setProcessing] = useState(false);
   const [notes, setNotes] = useState("");
   // pending items awaiting manual or voice confirmation
-  const [pending, setPending] = useState<{ transcript: string; items: Array<{ product_id: string; product_name: string; unit_type: "gr" | "unit"; quantity: number }> } | null>(null);
+  const [pending, setPending] = useState<{
+    transcript: string;
+    items: Array<{
+      product_id: string;
+      product_name: string;
+      unit_type: "gr" | "unit";
+      quantity: number;
+    }>;
+  } | null>(null);
   const [search, setSearch] = useState("");
   const [activeCat, setActiveCat] = useState<string>("all");
   // per-product input state for gr items: { [productId]: { qty, eur } }
@@ -74,8 +97,15 @@ function PedidoPage() {
   useEffect(() => {
     (async () => {
       const [{ data: m }, { data: p }] = await Promise.all([
-        supabase.from("members").select("first_name,last_name,member_number").eq("id", id).maybeSingle(),
-        supabase.from("products").select("id,category_id,name,stock,sell_price,product_categories(name,unit_type)").order("name"),
+        supabase
+          .from("members")
+          .select("first_name,last_name,member_number")
+          .eq("id", id)
+          .maybeSingle(),
+        supabase
+          .from("products")
+          .select("id,category_id,name,stock,sell_price,product_categories(name,unit_type)")
+          .order("name"),
       ]);
       setMember((m as any) ?? null);
       const flat: Product[] = ((p as any[]) ?? []).map((row) => ({
@@ -112,7 +142,8 @@ function PedidoPage() {
     const q = search.trim().toLowerCase();
     return products.filter((p) => {
       if (activeCat !== "all" && p.category_id !== activeCat) return false;
-      if (q && !p.name.toLowerCase().includes(q) && !p.category_name.toLowerCase().includes(q)) return false;
+      if (q && !p.name.toLowerCase().includes(q) && !p.category_name.toLowerCase().includes(q))
+        return false;
       return true;
     });
   }, [products, search, activeCat]);
@@ -213,33 +244,68 @@ function PedidoPage() {
 
   /** Local fallback: match product names in transcript when AI returns nothing. */
   function localMatch(transcript: string): Array<{ product_id: string; quantity: number }> {
-    const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    const t = " " + norm(transcript).replace(/[^\w\s.,]/g, " ").replace(/\s+/g, " ") + " ";
+    const norm = (s: string) =>
+      s
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+    const t =
+      " " +
+      norm(transcript)
+        .replace(/[^\w\s.,]/g, " ")
+        .replace(/\s+/g, " ") +
+      " ";
     const numWords: Record<string, number> = {
-      medio: 0.5, media: 0.5, mezzo: 0.5, mezza: 0.5,
-      un: 1, una: 1, uno: 1, dos: 2, due: 2, tres: 3, tre: 3,
-      cuatro: 4, quattro: 4, cinco: 5, cinque: 5, seis: 6, sei: 6,
+      medio: 0.5,
+      media: 0.5,
+      mezzo: 0.5,
+      mezza: 0.5,
+      un: 1,
+      una: 1,
+      uno: 1,
+      dos: 2,
+      due: 2,
+      tres: 3,
+      tre: 3,
+      cuatro: 4,
+      quattro: 4,
+      cinco: 5,
+      cinque: 5,
+      seis: 6,
+      sei: 6,
     };
     const out: Array<{ product_id: string; quantity: number }> = [];
     const seen = new Set<string>();
     for (const p of products) {
-      const tokens = norm(p.name).split(/\s+/).filter((x) => x.length >= 3);
+      const tokens = norm(p.name)
+        .split(/\s+/)
+        .filter((x) => x.length >= 3);
       if (!tokens.length) continue;
       let idx = -1;
       for (const tok of tokens) {
         const at = t.indexOf(" " + tok);
-        if (at >= 0) { idx = at; break; }
+        if (at >= 0) {
+          idx = at;
+          break;
+        }
       }
       if (idx < 0 || seen.has(p.id)) continue;
       seen.add(p.id);
       const before = t.slice(Math.max(0, idx - 40), idx);
       let qty = 1;
-      const num = before.match(/(\d+(?:[.,]\d+)?)\s*(?:gr|g|gramos?|grammi)?\s*(?:de|di|del|della)?\s*$/);
+      const num = before.match(
+        /(\d+(?:[.,]\d+)?)\s*(?:gr|g|gramos?|grammi)?\s*(?:de|di|del|della)?\s*$/,
+      );
       if (num) qty = parseFloat(num[1].replace(",", "."));
       else {
         for (const [w, v] of Object.entries(numWords)) {
-          if (new RegExp(`\\b${w}\\b\\s*(?:gramos?|grammi|gr|g)?\\s*(?:de|di|del|della)?\\s*$`).test(before)) {
-            qty = v; break;
+          if (
+            new RegExp(`\\b${w}\\b\\s*(?:gramos?|grammi|gr|g)?\\s*(?:de|di|del|della)?\\s*$`).test(
+              before,
+            )
+          ) {
+            qty = v;
+            break;
           }
         }
       }
@@ -249,7 +315,9 @@ function PedidoPage() {
   }
 
   function isYes(t: string) {
-    return /\b(s[ií]|si|confirma(r|do)?|confirmo|ok|okey|okay|vale|dale|adelante|añade|añadir|agrega|agregar|conferma)\b/i.test(t);
+    return /\b(s[ií]|si|confirma(r|do)?|confirmo|ok|okey|okay|vale|dale|adelante|añade|añadir|agrega|agregar|conferma)\b/i.test(
+      t,
+    );
   }
   function isNo(t: string) {
     return /\b(no|cancela(r)?|cancelo|borra(r)?|anula(r)?|annulla)\b/i.test(t);
@@ -270,8 +338,15 @@ function PedidoPage() {
     if (!t.trim()) return;
     // voice confirm / cancel for an existing pending batch
     if (pending) {
-      if (isYes(t)) { applyPending(); return; }
-      if (isNo(t)) { setPending(null); toast("Cancelado"); return; }
+      if (isYes(t)) {
+        applyPending();
+        return;
+      }
+      if (isNo(t)) {
+        setPending(null);
+        toast("Cancelado");
+        return;
+      }
     }
     setBusy(true);
     try {
@@ -281,8 +356,11 @@ function PedidoPage() {
           data: {
             transcript: t,
             products: products.map((p) => ({
-              id: p.id, name: p.name, unit_type: p.unit_type,
-              sell_price: priceCents(p), stock: p.stock,
+              id: p.id,
+              name: p.name,
+              unit_type: p.unit_type,
+              sell_price: priceCents(p),
+              stock: p.stock,
             })),
           },
         });
@@ -290,7 +368,7 @@ function PedidoPage() {
       } catch {}
       if (!items.length) items = localMatch(t);
       if (!items.length) {
-        toast.error("No encontré productos. Prueba: \"dos gramos de amnesia, una cerveza\"");
+        toast.error('No encontré productos. Prueba: "dos gramos de amnesia, una cerveza"');
         return;
       }
       const enriched = items.map((it) => {
@@ -310,7 +388,6 @@ function PedidoPage() {
     }
   }
 
-
   async function startRec() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -323,16 +400,23 @@ function PedidoPage() {
       }
       const rec = new MediaRecorder(stream, { mimeType: mime });
       chunksRef.current = [];
-      rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      rec.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
       rec.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
         const blob = new Blob(chunksRef.current, { type: rec.mimeType });
-        if (blob.size < 1200) { setProcessing(false); return; }
+        if (blob.size < 1200) {
+          setProcessing(false);
+          return;
+        }
         setProcessing(true);
         try {
           const b64 = await blobToBase64(blob);
-          const { text: tx } = await transcribe({ data: { audioBase64: b64, mimeType: rec.mimeType } });
+          const { text: tx } = await transcribe({
+            data: { audioBase64: b64, mimeType: rec.mimeType },
+          });
           if (tx) await processTranscript(tx);
         } catch (e: any) {
           toast.error(e?.message ?? "Error transcribiendo");
@@ -360,7 +444,10 @@ function PedidoPage() {
     let q = 0;
     if (!isNaN(qty) && qty > 0) q = qty;
     else if (!isNaN(eur) && eur > 0 && p.sell_price_eur > 0) q = eur / p.sell_price_eur;
-    if (q <= 0) { toast.error("Indica gramos o euros"); return; }
+    if (q <= 0) {
+      toast.error("Indica gramos o euros");
+      return;
+    }
     addToCart(p.id, q, { autoTolerance: true });
     setGrInput((s) => ({ ...s, [p.id]: { qty: "", eur: "" } }));
   }
@@ -397,8 +484,15 @@ function PedidoPage() {
   }
 
   return (
-    <SnoopLayout title="Nuevo pedido" subtitle={member ? `${member.first_name} ${member.last_name} · #${member.member_number}` : ""}>
-      <Link to="/soci/$id" params={{ id }} className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground hover:text-neon mb-6">
+    <SnoopLayout
+      title="Nuevo pedido"
+      subtitle={member ? `${member.first_name} ${member.last_name} · #${member.member_number}` : ""}
+    >
+      <Link
+        to="/soci/$id"
+        params={{ id }}
+        className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground hover:text-neon mb-6"
+      >
         <ArrowLeft className="w-4 h-4" /> Volver a la ficha
       </Link>
 
@@ -406,7 +500,9 @@ function PedidoPage() {
         {/* Dictation */}
         <div className="lg:col-span-2 space-y-4">
           <div className="bg-card/60 border border-neon/20 rounded-2xl p-5">
-            <div className="text-[10px] uppercase tracking-[0.3em] text-neon-dim mb-3">Dicta o escribe el pedido</div>
+            <div className="text-[10px] uppercase tracking-[0.3em] text-neon-dim mb-3">
+              Dicta o escribe el pedido
+            </div>
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -419,10 +515,18 @@ function PedidoPage() {
                 onClick={recording ? stopRec : startRec}
                 disabled={busy || processing}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs uppercase tracking-widest font-display border transition ${
-                  recording ? "border-destructive text-destructive bg-destructive/10" : "border-neon text-neon bg-neon/10 hover:bg-neon/20"
+                  recording
+                    ? "border-destructive text-destructive bg-destructive/10"
+                    : "border-neon text-neon bg-neon/10 hover:bg-neon/20"
                 }`}
               >
-                {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : recording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                {processing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : recording ? (
+                  <Square className="w-4 h-4" />
+                ) : (
+                  <Mic className="w-4 h-4" />
+                )}
                 {processing ? "Transcribiendo…" : recording ? "Parar" : "Hablar"}
               </button>
               <button
@@ -433,46 +537,45 @@ function PedidoPage() {
                 {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 Añadir al carrito
               </button>
-          </div>
-
-          {/* Confirmation panel for voice/text input */}
-          {pending && (
-            <div className="bg-neon/5 border-2 border-neon/60 rounded-2xl p-5 glow-neon">
-              <div className="text-[10px] uppercase tracking-[0.3em] text-neon mb-2">Confirmar lo que entendí</div>
-              {pending.transcript && (
-                <div className="text-[11px] italic text-muted-foreground mb-3">"{pending.transcript}"</div>
-              )}
-              <ul className="space-y-1.5 mb-4">
-                {pending.items.map((it, i) => (
-                  <li key={i} className="flex items-center justify-between gap-3 text-sm">
-                    <span className="text-foreground truncate">{it.product_name}</span>
-                    <span className="text-neon font-display whitespace-nowrap">
-                      {it.quantity}{it.unit_type === "gr" ? " g" : " ud"}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <div className="flex gap-2 flex-wrap">
-                <button
-                  onClick={applyPending}
-                  className="flex-1 min-w-[120px] px-4 py-2 rounded-lg bg-gradient-neon text-primary-foreground text-xs uppercase tracking-widest font-display glow-neon"
-                >
-                  Confirmar
-                </button>
-                <button
-                  onClick={() => setPending(null)}
-                  className="flex-1 min-w-[120px] px-4 py-2 rounded-lg border border-destructive text-destructive text-xs uppercase tracking-widest font-display hover:bg-destructive/10"
-                >
-                  Cancelar
-                </button>
-              </div>
-              <div className="text-[10px] text-muted-foreground mt-3">
-                💡 También puedes decir <span className="text-neon">"sí"</span> o <span className="text-neon">"no"</span> por micrófono.
-              </div>
             </div>
-          )}
 
-
+            {/* Confirmation panel for voice/text input */}
+            {pending && (
+              <div className="bg-neon/5 border-2 border-neon/60 rounded-2xl p-5 glow-neon">
+                <div className="text-[10px] uppercase tracking-[0.3em] text-neon mb-2">
+                  Confirmar lo que entendí
+                </div>
+                <ul className="space-y-1.5 mb-4">
+                  {pending.items.map((it, i) => (
+                    <li key={i} className="flex items-center justify-between gap-3 text-sm">
+                      <span className="text-foreground truncate">{it.product_name}</span>
+                      <span className="text-neon font-display whitespace-nowrap">
+                        {it.quantity}
+                        {it.unit_type === "gr" ? " g" : " ud"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="flex gap-2 flex-wrap">
+                  <button
+                    onClick={applyPending}
+                    className="flex-1 min-w-[120px] px-4 py-2 rounded-lg bg-gradient-neon text-primary-foreground text-xs uppercase tracking-widest font-display glow-neon"
+                  >
+                    Confirmar
+                  </button>
+                  <button
+                    onClick={() => setPending(null)}
+                    className="flex-1 min-w-[120px] px-4 py-2 rounded-lg border border-destructive text-destructive text-xs uppercase tracking-widest font-display hover:bg-destructive/10"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-3">
+                  💡 También puedes decir <span className="text-neon">"sí"</span> o{" "}
+                  <span className="text-neon">"no"</span> por micrófono.
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Quick catalog */}
@@ -496,26 +599,38 @@ function PedidoPage() {
                 <button
                   onClick={() => setActiveCat("all")}
                   className={`text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full border ${activeCat === "all" ? "bg-neon/15 border-neon text-neon" : "border-border text-muted-foreground hover:border-neon/50"}`}
-                >Todas</button>
+                >
+                  Todas
+                </button>
                 {categories.map((c) => (
                   <button
                     key={c.id}
                     onClick={() => setActiveCat(c.id)}
                     className={`text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full border ${activeCat === c.id ? "bg-neon/15 border-neon text-neon" : "border-border text-muted-foreground hover:border-neon/50"}`}
-                  >{c.name}</button>
+                  >
+                    {c.name}
+                  </button>
                 ))}
               </div>
             )}
 
             {products.length === 0 ? (
-              <div className="text-sm text-muted-foreground">No hay productos. Crea alguno en <Link to="/productos" className="text-neon underline">Productos</Link>.</div>
+              <div className="text-sm text-muted-foreground">
+                No hay productos. Crea alguno en{" "}
+                <Link to="/productos" className="text-neon underline">
+                  Productos
+                </Link>
+                .
+              </div>
             ) : grouped.length === 0 ? (
               <div className="text-sm text-muted-foreground">Sin resultados.</div>
             ) : (
               <div className="space-y-4">
                 {grouped.map((grp) => (
                   <div key={grp.name}>
-                    <div className="text-[10px] uppercase tracking-[0.25em] text-neon-dim mb-2">{grp.name}</div>
+                    <div className="text-[10px] uppercase tracking-[0.25em] text-neon-dim mb-2">
+                      {grp.name}
+                    </div>
                     <div className="grid sm:grid-cols-2 gap-2">
                       {grp.items.map((p) => {
                         const isGr = p.unit_type === "gr";
@@ -597,31 +712,44 @@ function PedidoPage() {
                       <div className="min-w-0">
                         <div className="text-sm text-foreground truncate">{c.product_name}</div>
                         <div className="text-[10px] text-muted-foreground">
-                          {c.quantity}{c.unit_type === "gr" ? " g" : " ud"} × {formatPrice(c.unit_price_cents)}
+                          {c.quantity}
+                          {c.unit_type === "gr" ? " g" : " ud"} × {formatPrice(c.unit_price_cents)}
                         </div>
                       </div>
-                      <div className="text-neon font-display whitespace-nowrap">{formatPrice(c.line_total_cents)}</div>
-                      <button onClick={() => setCart((p) => p.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive">
+                      <div className="text-neon font-display whitespace-nowrap">
+                        {formatPrice(c.line_total_cents)}
+                      </div>
+                      <button
+                        onClick={() => setCart((p) => p.filter((_, j) => j !== i))}
+                        className="text-muted-foreground hover:text-destructive"
+                      >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                     {c.unit_type === "gr" && (
                       <div className="flex items-center gap-2 mt-2">
-                        <label className="text-[10px] uppercase tracking-widest text-neon-dim">Merma</label>
+                        <label className="text-[10px] uppercase tracking-widest text-neon-dim">
+                          Merma
+                        </label>
                         <input
                           inputMode="decimal"
                           value={mermaText[c.product_id] ?? (c.merma ? String(c.merma) : "")}
                           onChange={(e) => {
                             const raw = e.target.value;
                             setMermaText((s) => ({ ...s, [c.product_id]: raw }));
-                            if (raw.trim() === "") { updateLine(i, { merma: 0 }); return; }
+                            if (raw.trim() === "") {
+                              updateLine(i, { merma: 0 });
+                              return;
+                            }
                             const v = parseFloat(raw.replace(",", "."));
                             if (!isNaN(v) && v >= 0) updateLine(i, { merma: v });
                           }}
                           placeholder="0,05"
                           className="w-20 bg-input border border-border rounded px-2 py-1 text-xs focus:border-neon outline-none"
                         />
-                        <span className="text-[10px] text-muted-foreground">g extra a descontar del stock</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          g extra a descontar del stock
+                        </span>
                       </div>
                     )}
                   </li>
