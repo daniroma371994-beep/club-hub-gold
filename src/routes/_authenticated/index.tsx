@@ -42,6 +42,10 @@ function Home() {
             <Package className="w-6 h-6" />
             <span className="text-xs uppercase tracking-[0.25em] font-display">Productos</span>
           </Link>
+          <Link to="/caja" className="col-span-2 flex flex-col items-center gap-2 px-4 py-5 rounded-xl border border-neon/40 bg-card/60 backdrop-blur text-neon hover:bg-neon/10 transition">
+            <Banknote className="w-6 h-6" />
+            <span className="text-xs uppercase tracking-[0.25em] font-display">Caja</span>
+          </Link>
           {isAdmin && (
             <Link to="/piani" className="col-span-2 flex flex-col items-center gap-2 px-4 py-5 rounded-xl border border-neon/40 bg-card/60 backdrop-blur text-neon hover:bg-neon/10 transition">
               <BadgeEuro className="w-6 h-6" />
