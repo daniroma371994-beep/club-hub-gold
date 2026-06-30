@@ -192,6 +192,11 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
     rec.interimResults = true;
     rec.lang = "es-ES";
     rec.onresult = (e: any) => {
+      // HARD MUTE while Snoop habla (y un pequeño margen después) para evitar
+      // que el micro recoja su propia voz y se dispare en bucle ("hola hola hola").
+      if (speakingRef.current || Date.now() < muteUntilRef.current) {
+        return;
+      }
       let finalText = "";
       let interimText = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -200,16 +205,13 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
         if (r.isFinal) finalText += t + " ";
         else interimText += t;
       }
-      // Barge-in: if Snoop is speaking and user starts talking, cut audio.
-      if ((interimText.trim().length > 2 || finalText.trim()) && speakingRef.current) {
-        stopSpeaking();
-      }
       if (interimText) setInterim(interimText);
       if (finalText.trim()) {
         const txt = finalText.trim();
-        // wake word stripping
         const cleaned = txt.replace(WAKE_RX, "").trim();
         if (!cleaned) return;
+        // Ignora frases muy cortas que suelen ser ruido / eco
+        if (cleaned.length < 2) return;
         handleTranscript(cleaned);
       }
     };
