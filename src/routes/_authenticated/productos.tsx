@@ -537,11 +537,21 @@ function NuevoProducto({ cats, onCreated, prefill, clearPrefill }: { cats: Categ
 
 /* ---------------- NUEVA CATEGORIA ---------------- */
 
-function NuevaCategoria({ onCreated }: { onCreated: () => void }) {
+function NuevaCategoria({ onCreated, prefill, clearPrefill }: { onCreated: () => void; prefill: any; clearPrefill: () => void }) {
   const [name, setName] = useState("");
   const [unit, setUnit] = useState<UnitType>("unit");
   const [smokeable, setSmokeable] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!prefill) return;
+    if (prefill.name) setName(prefill.name);
+    if (prefill.unit_type) setUnit(prefill.unit_type);
+    if (typeof prefill.is_smokeable === "boolean") setSmokeable(prefill.is_smokeable);
+    clearPrefill();
+    toast.success("Datos rellenados por voz — revisa y guarda");
+  }, [prefill]);
+
 
   async function submit() {
     if (!name.trim()) return toast.error("Nombre obligatorio");
