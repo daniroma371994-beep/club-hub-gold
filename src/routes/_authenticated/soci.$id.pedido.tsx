@@ -56,6 +56,8 @@ function PedidoPage() {
   const [recording, setRecording] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [notes, setNotes] = useState("");
+  // pending items awaiting manual or voice confirmation
+  const [pending, setPending] = useState<{ transcript: string; items: Array<{ product_id: string; product_name: string; unit_type: "gr" | "unit"; quantity: number }> } | null>(null);
   const [search, setSearch] = useState("");
   const [activeCat, setActiveCat] = useState<string>("all");
   // per-product input state for gr items: { [productId]: { qty, eur } }
