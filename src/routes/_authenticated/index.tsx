@@ -82,7 +82,7 @@ function SnoopHome() {
           </Link>
           <Link to="/soci" className="flex items-center justify-center gap-2 px-4 py-5 rounded-xl border border-neon/30 bg-card/60 backdrop-blur text-foreground hover:bg-neon/10 transition">
             <Building2 className="w-5 h-5 text-neon" />
-            <span className="text-xs uppercase tracking-[0.25em] font-display">Entrar a Meduza XXIII (test)</span>
+            <span className="text-xs uppercase tracking-[0.25em] font-display">Entrar a Medusa 23 (test)</span>
           </Link>
         </div>
 
