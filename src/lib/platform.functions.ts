@@ -218,16 +218,11 @@ export const createCollaborator = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: club } = await supabaseAdmin.from("clubs").select("name").eq("id", clubId).single();
-    const password = genPassword();
-    const { data: created, error: uErr } = await supabaseAdmin.auth.admin.createUser({
-      email: data.email, password, email_confirm: true, user_metadata: { full_name: data.full_name },
-    });
-    if (uErr) throw uErr;
+    const { user_id: userId, password } = await upsertAuthUser(supabaseAdmin, { email: data.email, full_name: data.full_name });
 
-    const userId = created.user!.id;
-    const { error: rErr } = await supabaseAdmin.from("user_roles").insert({
+    const { error: rErr } = await supabaseAdmin.from("user_roles").upsert({
       user_id: userId, role: "collaborator", club_id: clubId, permissions: data.permissions,
-    });
+    }, { onConflict: "user_id,role" });
     if (rErr) throw rErr;
 
     const req = (await import("@tanstack/react-start/server")).getRequest();
