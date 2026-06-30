@@ -364,7 +364,16 @@ function ProductRow({ p, cat, onChange }: { p: Product; cat: Category; onChange:
             {" · "}Compra: €{Number(p.buy_price).toFixed(2)} · Venta: €{Number(p.sell_price).toFixed(2)}
           </div>
           {p.description && (
-            <div className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{p.description}</div>
+            <div className="text-[11px] text-muted-foreground mt-1">
+              <div className={expanded ? "whitespace-pre-wrap" : "line-clamp-2"}>{p.description}</div>
+              <button
+                type="button"
+                onClick={() => setExpanded((v) => !v)}
+                className="mt-0.5 text-neon hover:underline text-[10px] uppercase tracking-widest"
+              >
+                {expanded ? "Leer menos" : "Leer más"}
+              </button>
+            </div>
           )}
         </div>
         <div className="flex gap-1 shrink-0">
