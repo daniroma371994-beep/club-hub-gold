@@ -119,6 +119,19 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
+  // Pause wake word while recording / speaking to avoid mic conflicts
+  useEffect(() => {
+    const rec = wakeRef.current;
+    if (!rec) return;
+    if (status === "idle") {
+      wakeActiveRef.current = true;
+      try { rec.start(); } catch {}
+    } else {
+      wakeActiveRef.current = false;
+      try { rec.stop(); } catch {}
+    }
+  }, [status]);
+
   function stopSpeaking() {
     const a = audioRef.current;
     if (a) {
