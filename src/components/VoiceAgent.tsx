@@ -130,9 +130,12 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
       if (looksLikeMemberLookup(text)) {
         const query = cleanMemberLookup(text);
         if (query.length > 1) {
-          try { window.localStorage.setItem("snoop:member-search-pending", JSON.stringify({ query, at: Date.now() })); } catch {}
-          if (path !== "/soci/gestisci") navigate({ to: "/soci/gestisci" });
-          else window.dispatchEvent(new CustomEvent("snoop:search-members", { detail: { query } }));
+          if (path !== "/soci/gestisci") {
+            try { window.localStorage.setItem("snoop:member-search-pending", JSON.stringify({ query, at: Date.now() })); } catch {}
+            navigate({ to: "/soci/gestisci" });
+          } else {
+            window.dispatchEvent(new CustomEvent("snoop:search-members", { detail: { query } }));
+          }
           return;
         }
       }
