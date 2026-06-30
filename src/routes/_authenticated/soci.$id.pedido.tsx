@@ -91,6 +91,17 @@ function PedidoPage() {
     })();
   }, [id]);
 
+  // Listen to the floating assistant mic when we're on this page
+  useEffect(() => {
+    function onTx(e: Event) {
+      const t = (e as CustomEvent).detail?.text as string | undefined;
+      if (t) processTranscript(t);
+    }
+    window.addEventListener("snoop:pedido-transcript", onTx as EventListener);
+    return () => window.removeEventListener("snoop:pedido-transcript", onTx as EventListener);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pending, products]);
+
   const categories = useMemo(() => {
     const m = new Map<string, string>();
     products.forEach((p) => m.set(p.category_id, p.category_name));
