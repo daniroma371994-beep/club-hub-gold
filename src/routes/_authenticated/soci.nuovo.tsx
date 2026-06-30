@@ -8,6 +8,7 @@ import { Camera, Check, Loader2, Mic, Square } from "lucide-react";
 import { CONTRACT_TEXT_ES, CONTRACT_VERSION, compressImage, formatPrice, uploadToSnoopDocs } from "@/lib/snoop";
 import { SignaturePad, type SignaturePadHandle } from "@/components/SignaturePad";
 import { extractMemberFields, transcribeAudio } from "@/lib/voice-agent.functions";
+import { MEMBER_FIELDS, defaultFieldConfig, mergeFieldConfig, type FieldConfigMap } from "@/lib/member-fields";
 
 export const Route = createFileRoute("/_authenticated/soci/nuovo")({
   component: NewSocio,
@@ -101,11 +102,15 @@ function NewSocio() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const sigRef = useRef<SignaturePadHandle>(null);
 
+  const [fieldCfg, setFieldCfg] = useState<FieldConfigMap>(defaultFieldConfig());
+
   const [form, setForm] = useState({
     first_name: "",
     last_name: "",
     birth_date: "",
+    address: "",
     city: "",
+    postal_code: "",
     phone: "",
     email: "",
     plan_id: "",
@@ -129,6 +134,16 @@ function NewSocio() {
   useEffect(() => {
     supabase.from("membership_plans").select("id,name,duration_days,price_cents").eq("active", true).order("sort_order")
       .then(({ data }) => setPlans((data as any) ?? []));
+    (async () => {
+      const { getCurrentClubId } = await import("@/lib/club");
+      const clubId = await getCurrentClubId();
+      if (!clubId) return;
+      const { data } = await supabase
+        .from("club_member_field_config")
+        .select("field_key, visible, required")
+        .eq("club_id", clubId);
+      setFieldCfg(mergeFieldConfig((data as any) ?? []));
+    })();
     return () => { streamRef.current?.getTracks().forEach((t) => t.stop()); };
   }, []);
 
