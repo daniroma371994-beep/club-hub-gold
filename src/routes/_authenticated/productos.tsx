@@ -472,6 +472,8 @@ function NuevoProducto({ cats, onCreated, prefill, clearPrefill }: { cats: Categ
     r.start();
   }
 
+  const enrich = useServerFn(enrichProduct);
+
   async function submit() {
     if (!categoryId) return toast.error("Selecciona categoría");
     if (!name.trim()) return toast.error("Nombre obligatorio");
@@ -479,24 +481,47 @@ function NuevoProducto({ cats, onCreated, prefill, clearPrefill }: { cats: Categ
     const { getCurrentClubId } = await import("@/lib/club");
     const clubId = await getCurrentClubId();
     if (!clubId) { setSaving(false); return toast.error("No tienes un club asignado"); }
-    const { error } = await supabase.from("products").insert({
-      club_id: clubId,
-      category_id: categoryId,
-      name: name.trim(),
-      stock,
-      buy_price: buy,
-      sell_price: sell,
-      strain: cat?.is_smokeable && strain ? strain : null,
-    });
+    const productName = name.trim();
+    const { data: inserted, error } = await supabase
+      .from("products")
+      .insert({
+        club_id: clubId,
+        category_id: categoryId,
+        name: productName,
+        stock,
+        buy_price: buy,
+        sell_price: sell,
+        strain: cat?.is_smokeable && strain ? strain : null,
+      })
+      .select("id")
+      .single();
+    if (error) { setSaving(false); return toast.error(error.message); }
+    toast.success("Producto creado · enriqueciendo con IA…");
+    setName(""); setStock(0); setBuy(0); setSell(0); setStrain("");
     setSaving(false);
-    if (error) return toast.error(error.message);
-    toast.success("Producto creado");
-    setName("");
-    setStock(0);
-    setBuy(0);
-    setSell(0);
-    setStrain("");
     onCreated();
+    // Fire-and-forget enrichment
+    (async () => {
+      try {
+        const r = await enrich({
+          data: {
+            name: productName,
+            strain: strain || "",
+            is_smokeable: !!cat?.is_smokeable,
+            category_name: cat?.name || "",
+          },
+        });
+        const patch: any = {};
+        if (r.description) patch.description = r.description;
+        if (r.image_url) patch.image_url = r.image_url;
+        if (inserted?.id && Object.keys(patch).length) {
+          await supabase.from("products").update(patch).eq("id", inserted.id);
+          onCreated();
+        }
+      } catch (e) {
+        console.error("auto enrich failed", e);
+      }
+    })();
   }
 
   if (cats.length === 0)
