@@ -8,7 +8,7 @@ import { Camera, Check, Loader2, Mic, Square } from "lucide-react";
 import { CONTRACT_TEXT_ES, CONTRACT_VERSION, compressImage, formatPrice, uploadToSnoopDocs } from "@/lib/snoop";
 import { SignaturePad, type SignaturePadHandle } from "@/components/SignaturePad";
 import { extractMemberFields, transcribeAudio } from "@/lib/voice-agent.functions";
-import { MEMBER_FIELDS, defaultFieldConfig, mergeFieldConfig, type FieldConfigMap } from "@/lib/member-fields";
+import { defaultFieldConfig, mergeFieldConfig, type FieldConfigMap } from "@/lib/member-fields";
 
 export const Route = createFileRoute("/_authenticated/soci/nuovo")({
   component: NewSocio,
