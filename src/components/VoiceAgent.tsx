@@ -190,7 +190,7 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
       }
 
       // --- 4) Fallback: full agent ---
-      const { reply, navigateTo } = await respond({
+      const { navigateTo } = await respond({
         data: { transcript: text, history: [] },
       });
       // Voz solo en el saludo inicial; las respuestas del agente se muestran en pantalla.
