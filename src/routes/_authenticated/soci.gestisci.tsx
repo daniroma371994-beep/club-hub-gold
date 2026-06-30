@@ -62,49 +62,64 @@ function GestisciSoci() {
     }
   }
 
+  function runVoiceSearch(query: string) {
+    // Try member number first (QR or dictated digits)
+    const num = extractMemberNumber(query);
+    if (num) { openByMemberNumber(num); return; }
+
+    setQ(query);
+    const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const tokens = norm(query).split(/\s+/).filter(Boolean);
+    const scored = rowsRef.current.map((r) => {
+      const hay = norm(`${r.first_name} ${r.last_name} ${r.dni_number} ${r.member_number} ${r.city ?? ""}`);
+      let score = 0;
+      for (const t of tokens) {
+        if (hay.includes(t)) score += 2;
+        else if (t.length >= 3) {
+          // partial: any word in hay starts with token or vice versa
+          const words = hay.split(/\s+/);
+          if (words.some((w) => w.startsWith(t.slice(0, 3)) || t.startsWith(w.slice(0, 3)))) score += 1;
+        }
+      }
+      return { r, score };
+    }).filter((x) => x.score > 0).sort((a, b) => b.score - a.score);
+    const exact = scored.filter((x) => x.score === tokens.length * 2);
+    if (exact.length === 1) {
+      toast.success(`Abriendo ficha de ${exact[0].r.first_name} ${exact[0].r.last_name}`);
+      navigate({ to: "/soci/$id", params: { id: exact[0].r.id } });
+    } else if (scored.length === 0) {
+      toast.error("No se encontró ningún socio");
+    } else if (scored.length === 1) {
+      toast.success(`Abriendo ficha de ${scored[0].r.first_name} ${scored[0].r.last_name}`);
+      navigate({ to: "/soci/$id", params: { id: scored[0].r.id } });
+    } else {
+      toast.message(`${scored.length} resultados similares`);
+    }
+  }
+
   useEffect(() => {
     function onVoiceSearch(e: Event) {
       const detail = (e as CustomEvent).detail as { query?: string } | undefined;
       const query = (detail?.query ?? "").trim();
       if (!query) return;
-
-      // Try member number first (QR or dictated digits)
-      const num = extractMemberNumber(query);
-      if (num) { openByMemberNumber(num); return; }
-
-      setQ(query);
-      const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      const tokens = norm(query).split(/\s+/).filter(Boolean);
-      const scored = rowsRef.current.map((r) => {
-        const hay = norm(`${r.first_name} ${r.last_name} ${r.dni_number} ${r.member_number} ${r.city ?? ""}`);
-        let score = 0;
-        for (const t of tokens) {
-          if (hay.includes(t)) score += 2;
-          else if (t.length >= 3) {
-            // partial: any word in hay starts with token or vice versa
-            const words = hay.split(/\s+/);
-            if (words.some((w) => w.startsWith(t.slice(0, 3)) || t.startsWith(w.slice(0, 3)))) score += 1;
-          }
-        }
-        return { r, score };
-      }).filter((x) => x.score > 0).sort((a, b) => b.score - a.score);
-      const exact = scored.filter((x) => x.score === tokens.length * 2);
-      if (exact.length === 1) {
-        toast.success(`Abriendo ficha de ${exact[0].r.first_name} ${exact[0].r.last_name}`);
-        navigate({ to: "/soci/$id", params: { id: exact[0].r.id } });
-      } else if (scored.length === 0) {
-        toast.error(`No se encontró ningún socio para "${query}"`);
-      } else if (scored.length === 1) {
-        toast.success(`Abriendo ficha de ${scored[0].r.first_name} ${scored[0].r.last_name}`);
-        navigate({ to: "/soci/$id", params: { id: scored[0].r.id } });
-      } else {
-        toast.message(`${scored.length} resultados similares a "${query}"`);
-      }
+      runVoiceSearch(query);
     }
     window.addEventListener("snoop:search-members", onVoiceSearch as EventListener);
     return () => window.removeEventListener("snoop:search-members", onVoiceSearch as EventListener);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
+
+  useEffect(() => {
+    if (loading) return;
+    try {
+      const raw = window.localStorage.getItem("snoop:member-search-pending");
+      if (!raw) return;
+      window.localStorage.removeItem("snoop:member-search-pending");
+      const { query, at } = JSON.parse(raw);
+      if (query && Date.now() - at < 15000) runVoiceSearch(String(query));
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, rows]);
 
   const filtered = rows.filter((r) => {
     const query = q.trim().toLowerCase();
