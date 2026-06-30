@@ -130,7 +130,7 @@ function ProductosPage() {
       if (cmdRaw) {
         const { text, at } = JSON.parse(cmdRaw);
         window.localStorage.removeItem("snoop:productos-cmd");
-        if (Date.now() - at < 15000 && cats.length > 0) {
+        if (Date.now() - at < 15000) {
           applyProductCommand(text, wantedTab as TabId | undefined);
         }
       }
