@@ -103,6 +103,13 @@ export function VoiceAgent() {
             return;
           }
 
+          // Pedido screen: forward transcript to the page (so it can confirm/cancel/add)
+          if (/^\/soci\/[^/]+\/pedido/.test(location.pathname)) {
+            window.dispatchEvent(new CustomEvent("snoop:pedido-transcript", { detail: { text } }));
+            setMessages((m) => [...m, { role: "assistant", content: "Procesando en el pedido…" }]);
+            return;
+          }
+
           if (location.pathname.startsWith("/soci/") && location.pathname !== "/soci/nuovo" && location.pathname !== "/soci/gestisci") {
             const lower = text.toLowerCase();
             if (/(hacer|nuevo|crear|hac[eé]me|fai|fa[mt]e|fare)\s+(un\s+)?(pedido|orden|ordine|order)/i.test(lower) || /^pedido$|^ordine$|^orden$/i.test(lower.trim())) {
