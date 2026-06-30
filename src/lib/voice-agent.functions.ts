@@ -318,9 +318,14 @@ export const agentRespond = createServerFn({ method: "POST" })
           const joined = todayISO();
           const expires = addDays(joined, plan.duration_days);
 
+          const { data: clubIdData } = await supabase.rpc("current_club_id" as any);
+          const clubId = clubIdData as string | null;
+          if (!clubId) return { error: "Usuario sin club asignado." };
+
           const { data: created, error } = await supabase
             .from("members")
             .insert({
+              club_id: clubId,
               first_name: input.first_name.trim(),
               last_name: input.last_name.trim(),
               birth_date: birth,

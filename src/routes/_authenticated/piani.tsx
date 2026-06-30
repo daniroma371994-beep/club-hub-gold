@@ -32,7 +32,11 @@ function PianiPage() {
   useEffect(() => { load(); }, []);
 
   async function save(p: Plan) {
+    const { getCurrentClubId } = await import("@/lib/club");
+    const clubId = await getCurrentClubId();
+    if (!clubId) return toast.error("No tienes un club asignado");
     const payload = {
+      club_id: clubId,
       name: p.name,
       duration_days: p.duration_days,
       price_cents: p.price_cents,

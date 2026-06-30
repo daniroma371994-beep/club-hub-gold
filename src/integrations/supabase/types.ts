@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      clubs: {
+        Row: {
+          active: boolean
+          city: string | null
+          created_at: string
+          id: string
+          logo_url: string | null
+          name: string
+          next_member_number: number
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          city?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name: string
+          next_member_number?: number
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          city?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name?: string
+          next_member_number?: number
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_send_log: {
         Row: {
           created_at: string
@@ -105,6 +141,7 @@ export type Database = {
         Row: {
           birth_date: string
           city: string | null
+          club_id: string
           contract_signed_at: string | null
           contract_version: string
           created_at: string
@@ -127,6 +164,7 @@ export type Database = {
         Insert: {
           birth_date: string
           city?: string | null
+          club_id: string
           contract_signed_at?: string | null
           contract_version?: string
           created_at?: string
@@ -149,6 +187,7 @@ export type Database = {
         Update: {
           birth_date?: string
           city?: string | null
+          club_id?: string
           contract_signed_at?: string | null
           contract_version?: string
           created_at?: string
@@ -170,6 +209,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "members_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "members_plan_id_fkey"
             columns: ["plan_id"]
             isOneToOne: false
@@ -181,6 +227,7 @@ export type Database = {
       membership_plans: {
         Row: {
           active: boolean
+          club_id: string
           created_at: string
           duration_days: number
           id: string
@@ -191,6 +238,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          club_id: string
           created_at?: string
           duration_days: number
           id?: string
@@ -201,6 +249,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          club_id?: string
           created_at?: string
           duration_days?: number
           id?: string
@@ -209,10 +258,19 @@ export type Database = {
           sort_order?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "membership_plans_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       order_items: {
         Row: {
+          club_id: string
           created_at: string
           id: string
           line_total_cents: number
@@ -224,6 +282,7 @@ export type Database = {
           unit_type: string
         }
         Insert: {
+          club_id: string
           created_at?: string
           id?: string
           line_total_cents: number
@@ -235,6 +294,7 @@ export type Database = {
           unit_type: string
         }
         Update: {
+          club_id?: string
           created_at?: string
           id?: string
           line_total_cents?: number
@@ -246,6 +306,13 @@ export type Database = {
           unit_type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "order_items_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "order_items_order_id_fkey"
             columns: ["order_id"]
@@ -264,6 +331,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          club_id: string
           created_at: string
           created_by: string | null
           id: string
@@ -274,6 +342,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          club_id: string
           created_at?: string
           created_by?: string | null
           id?: string
@@ -284,6 +353,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          club_id?: string
           created_at?: string
           created_by?: string | null
           id?: string
@@ -295,6 +365,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "orders_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "orders_member_id_fkey"
             columns: ["member_id"]
             isOneToOne: false
@@ -305,6 +382,7 @@ export type Database = {
       }
       product_categories: {
         Row: {
+          club_id: string
           created_at: string
           id: string
           is_smokeable: boolean
@@ -313,6 +391,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          club_id: string
           created_at?: string
           id?: string
           is_smokeable?: boolean
@@ -321,6 +400,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          club_id?: string
           created_at?: string
           id?: string
           is_smokeable?: boolean
@@ -328,12 +408,21 @@ export type Database = {
           unit_type?: Database["public"]["Enums"]["product_unit"]
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "product_categories_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       products: {
         Row: {
           buy_price: number
           category_id: string
+          club_id: string
           created_at: string
           id: string
           name: string
@@ -346,6 +435,7 @@ export type Database = {
         Insert: {
           buy_price?: number
           category_id: string
+          club_id: string
           created_at?: string
           id?: string
           name: string
@@ -358,6 +448,7 @@ export type Database = {
         Update: {
           buy_price?: number
           category_id?: string
+          club_id?: string
           created_at?: string
           id?: string
           name?: string
@@ -373,6 +464,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "product_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
         ]
@@ -421,6 +519,7 @@ export type Database = {
       }
       user_roles: {
         Row: {
+          club_id: string | null
           created_at: string
           id: string
           permissions: Database["public"]["Enums"]["app_permission"][]
@@ -428,6 +527,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          club_id?: string | null
           created_at?: string
           id?: string
           permissions?: Database["public"]["Enums"]["app_permission"][]
@@ -435,13 +535,22 @@ export type Database = {
           user_id: string
         }
         Update: {
+          club_id?: string | null
           created_at?: string
           id?: string
           permissions?: Database["public"]["Enums"]["app_permission"][]
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -452,6 +561,7 @@ export type Database = {
         Args: { _items: Json; _member_id: string; _notes: string }
         Returns: string
       }
+      current_club_id: { Args: never; Returns: string }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -474,6 +584,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       move_to_dlq: {
         Args: {
           dlq_name: string
@@ -491,6 +602,7 @@ export type Database = {
           read_ct: number
         }[]
       }
+      user_has_club_access: { Args: { _club_id: string }; Returns: boolean }
     }
     Enums: {
       app_permission:
@@ -499,7 +611,7 @@ export type Database = {
         | "manage_collaborators"
         | "view_reports"
         | "use_cash"
-      app_role: "admin" | "collaborator"
+      app_role: "admin" | "collaborator" | "super_admin"
       product_type: "per_gram" | "per_piece"
       product_unit: "gr" | "unit"
       strain_type: "indica" | "sativa" | "hibrida"
@@ -637,7 +749,7 @@ export const Constants = {
         "view_reports",
         "use_cash",
       ],
-      app_role: ["admin", "collaborator"],
+      app_role: ["admin", "collaborator", "super_admin"],
       product_type: ["per_gram", "per_piece"],
       product_unit: ["gr", "unit"],
       strain_type: ["indica", "sativa", "hibrida"],
