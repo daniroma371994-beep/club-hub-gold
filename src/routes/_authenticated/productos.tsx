@@ -204,6 +204,29 @@ function Stock({ cats, prods, onChange, search, setSearch }: { cats: Category[];
 
   return (
     <div className="space-y-6">
+      {/* Search bar (works on all categories) */}
+      <div className="flex items-center gap-2 bg-input/40 border border-border rounded-lg px-3 py-2 focus-within:border-neon">
+        <Search className="w-4 h-4 text-muted-foreground" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar en todos los productos…"
+          className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground"
+        />
+        {search && (
+          <button onClick={() => setSearch("")} className="text-muted-foreground hover:text-foreground">
+            <X className="w-4 h-4" />
+          </button>
+        )}
+        <button
+          onClick={dict.listening ? dict.stop : dict.start}
+          className={`p-1.5 rounded ${dict.listening ? "text-neon glow-neon" : "text-muted-foreground hover:text-neon"}`}
+          title="Dictar búsqueda"
+        >
+          <Mic className="w-4 h-4" />
+        </button>
+      </div>
+
       <div className="flex flex-wrap gap-2">
         <button
           onClick={() => setFilter("all")}
