@@ -237,8 +237,31 @@ function PedidoPage() {
     return out;
   }
 
+  function isYes(t: string) {
+    return /\b(s[ií]|si|confirma(r|do)?|confirmo|ok|okey|okay|vale|dale|adelante|añade|añadir|agrega|agregar|conferma)\b/i.test(t);
+  }
+  function isNo(t: string) {
+    return /\b(no|cancela(r)?|cancelo|borra(r)?|anula(r)?|annulla)\b/i.test(t);
+  }
+
+  function applyPending() {
+    if (!pending) return;
+    for (const it of pending.items) {
+      const p = products.find((x) => x.id === it.product_id);
+      addToCart(it.product_id, it.quantity, { autoTolerance: p?.unit_type === "gr" });
+    }
+    toast.success(`Añadidos ${pending.items.length} item${pending.items.length > 1 ? "s" : ""}`);
+    setPending(null);
+    setText("");
+  }
+
   async function processTranscript(t: string) {
     if (!t.trim()) return;
+    // voice confirm / cancel for an existing pending batch
+    if (pending) {
+      if (isYes(t)) { applyPending(); return; }
+      if (isNo(t)) { setPending(null); toast("Cancelado"); return; }
+    }
     setBusy(true);
     try {
       let items: Array<{ product_id: string; quantity: number }> = [];
@@ -259,18 +282,23 @@ function PedidoPage() {
         toast.error("No encontré productos. Prueba: \"dos gramos de amnesia, una cerveza\"");
         return;
       }
-      for (const it of items) {
+      const enriched = items.map((it) => {
         const p = products.find((x) => x.id === it.product_id);
-        addToCart(it.product_id, it.quantity, { autoTolerance: p?.unit_type === "gr" });
-      }
-      toast.success(`Añadidos ${items.length} item${items.length > 1 ? "s" : ""}`);
-      setText("");
+        return {
+          product_id: it.product_id,
+          product_name: p?.name ?? "?",
+          unit_type: (p?.unit_type ?? "unit") as "gr" | "unit",
+          quantity: it.quantity,
+        };
+      });
+      setPending({ transcript: t, items: enriched });
     } catch (e: any) {
       toast.error(e?.message ?? "Error al interpretar");
     } finally {
       setBusy(false);
     }
   }
+
 
   async function startRec() {
     try {
