@@ -12,19 +12,19 @@ type Status = "off" | "listening" | "processing" | "speaking";
 const NAV_INTENTS: Array<{ to: string; rx: RegExp; label: string; tab?: string }> = [
   {
     to: "/productos",
-    rx: /\b(crea|crear|creare|nuevo|nuovo|alta|nueva|a[nñ]adir|agregar|registrar|apr[eimi]*|abrir|portami|lleva(?:me)?)\b[\s\S]{0,45}\b(prod(?:u[cç]?t[oa]|ott[oi])|produvto|productos?)\b/i,
+    rx: /\b(crea|crear|creare|nuevo|nuovo|alta|nueva|a[nñ]adir|agregar|registrar)\b[\s\S]{0,45}\b(prod(?:u[cç]?t[oa]|ott[oi])|produvto|productos?)\b/i,
     label: "Crear producto",
     tab: "nuevo",
   },
   {
     to: "/productos",
-    rx: /\b(crea|crear|creare|nueva|nuova|alta|a[nñ]adir|agregar|apr[eimi]*|abrir|portami|lleva(?:me)?)\b[\s\S]{0,45}\b(categor[ií]a|categoria|categorie)\b/i,
+    rx: /\b(crea|crear|creare|nueva|nuova|alta|a[nñ]adir|agregar)\b[\s\S]{0,45}\b(categor[ií]a|categoria|categorie)\b/i,
     label: "Crear categoría",
     tab: "categoria",
   },
   {
     to: "/soci/nuovo",
-    rx: /\b(nuevo|nuovo|crear|crea|creare|alta|registrar|apr[eimi]*|abrir)\b[\s\S]{0,35}\b(socio|miembro)\b/i,
+    rx: /\b(nuevo|nuovo|crear|crea|creare|alta|registrar)\b[\s\S]{0,35}\b(socio|miembro)\b/i,
     label: "Nuevo socio",
   },
   {
