@@ -156,17 +156,13 @@ export const createClubAdmin = createServerFn({ method: "POST" })
     const { data: club, error: cErr } = await supabaseAdmin.from("clubs").select("name").eq("id", data.club_id).single();
     if (cErr) throw cErr;
 
-    const password = genPassword();
-    const { data: created, error: uErr } = await supabaseAdmin.auth.admin.createUser({
-      email: data.email, password, email_confirm: true, user_metadata: { full_name: data.full_name },
-    });
-    if (uErr) throw uErr;
+    const { user_id: userId, password } = await upsertAuthUser(supabaseAdmin, { email: data.email, full_name: data.full_name });
 
-    const userId = created.user!.id;
-    const { error: rErr } = await supabaseAdmin.from("user_roles").insert({
+    // Upsert role (idempotent if user already had it for this club)
+    const { error: rErr } = await supabaseAdmin.from("user_roles").upsert({
       user_id: userId, role: "admin", club_id: data.club_id,
       permissions: ["manage_members","manage_products","manage_collaborators","view_reports","use_cash"],
-    });
+    }, { onConflict: "user_id,role" });
     if (rErr) throw rErr;
 
     const req = (await import("@tanstack/react-start/server")).getRequest();
