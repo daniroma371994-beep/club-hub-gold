@@ -17,13 +17,11 @@ import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as AuthenticatedSnoopAdminRouteImport } from './routes/_authenticated/snoop-admin'
 import { Route as AuthenticatedProductosRouteImport } from './routes/_authenticated/productos'
-import { Route as AuthenticatedPianiRouteImport } from './routes/_authenticated/piani'
 import { Route as AuthenticatedCajaRouteImport } from './routes/_authenticated/caja'
 import { Route as AuthenticatedSociIndexRouteImport } from './routes/_authenticated/soci.index'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as AuthenticatedSociNuovoRouteImport } from './routes/_authenticated/soci.nuovo'
 import { Route as AuthenticatedSociGestisciRouteImport } from './routes/_authenticated/soci.gestisci'
-import { Route as AuthenticatedSociColaboratoriRouteImport } from './routes/_authenticated/soci.colaboratori'
 import { Route as AuthenticatedSociIdRouteImport } from './routes/_authenticated/soci.$id'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
@@ -69,11 +67,6 @@ const AuthenticatedProductosRoute = AuthenticatedProductosRouteImport.update({
   path: '/productos',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedPianiRoute = AuthenticatedPianiRouteImport.update({
-  id: '/piani',
-  path: '/piani',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedCajaRoute = AuthenticatedCajaRouteImport.update({
   id: '/caja',
   path: '/caja',
@@ -98,12 +91,6 @@ const AuthenticatedSociGestisciRoute =
   AuthenticatedSociGestisciRouteImport.update({
     id: '/soci/gestisci',
     path: '/soci/gestisci',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedSociColaboratoriRoute =
-  AuthenticatedSociColaboratoriRouteImport.update({
-    id: '/soci/colaboratori',
-    path: '/soci/colaboratori',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedSociIdRoute = AuthenticatedSociIdRouteImport.update({
@@ -142,12 +129,10 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/caja': typeof AuthenticatedCajaRoute
-  '/piani': typeof AuthenticatedPianiRoute
   '/productos': typeof AuthenticatedProductosRoute
   '/snoop-admin': typeof AuthenticatedSnoopAdminRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/soci/$id': typeof AuthenticatedSociIdRouteWithChildren
-  '/soci/colaboratori': typeof AuthenticatedSociColaboratoriRoute
   '/soci/gestisci': typeof AuthenticatedSociGestisciRoute
   '/soci/nuovo': typeof AuthenticatedSociNuovoRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -162,13 +147,11 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/caja': typeof AuthenticatedCajaRoute
-  '/piani': typeof AuthenticatedPianiRoute
   '/productos': typeof AuthenticatedProductosRoute
   '/snoop-admin': typeof AuthenticatedSnoopAdminRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/': typeof AuthenticatedIndexRoute
   '/soci/$id': typeof AuthenticatedSociIdRouteWithChildren
-  '/soci/colaboratori': typeof AuthenticatedSociColaboratoriRoute
   '/soci/gestisci': typeof AuthenticatedSociGestisciRoute
   '/soci/nuovo': typeof AuthenticatedSociNuovoRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -185,13 +168,11 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/_authenticated/caja': typeof AuthenticatedCajaRoute
-  '/_authenticated/piani': typeof AuthenticatedPianiRoute
   '/_authenticated/productos': typeof AuthenticatedProductosRoute
   '/_authenticated/snoop-admin': typeof AuthenticatedSnoopAdminRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/soci/$id': typeof AuthenticatedSociIdRouteWithChildren
-  '/_authenticated/soci/colaboratori': typeof AuthenticatedSociColaboratoriRoute
   '/_authenticated/soci/gestisci': typeof AuthenticatedSociGestisciRoute
   '/_authenticated/soci/nuovo': typeof AuthenticatedSociNuovoRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -209,12 +190,10 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/unsubscribe'
     | '/caja'
-    | '/piani'
     | '/productos'
     | '/snoop-admin'
     | '/email/unsubscribe'
     | '/soci/$id'
-    | '/soci/colaboratori'
     | '/soci/gestisci'
     | '/soci/nuovo'
     | '/lovable/email/suppression'
@@ -229,13 +208,11 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/unsubscribe'
     | '/caja'
-    | '/piani'
     | '/productos'
     | '/snoop-admin'
     | '/email/unsubscribe'
     | '/'
     | '/soci/$id'
-    | '/soci/colaboratori'
     | '/soci/gestisci'
     | '/soci/nuovo'
     | '/lovable/email/suppression'
@@ -251,13 +228,11 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/unsubscribe'
     | '/_authenticated/caja'
-    | '/_authenticated/piani'
     | '/_authenticated/productos'
     | '/_authenticated/snoop-admin'
     | '/email/unsubscribe'
     | '/_authenticated/'
     | '/_authenticated/soci/$id'
-    | '/_authenticated/soci/colaboratori'
     | '/_authenticated/soci/gestisci'
     | '/_authenticated/soci/nuovo'
     | '/lovable/email/suppression'
@@ -338,13 +313,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProductosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/piani': {
-      id: '/_authenticated/piani'
-      path: '/piani'
-      fullPath: '/piani'
-      preLoaderRoute: typeof AuthenticatedPianiRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/caja': {
       id: '/_authenticated/caja'
       path: '/caja'
@@ -378,13 +346,6 @@ declare module '@tanstack/react-router' {
       path: '/soci/gestisci'
       fullPath: '/soci/gestisci'
       preLoaderRoute: typeof AuthenticatedSociGestisciRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/soci/colaboratori': {
-      id: '/_authenticated/soci/colaboratori'
-      path: '/soci/colaboratori'
-      fullPath: '/soci/colaboratori'
-      preLoaderRoute: typeof AuthenticatedSociColaboratoriRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/soci/$id': {
@@ -438,12 +399,10 @@ const AuthenticatedSociIdRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCajaRoute: typeof AuthenticatedCajaRoute
-  AuthenticatedPianiRoute: typeof AuthenticatedPianiRoute
   AuthenticatedProductosRoute: typeof AuthenticatedProductosRoute
   AuthenticatedSnoopAdminRoute: typeof AuthenticatedSnoopAdminRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedSociIdRoute: typeof AuthenticatedSociIdRouteWithChildren
-  AuthenticatedSociColaboratoriRoute: typeof AuthenticatedSociColaboratoriRoute
   AuthenticatedSociGestisciRoute: typeof AuthenticatedSociGestisciRoute
   AuthenticatedSociNuovoRoute: typeof AuthenticatedSociNuovoRoute
   AuthenticatedSociIndexRoute: typeof AuthenticatedSociIndexRoute
@@ -451,12 +410,10 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCajaRoute: AuthenticatedCajaRoute,
-  AuthenticatedPianiRoute: AuthenticatedPianiRoute,
   AuthenticatedProductosRoute: AuthenticatedProductosRoute,
   AuthenticatedSnoopAdminRoute: AuthenticatedSnoopAdminRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedSociIdRoute: AuthenticatedSociIdRouteWithChildren,
-  AuthenticatedSociColaboratoriRoute: AuthenticatedSociColaboratoriRoute,
   AuthenticatedSociGestisciRoute: AuthenticatedSociGestisciRoute,
   AuthenticatedSociNuovoRoute: AuthenticatedSociNuovoRoute,
   AuthenticatedSociIndexRoute: AuthenticatedSociIndexRoute,
