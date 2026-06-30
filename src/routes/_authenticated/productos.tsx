@@ -183,6 +183,48 @@ function Stock({ cats, prods, onChange, search, setSearch }: { cats: Category[];
   const [filter, setFilter] = useState<string>("all");
   const dict = useDictation((t) => setSearch(t));
   const q = search.trim().toLowerCase();
+
+  function norm(s: string) { return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim(); }
+  function applyVoice(text: string) {
+    const t = norm(text).replace(/[.,;:!?]+$/g, "").trim();
+    if (!t) return;
+    // Strip filler verbs
+    const cleaned = t.replace(/^(ver|mostrar|abre|abrir|categor[ií]a|filtra|filtrar|ir a|ve a|busca|buscar|buscame)\s+/i, "").trim();
+    // Try exact / contains match against categories first
+    const match = cats.find((c) => {
+      const n = norm(c.name);
+      return n === cleaned || n.includes(cleaned) || cleaned.includes(n);
+    });
+    if (match) {
+      setFilter(match.id);
+      setSearch("");
+      toast.success(`Categoría: ${match.name}`);
+      return;
+    }
+    // Reserved word "todas"
+    if (/^(todas|todo|todos|all)$/i.test(cleaned)) { setFilter("all"); setSearch(""); return; }
+    // Fallback: treat as product search across all
+    setFilter("all");
+    setSearch(cleaned);
+  }
+
+  // Listen to voice agent broadcasts
+  useEffect(() => {
+    function onVoice(e: any) { applyVoice(String(e?.detail?.text || "")); }
+    window.addEventListener("snoop:productos-voice", onVoice);
+    // Pending filter from another route
+    try {
+      const raw = window.localStorage.getItem("snoop:productos-pending");
+      if (raw) {
+        const { text, at } = JSON.parse(raw);
+        if (Date.now() - at < 10000) applyVoice(text);
+        window.localStorage.removeItem("snoop:productos-pending");
+      }
+    } catch {}
+    return () => window.removeEventListener("snoop:productos-voice", onVoice);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cats]);
+
   const grouped = useMemo(() => {
     const map = new Map<string, Product[]>();
     for (const p of prods) {
