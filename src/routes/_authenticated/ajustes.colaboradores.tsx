@@ -7,7 +7,7 @@ import {
 } from "@/lib/platform.functions";
 import { Plus, Trash2, Save, Loader2 } from "lucide-react";
 
-export const Route = createFileRoute("/_authenticated/soci/colaboratori")({
+export const Route = createFileRoute("/_authenticated/ajustes/colaboradores")({
   component: ColaboradoresPage,
 });
 

@@ -7,7 +7,7 @@ import { Plus, Save, Trash2 } from "lucide-react";
 import { formatPrice } from "@/lib/snoop";
 import { useAuth } from "@/hooks/useAuth";
 
-export const Route = createFileRoute("/_authenticated/piani")({
+export const Route = createFileRoute("/_authenticated/ajustes/cuotas")({
   component: PianiPage,
 });
 

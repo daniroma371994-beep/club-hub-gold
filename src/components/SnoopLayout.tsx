@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Home, Users, BadgeEuro, Package, LogOut, Menu, X, Shield, Banknote } from "lucide-react";
+import { Home, Users, Package, LogOut, Menu, X, Shield, Banknote, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import logoAsset from "@/assets/snoop-logo.png.asset.json";
@@ -15,7 +15,7 @@ const NAV: NavItem[] = [
   { to: "/soci", label: "Socios", icon: Users, show: () => true },
   { to: "/productos", label: "Productos", icon: Package, show: () => true },
   { to: "/caja", label: "Caja", icon: Banknote, show: () => true },
-  { to: "/piani", label: "Cuotas", icon: BadgeEuro, show: (a) => a.isAdmin },
+  { to: "/ajustes", label: "Ajustes", icon: Settings, show: (a) => a.isAdmin },
 ];
 
 export function SnoopLayout({ children, title, subtitle }: { children: ReactNode; title?: string; subtitle?: string }) {

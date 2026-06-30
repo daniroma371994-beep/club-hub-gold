@@ -17,14 +17,17 @@ import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as AuthenticatedSnoopAdminRouteImport } from './routes/_authenticated/snoop-admin'
 import { Route as AuthenticatedProductosRouteImport } from './routes/_authenticated/productos'
-import { Route as AuthenticatedPianiRouteImport } from './routes/_authenticated/piani'
 import { Route as AuthenticatedCajaRouteImport } from './routes/_authenticated/caja'
 import { Route as AuthenticatedSociIndexRouteImport } from './routes/_authenticated/soci.index'
+import { Route as AuthenticatedAjustesIndexRouteImport } from './routes/_authenticated/ajustes.index'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as AuthenticatedSociNuovoRouteImport } from './routes/_authenticated/soci.nuovo'
 import { Route as AuthenticatedSociGestisciRouteImport } from './routes/_authenticated/soci.gestisci'
-import { Route as AuthenticatedSociColaboratoriRouteImport } from './routes/_authenticated/soci.colaboratori'
 import { Route as AuthenticatedSociIdRouteImport } from './routes/_authenticated/soci.$id'
+import { Route as AuthenticatedAjustesSociosRouteImport } from './routes/_authenticated/ajustes.socios'
+import { Route as AuthenticatedAjustesDispositivosRouteImport } from './routes/_authenticated/ajustes.dispositivos'
+import { Route as AuthenticatedAjustesCuotasRouteImport } from './routes/_authenticated/ajustes.cuotas'
+import { Route as AuthenticatedAjustesColaboradoresRouteImport } from './routes/_authenticated/ajustes.colaboradores'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
@@ -69,11 +72,6 @@ const AuthenticatedProductosRoute = AuthenticatedProductosRouteImport.update({
   path: '/productos',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedPianiRoute = AuthenticatedPianiRouteImport.update({
-  id: '/piani',
-  path: '/piani',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedCajaRoute = AuthenticatedCajaRouteImport.update({
   id: '/caja',
   path: '/caja',
@@ -84,6 +82,12 @@ const AuthenticatedSociIndexRoute = AuthenticatedSociIndexRouteImport.update({
   path: '/soci/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAjustesIndexRoute =
+  AuthenticatedAjustesIndexRouteImport.update({
+    id: '/ajustes/',
+    path: '/ajustes/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   id: '/lovable/email/suppression',
   path: '/lovable/email/suppression',
@@ -100,17 +104,35 @@ const AuthenticatedSociGestisciRoute =
     path: '/soci/gestisci',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedSociColaboratoriRoute =
-  AuthenticatedSociColaboratoriRouteImport.update({
-    id: '/soci/colaboratori',
-    path: '/soci/colaboratori',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedSociIdRoute = AuthenticatedSociIdRouteImport.update({
   id: '/soci/$id',
   path: '/soci/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAjustesSociosRoute =
+  AuthenticatedAjustesSociosRouteImport.update({
+    id: '/ajustes/socios',
+    path: '/ajustes/socios',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAjustesDispositivosRoute =
+  AuthenticatedAjustesDispositivosRouteImport.update({
+    id: '/ajustes/dispositivos',
+    path: '/ajustes/dispositivos',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAjustesCuotasRoute =
+  AuthenticatedAjustesCuotasRouteImport.update({
+    id: '/ajustes/cuotas',
+    path: '/ajustes/cuotas',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAjustesColaboradoresRoute =
+  AuthenticatedAjustesColaboradoresRouteImport.update({
+    id: '/ajustes/colaboradores',
+    path: '/ajustes/colaboradores',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const LovableEmailTransactionalSendRoute =
   LovableEmailTransactionalSendRouteImport.update({
     id: '/lovable/email/transactional/send',
@@ -142,15 +164,18 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/caja': typeof AuthenticatedCajaRoute
-  '/piani': typeof AuthenticatedPianiRoute
   '/productos': typeof AuthenticatedProductosRoute
   '/snoop-admin': typeof AuthenticatedSnoopAdminRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
+  '/ajustes/colaboradores': typeof AuthenticatedAjustesColaboradoresRoute
+  '/ajustes/cuotas': typeof AuthenticatedAjustesCuotasRoute
+  '/ajustes/dispositivos': typeof AuthenticatedAjustesDispositivosRoute
+  '/ajustes/socios': typeof AuthenticatedAjustesSociosRoute
   '/soci/$id': typeof AuthenticatedSociIdRouteWithChildren
-  '/soci/colaboratori': typeof AuthenticatedSociColaboratoriRoute
   '/soci/gestisci': typeof AuthenticatedSociGestisciRoute
   '/soci/nuovo': typeof AuthenticatedSociNuovoRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/ajustes/': typeof AuthenticatedAjustesIndexRoute
   '/soci/': typeof AuthenticatedSociIndexRoute
   '/soci/$id/pedido': typeof AuthenticatedSociIdPedidoRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -162,16 +187,19 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/caja': typeof AuthenticatedCajaRoute
-  '/piani': typeof AuthenticatedPianiRoute
   '/productos': typeof AuthenticatedProductosRoute
   '/snoop-admin': typeof AuthenticatedSnoopAdminRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/': typeof AuthenticatedIndexRoute
+  '/ajustes/colaboradores': typeof AuthenticatedAjustesColaboradoresRoute
+  '/ajustes/cuotas': typeof AuthenticatedAjustesCuotasRoute
+  '/ajustes/dispositivos': typeof AuthenticatedAjustesDispositivosRoute
+  '/ajustes/socios': typeof AuthenticatedAjustesSociosRoute
   '/soci/$id': typeof AuthenticatedSociIdRouteWithChildren
-  '/soci/colaboratori': typeof AuthenticatedSociColaboratoriRoute
   '/soci/gestisci': typeof AuthenticatedSociGestisciRoute
   '/soci/nuovo': typeof AuthenticatedSociNuovoRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/ajustes': typeof AuthenticatedAjustesIndexRoute
   '/soci': typeof AuthenticatedSociIndexRoute
   '/soci/$id/pedido': typeof AuthenticatedSociIdPedidoRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -185,16 +213,19 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/_authenticated/caja': typeof AuthenticatedCajaRoute
-  '/_authenticated/piani': typeof AuthenticatedPianiRoute
   '/_authenticated/productos': typeof AuthenticatedProductosRoute
   '/_authenticated/snoop-admin': typeof AuthenticatedSnoopAdminRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/ajustes/colaboradores': typeof AuthenticatedAjustesColaboradoresRoute
+  '/_authenticated/ajustes/cuotas': typeof AuthenticatedAjustesCuotasRoute
+  '/_authenticated/ajustes/dispositivos': typeof AuthenticatedAjustesDispositivosRoute
+  '/_authenticated/ajustes/socios': typeof AuthenticatedAjustesSociosRoute
   '/_authenticated/soci/$id': typeof AuthenticatedSociIdRouteWithChildren
-  '/_authenticated/soci/colaboratori': typeof AuthenticatedSociColaboratoriRoute
   '/_authenticated/soci/gestisci': typeof AuthenticatedSociGestisciRoute
   '/_authenticated/soci/nuovo': typeof AuthenticatedSociNuovoRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/_authenticated/ajustes/': typeof AuthenticatedAjustesIndexRoute
   '/_authenticated/soci/': typeof AuthenticatedSociIndexRoute
   '/_authenticated/soci/$id/pedido': typeof AuthenticatedSociIdPedidoRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -209,15 +240,18 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/unsubscribe'
     | '/caja'
-    | '/piani'
     | '/productos'
     | '/snoop-admin'
     | '/email/unsubscribe'
+    | '/ajustes/colaboradores'
+    | '/ajustes/cuotas'
+    | '/ajustes/dispositivos'
+    | '/ajustes/socios'
     | '/soci/$id'
-    | '/soci/colaboratori'
     | '/soci/gestisci'
     | '/soci/nuovo'
     | '/lovable/email/suppression'
+    | '/ajustes/'
     | '/soci/'
     | '/soci/$id/pedido'
     | '/lovable/email/queue/process'
@@ -229,16 +263,19 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/unsubscribe'
     | '/caja'
-    | '/piani'
     | '/productos'
     | '/snoop-admin'
     | '/email/unsubscribe'
     | '/'
+    | '/ajustes/colaboradores'
+    | '/ajustes/cuotas'
+    | '/ajustes/dispositivos'
+    | '/ajustes/socios'
     | '/soci/$id'
-    | '/soci/colaboratori'
     | '/soci/gestisci'
     | '/soci/nuovo'
     | '/lovable/email/suppression'
+    | '/ajustes'
     | '/soci'
     | '/soci/$id/pedido'
     | '/lovable/email/queue/process'
@@ -251,16 +288,19 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/unsubscribe'
     | '/_authenticated/caja'
-    | '/_authenticated/piani'
     | '/_authenticated/productos'
     | '/_authenticated/snoop-admin'
     | '/email/unsubscribe'
     | '/_authenticated/'
+    | '/_authenticated/ajustes/colaboradores'
+    | '/_authenticated/ajustes/cuotas'
+    | '/_authenticated/ajustes/dispositivos'
+    | '/_authenticated/ajustes/socios'
     | '/_authenticated/soci/$id'
-    | '/_authenticated/soci/colaboratori'
     | '/_authenticated/soci/gestisci'
     | '/_authenticated/soci/nuovo'
     | '/lovable/email/suppression'
+    | '/_authenticated/ajustes/'
     | '/_authenticated/soci/'
     | '/_authenticated/soci/$id/pedido'
     | '/lovable/email/queue/process'
@@ -338,13 +378,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProductosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/piani': {
-      id: '/_authenticated/piani'
-      path: '/piani'
-      fullPath: '/piani'
-      preLoaderRoute: typeof AuthenticatedPianiRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/caja': {
       id: '/_authenticated/caja'
       path: '/caja'
@@ -357,6 +390,13 @@ declare module '@tanstack/react-router' {
       path: '/soci'
       fullPath: '/soci/'
       preLoaderRoute: typeof AuthenticatedSociIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/ajustes/': {
+      id: '/_authenticated/ajustes/'
+      path: '/ajustes'
+      fullPath: '/ajustes/'
+      preLoaderRoute: typeof AuthenticatedAjustesIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/lovable/email/suppression': {
@@ -380,18 +420,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSociGestisciRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/soci/colaboratori': {
-      id: '/_authenticated/soci/colaboratori'
-      path: '/soci/colaboratori'
-      fullPath: '/soci/colaboratori'
-      preLoaderRoute: typeof AuthenticatedSociColaboratoriRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/soci/$id': {
       id: '/_authenticated/soci/$id'
       path: '/soci/$id'
       fullPath: '/soci/$id'
       preLoaderRoute: typeof AuthenticatedSociIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/ajustes/socios': {
+      id: '/_authenticated/ajustes/socios'
+      path: '/ajustes/socios'
+      fullPath: '/ajustes/socios'
+      preLoaderRoute: typeof AuthenticatedAjustesSociosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/ajustes/dispositivos': {
+      id: '/_authenticated/ajustes/dispositivos'
+      path: '/ajustes/dispositivos'
+      fullPath: '/ajustes/dispositivos'
+      preLoaderRoute: typeof AuthenticatedAjustesDispositivosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/ajustes/cuotas': {
+      id: '/_authenticated/ajustes/cuotas'
+      path: '/ajustes/cuotas'
+      fullPath: '/ajustes/cuotas'
+      preLoaderRoute: typeof AuthenticatedAjustesCuotasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/ajustes/colaboradores': {
+      id: '/_authenticated/ajustes/colaboradores'
+      path: '/ajustes/colaboradores'
+      fullPath: '/ajustes/colaboradores'
+      preLoaderRoute: typeof AuthenticatedAjustesColaboradoresRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/lovable/email/transactional/send': {
@@ -438,27 +499,34 @@ const AuthenticatedSociIdRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCajaRoute: typeof AuthenticatedCajaRoute
-  AuthenticatedPianiRoute: typeof AuthenticatedPianiRoute
   AuthenticatedProductosRoute: typeof AuthenticatedProductosRoute
   AuthenticatedSnoopAdminRoute: typeof AuthenticatedSnoopAdminRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedAjustesColaboradoresRoute: typeof AuthenticatedAjustesColaboradoresRoute
+  AuthenticatedAjustesCuotasRoute: typeof AuthenticatedAjustesCuotasRoute
+  AuthenticatedAjustesDispositivosRoute: typeof AuthenticatedAjustesDispositivosRoute
+  AuthenticatedAjustesSociosRoute: typeof AuthenticatedAjustesSociosRoute
   AuthenticatedSociIdRoute: typeof AuthenticatedSociIdRouteWithChildren
-  AuthenticatedSociColaboratoriRoute: typeof AuthenticatedSociColaboratoriRoute
   AuthenticatedSociGestisciRoute: typeof AuthenticatedSociGestisciRoute
   AuthenticatedSociNuovoRoute: typeof AuthenticatedSociNuovoRoute
+  AuthenticatedAjustesIndexRoute: typeof AuthenticatedAjustesIndexRoute
   AuthenticatedSociIndexRoute: typeof AuthenticatedSociIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCajaRoute: AuthenticatedCajaRoute,
-  AuthenticatedPianiRoute: AuthenticatedPianiRoute,
   AuthenticatedProductosRoute: AuthenticatedProductosRoute,
   AuthenticatedSnoopAdminRoute: AuthenticatedSnoopAdminRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedAjustesColaboradoresRoute:
+    AuthenticatedAjustesColaboradoresRoute,
+  AuthenticatedAjustesCuotasRoute: AuthenticatedAjustesCuotasRoute,
+  AuthenticatedAjustesDispositivosRoute: AuthenticatedAjustesDispositivosRoute,
+  AuthenticatedAjustesSociosRoute: AuthenticatedAjustesSociosRoute,
   AuthenticatedSociIdRoute: AuthenticatedSociIdRouteWithChildren,
-  AuthenticatedSociColaboratoriRoute: AuthenticatedSociColaboratoriRoute,
   AuthenticatedSociGestisciRoute: AuthenticatedSociGestisciRoute,
   AuthenticatedSociNuovoRoute: AuthenticatedSociNuovoRoute,
+  AuthenticatedAjustesIndexRoute: AuthenticatedAjustesIndexRoute,
   AuthenticatedSociIndexRoute: AuthenticatedSociIndexRoute,
 }
 

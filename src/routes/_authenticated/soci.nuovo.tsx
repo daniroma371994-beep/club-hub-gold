@@ -8,6 +8,7 @@ import { Camera, Check, Loader2, Mic, Square } from "lucide-react";
 import { CONTRACT_TEXT_ES, CONTRACT_VERSION, compressImage, formatPrice, uploadToSnoopDocs } from "@/lib/snoop";
 import { SignaturePad, type SignaturePadHandle } from "@/components/SignaturePad";
 import { extractMemberFields, transcribeAudio } from "@/lib/voice-agent.functions";
+import { defaultFieldConfig, mergeFieldConfig, type FieldConfigMap } from "@/lib/member-fields";
 
 export const Route = createFileRoute("/_authenticated/soci/nuovo")({
   component: NewSocio,
@@ -101,11 +102,15 @@ function NewSocio() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const sigRef = useRef<SignaturePadHandle>(null);
 
+  const [fieldCfg, setFieldCfg] = useState<FieldConfigMap>(defaultFieldConfig());
+
   const [form, setForm] = useState({
     first_name: "",
     last_name: "",
     birth_date: "",
+    address: "",
     city: "",
+    postal_code: "",
     phone: "",
     email: "",
     plan_id: "",
@@ -129,6 +134,16 @@ function NewSocio() {
   useEffect(() => {
     supabase.from("membership_plans").select("id,name,duration_days,price_cents").eq("active", true).order("sort_order")
       .then(({ data }) => setPlans((data as any) ?? []));
+    (async () => {
+      const { getCurrentClubId } = await import("@/lib/club");
+      const clubId = await getCurrentClubId();
+      if (!clubId) return;
+      const { data } = await supabase
+        .from("club_member_field_config")
+        .select("field_key, visible, required")
+        .eq("club_id", clubId);
+      setFieldCfg(mergeFieldConfig((data as any) ?? []));
+    })();
     return () => { streamRef.current?.getTracks().forEach((t) => t.stop()); };
   }, []);
 
@@ -282,15 +297,25 @@ function NewSocio() {
 
   async function submit() {
     if (!form.first_name.trim() || !form.last_name.trim()) return toast.error("Falta nombre y apellido");
-    if (!form.birth_date) return toast.error("Falta la fecha de nacimiento");
-    const age = (Date.now() - new Date(form.birth_date).getTime()) / (1000 * 60 * 60 * 24 * 365.25);
-    if (age < 18) return toast.error("El socio debe ser mayor de edad");
-    if (!form.city.trim() || !form.phone.trim()) return toast.error("Faltan ciudad o teléfono");
-    if (!form.dni_number.trim()) return toast.error("Falta el número de DNI");
-    if (!form.dni_file) return toast.error("Falta la foto del DNI");
-    if (!form.plan_id) return toast.error("Selecciona una cuota");
-    if (!form.contract_read) return toast.error("Marca que has leído el contrato");
-    if (sigRef.current?.isEmpty()) return toast.error("Falta la firma del socio");
+    const req = (k: keyof FieldConfigMap) => fieldCfg[k].visible && fieldCfg[k].required;
+    const vis = (k: keyof FieldConfigMap) => fieldCfg[k].visible;
+    if (req("birth_date")) {
+      if (!form.birth_date) return toast.error("Falta la fecha de nacimiento");
+      const age = (Date.now() - new Date(form.birth_date).getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+      if (age < 18) return toast.error("El socio debe ser mayor de edad");
+    }
+    if (req("address") && !form.address.trim()) return toast.error("Falta la dirección");
+    if (req("city") && !form.city.trim()) return toast.error("Falta la ciudad");
+    if (req("postal_code") && !form.postal_code.trim()) return toast.error("Falta el código postal");
+    if (req("phone") && !form.phone.trim()) return toast.error("Falta el teléfono");
+    if (req("email") && !form.email.trim()) return toast.error("Falta el email");
+    if (req("dni_number") && !form.dni_number.trim()) return toast.error("Falta el número de DNI");
+    if (req("dni_photo") && !form.dni_file) return toast.error("Falta la foto del DNI");
+    if (req("plan") && !form.plan_id) return toast.error("Selecciona una cuota");
+    if (req("signature")) {
+      if (!form.contract_read) return toast.error("Marca que has leído el contrato");
+      if (sigRef.current?.isEmpty()) return toast.error("Falta la firma del socio");
+    }
 
     setSaving(true);
     try {
@@ -299,13 +324,15 @@ function NewSocio() {
       const dniPath = `members/${memberId}/dni.jpg`;
       const sigPath = `members/${memberId}/signature.png`;
 
-      await uploadToSnoopDocs(form.dni_file!, dniPath);
-      const sigBlob = await sigRef.current!.toBlob();
-      if (!sigBlob) throw new Error("Firma vacía");
-      await uploadToSnoopDocs(sigBlob, sigPath);
+      if (form.dni_file) await uploadToSnoopDocs(form.dni_file, dniPath);
+      let sigUploaded = false;
+      if (vis("signature") && !sigRef.current?.isEmpty()) {
+        const sigBlob = await sigRef.current!.toBlob();
+        if (sigBlob) { await uploadToSnoopDocs(sigBlob, sigPath); sigUploaded = true; }
+      }
 
       const joined = new Date();
-      const expires = new Date(joined.getTime() + selectedPlan!.duration_days * 86400000);
+      const expires = selectedPlan ? new Date(joined.getTime() + selectedPlan.duration_days * 86400000) : null;
 
       const { getCurrentClubId } = await import("@/lib/club");
       const clubId = await getCurrentClubId();
@@ -315,18 +342,20 @@ function NewSocio() {
         id: memberId,
         first_name: form.first_name.trim(),
         last_name: form.last_name.trim(),
-        birth_date: form.birth_date,
+        birth_date: form.birth_date || "1900-01-01",
+        address: form.address.trim() || null,
         city: form.city.trim(),
+        postal_code: form.postal_code.trim() || null,
         phone: form.phone.trim(),
         email: form.email.trim() || null,
         dni_number: form.dni_number.trim().toUpperCase(),
-        dni_photo_path: dniPath,
-        plan_id: form.plan_id,
+        dni_photo_path: form.dni_file ? dniPath : "",
+        plan_id: form.plan_id || "",
         joined_at: joined.toISOString().slice(0, 10),
-        expires_at: expires.toISOString().slice(0, 10),
-        signature_path: sigPath,
-        contract_signed_at: new Date().toISOString(),
-        contract_version: CONTRACT_VERSION,
+        expires_at: expires ? expires.toISOString().slice(0, 10) : joined.toISOString().slice(0, 10),
+        signature_path: sigUploaded ? sigPath : "",
+        contract_signed_at: sigUploaded ? new Date().toISOString() : null,
+        contract_version: sigUploaded ? CONTRACT_VERSION : "",
         created_by: user.user?.id ?? null,
       });
       if (error) throw error;
@@ -377,75 +406,97 @@ function NewSocio() {
           <div className="grid md:grid-cols-2 gap-4">
             <Inp label="Nombre *" value={form.first_name} onChange={(v) => set("first_name", v)} />
             <Inp label="Apellidos *" value={form.last_name} onChange={(v) => set("last_name", v)} />
-            <Inp label="Fecha de nacimiento *" type="date" value={form.birth_date} onChange={(v) => set("birth_date", v)} />
-            <Inp label="Número de DNI / NIE *" value={form.dni_number} onChange={(v) => set("dni_number", v.toUpperCase())} placeholder="12345678A" />
-            <Inp label="Ciudad *" value={form.city} onChange={(v) => set("city", v)} />
-            <Inp label="Teléfono *" type="tel" value={form.phone} onChange={(v) => set("phone", v)} />
-            <Inp label="Email" type="email" value={form.email} onChange={(v) => set("email", v)} placeholder="socio@email.com" />
+            {fieldCfg.birth_date.visible && (
+              <Inp label={`Fecha de nacimiento${fieldCfg.birth_date.required ? " *" : ""}`} type="date" value={form.birth_date} onChange={(v) => set("birth_date", v)} />
+            )}
+            {fieldCfg.dni_number.visible && (
+              <Inp label={`Número de DNI / NIE${fieldCfg.dni_number.required ? " *" : ""}`} value={form.dni_number} onChange={(v) => set("dni_number", v.toUpperCase())} placeholder="12345678A" />
+            )}
+            {fieldCfg.address.visible && (
+              <Inp label={`Dirección${fieldCfg.address.required ? " *" : ""}`} value={form.address} onChange={(v) => set("address", v)} />
+            )}
+            {fieldCfg.city.visible && (
+              <Inp label={`Ciudad${fieldCfg.city.required ? " *" : ""}`} value={form.city} onChange={(v) => set("city", v)} />
+            )}
+            {fieldCfg.postal_code.visible && (
+              <Inp label={`Código postal${fieldCfg.postal_code.required ? " *" : ""}`} value={form.postal_code} onChange={(v) => set("postal_code", v)} />
+            )}
+            {fieldCfg.phone.visible && (
+              <Inp label={`Teléfono${fieldCfg.phone.required ? " *" : ""}`} type="tel" value={form.phone} onChange={(v) => set("phone", v)} />
+            )}
+            {fieldCfg.email.visible && (
+              <Inp label={`Email${fieldCfg.email.required ? " *" : ""}`} type="email" value={form.email} onChange={(v) => set("email", v)} placeholder="socio@email.com" />
+            )}
           </div>
         </section>
 
         {/* Plan */}
-        <section>
-          <h3 className="text-[11px] uppercase tracking-[0.3em] text-neon mb-4">Cuota</h3>
-          <div className="grid sm:grid-cols-3 gap-3">
-            {plans.length === 0 && <div className="text-muted-foreground text-sm col-span-3">No hay cuotas. Pide al admin que las cree.</div>}
-            {plans.map((p) => {
-              const active = form.plan_id === p.id;
-              return (
-                <button key={p.id} type="button" onClick={() => set("plan_id", p.id)}
-                  className={`text-left rounded-xl p-4 border transition ${active ? "border-neon bg-neon/10 glow-neon-soft" : "border-border bg-input hover:border-neon/50"}`}>
-                  <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">{p.duration_days} días</div>
-                  <div className="font-display text-base mt-1">{p.name}</div>
-                  <div className={`mt-2 font-display text-xl ${active ? "text-neon" : "text-foreground"}`}>{formatPrice(p.price_cents)}</div>
-                </button>
-              );
-            })}
-          </div>
-        </section>
+        {fieldCfg.plan.visible && (
+          <section>
+            <h3 className="text-[11px] uppercase tracking-[0.3em] text-neon mb-4">Cuota{fieldCfg.plan.required ? " *" : ""}</h3>
+            <div className="grid sm:grid-cols-3 gap-3">
+              {plans.length === 0 && <div className="text-muted-foreground text-sm col-span-3">No hay cuotas. Pide al admin que las cree.</div>}
+              {plans.map((p) => {
+                const active = form.plan_id === p.id;
+                return (
+                  <button key={p.id} type="button" onClick={() => set("plan_id", p.id)}
+                    className={`text-left rounded-xl p-4 border transition ${active ? "border-neon bg-neon/10 glow-neon-soft" : "border-border bg-input hover:border-neon/50"}`}>
+                    <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">{p.duration_days} días</div>
+                    <div className="font-display text-base mt-1">{p.name}</div>
+                    <div className={`mt-2 font-display text-xl ${active ? "text-neon" : "text-foreground"}`}>{formatPrice(p.price_cents)}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* DNI photo */}
-        <section>
-          <h3 className="text-[11px] uppercase tracking-[0.3em] text-neon mb-4">Foto del DNI (frontal) *</h3>
-          {form.dni_preview ? (
-            <div className="relative inline-block">
-              <img src={form.dni_preview} alt="DNI" className="max-w-full max-h-64 rounded-lg border border-neon/30" />
-              <label className="absolute bottom-2 right-2 cursor-pointer bg-card/90 border border-neon/40 text-neon text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-md">
-                Cambiar
+        {fieldCfg.dni_photo.visible && (
+          <section>
+            <h3 className="text-[11px] uppercase tracking-[0.3em] text-neon mb-4">Foto del DNI (frontal){fieldCfg.dni_photo.required ? " *" : ""}</h3>
+            {form.dni_preview ? (
+              <div className="relative inline-block">
+                <img src={form.dni_preview} alt="DNI" className="max-w-full max-h-64 rounded-lg border border-neon/30" />
+                <label className="absolute bottom-2 right-2 cursor-pointer bg-card/90 border border-neon/40 text-neon text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-md">
+                  Cambiar
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handleDniFile(e.target.files[0])} />
+                </label>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center gap-2 h-44 rounded-lg border-2 border-dashed border-neon/30 hover:border-neon/60 hover:bg-neon/5 transition cursor-pointer">
+                <Camera className="w-8 h-8 text-neon" />
+                <div className="text-sm text-foreground font-display">Tomar foto / Subir imagen</div>
+                <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Se comprimirá automáticamente</div>
                 <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handleDniFile(e.target.files[0])} />
               </label>
-            </div>
-          ) : (
-            <label className="flex flex-col items-center justify-center gap-2 h-44 rounded-lg border-2 border-dashed border-neon/30 hover:border-neon/60 hover:bg-neon/5 transition cursor-pointer">
-              <Camera className="w-8 h-8 text-neon" />
-              <div className="text-sm text-foreground font-display">Tomar foto / Subir imagen</div>
-              <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Se comprimirá automáticamente</div>
-              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handleDniFile(e.target.files[0])} />
-            </label>
-          )}
-        </section>
+            )}
+          </section>
+        )}
 
         {/* Contrato + firma (único paso separado) */}
-        <section className="border-t border-border pt-6">
-          <h3 className="text-[11px] uppercase tracking-[0.3em] text-neon mb-4">Contrato y firma — versión {CONTRACT_VERSION}</h3>
-          <div
-            onScroll={(e) => {
-              const el = e.currentTarget;
-              if (el.scrollTop + el.clientHeight >= el.scrollHeight - 10) set("contract_read", true);
-            }}
-            className="bg-input border border-border rounded-lg p-5 h-56 overflow-y-auto text-sm leading-relaxed whitespace-pre-wrap text-foreground/90"
-          >
-            {CONTRACT_TEXT_ES}
-          </div>
-          <label className="flex items-start gap-3 text-sm mt-3">
-            <input type="checkbox" checked={form.contract_read} onChange={(e) => set("contract_read", e.target.checked)} className="mt-1 accent-[oklch(0.86_0.28_145)]" />
-            <span>He leído y acepto íntegramente las normas, el contrato y la política de protección de datos.</span>
-          </label>
-          <div className="mt-4">
-            <div className="text-[10px] uppercase tracking-[0.3em] text-neon-dim mb-2">Firma del socio</div>
-            <SignaturePad ref={sigRef} height={220} />
-          </div>
-        </section>
+        {fieldCfg.signature.visible && (
+          <section className="border-t border-border pt-6">
+            <h3 className="text-[11px] uppercase tracking-[0.3em] text-neon mb-4">Contrato y firma — versión {CONTRACT_VERSION}</h3>
+            <div
+              onScroll={(e) => {
+                const el = e.currentTarget;
+                if (el.scrollTop + el.clientHeight >= el.scrollHeight - 10) set("contract_read", true);
+              }}
+              className="bg-input border border-border rounded-lg p-5 h-56 overflow-y-auto text-sm leading-relaxed whitespace-pre-wrap text-foreground/90"
+            >
+              {CONTRACT_TEXT_ES}
+            </div>
+            <label className="flex items-start gap-3 text-sm mt-3">
+              <input type="checkbox" checked={form.contract_read} onChange={(e) => set("contract_read", e.target.checked)} className="mt-1 accent-[oklch(0.86_0.28_145)]" />
+              <span>He leído y acepto íntegramente las normas, el contrato y la política de protección de datos.</span>
+            </label>
+            <div className="mt-4">
+              <div className="text-[10px] uppercase tracking-[0.3em] text-neon-dim mb-2">Firma del socio</div>
+              <SignaturePad ref={sigRef} height={220} />
+            </div>
+          </section>
+        )}
 
         <div className="flex items-center justify-end pt-4 border-t border-border">
           <button type="button" disabled={saving} onClick={submit}
