@@ -77,38 +77,86 @@ async function sendWelcomeEmail(opts: {
   role_label: string;
   club_name: string;
   login_url: string;
-  apiKey: string;
-  origin: string;
-  userToken: string;
 }) {
   try {
-    const res = await fetch(`${opts.origin}/lovable/email/transactional/send`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${opts.userToken}`,
-    },
-    body: JSON.stringify({
-      templateName: "welcome-user",
-      recipientEmail: opts.recipient,
-      idempotencyKey: `welcome-${opts.recipient}-${Date.now()}`,
-      templateData: {
-        full_name: opts.full_name,
-        email: opts.recipient,
-        temporary_password: opts.temporary_password,
-        role_label: opts.role_label,
-        club_name: opts.club_name,
-        login_url: opts.login_url,
-      },
-    }),
-  });
-    if (!res.ok) {
-      const text = await res.text();
-      console.error("Welcome email failed:", res.status, text);
+    const React = await import("react");
+    const { render } = await import("@react-email/render");
+    const { TEMPLATES } = await import("@/lib/email-templates/registry");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const tpl = (TEMPLATES as any)["welcome-user"];
+    if (!tpl) throw new Error("welcome-user template not registered");
+
+    const recipient = opts.recipient.toLowerCase();
+    const messageId = crypto.randomUUID();
+
+    const { data: suppressed } = await supabaseAdmin
+      .from("suppressed_emails").select("id").eq("email", recipient).maybeSingle();
+    if (suppressed) {
+      await supabaseAdmin.from("email_send_log").insert({
+        message_id: messageId, template_name: "welcome-user", recipient_email: recipient, status: "suppressed",
+      });
+      return;
     }
-  } catch (err) {
-    // Never block account creation on email delivery
-    console.error("Welcome email error (non-fatal):", err);
+
+    let token: string;
+    const { data: existing } = await supabaseAdmin
+      .from("email_unsubscribe_tokens").select("token, used_at").eq("email", recipient).maybeSingle();
+    if (existing && !(existing as any).used_at) {
+      token = (existing as any).token;
+    } else {
+      const bytes = new Uint8Array(32); crypto.getRandomValues(bytes);
+      token = Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+      await supabaseAdmin.from("email_unsubscribe_tokens")
+        .upsert({ token, email: recipient }, { onConflict: "email", ignoreDuplicates: true });
+      const { data: stored } = await supabaseAdmin
+        .from("email_unsubscribe_tokens").select("token").eq("email", recipient).maybeSingle();
+      if ((stored as any)?.token) token = (stored as any).token;
+    }
+
+    const element = React.createElement(tpl.component as any, {
+      full_name: opts.full_name,
+      email: opts.recipient,
+      temporary_password: opts.temporary_password,
+      role_label: opts.role_label,
+      club_name: opts.club_name,
+      login_url: opts.login_url,
+    });
+    const html = await render(element);
+    const text = await render(element, { plainText: true });
+    const subject = typeof tpl.subject === "function"
+      ? tpl.subject({ club_name: opts.club_name })
+      : tpl.subject;
+
+    await supabaseAdmin.from("email_send_log").insert({
+      message_id: messageId, template_name: "welcome-user", recipient_email: recipient, status: "pending",
+    });
+
+    const SENDER_DOMAIN = "notify.meduzamallorca.com";
+    const { error: enqErr } = await supabaseAdmin.rpc("enqueue_email", {
+      queue_name: "transactional_emails",
+      payload: {
+        message_id: messageId,
+        to: opts.recipient,
+        from: `Snoop <noreply@${SENDER_DOMAIN}>`,
+        sender_domain: SENDER_DOMAIN,
+        subject,
+        html, text,
+        purpose: "transactional",
+        label: "welcome-user",
+        idempotency_key: `welcome-${recipient}-${Date.now()}`,
+        unsubscribe_token: token,
+        queued_at: new Date().toISOString(),
+      },
+    });
+    if (enqErr) {
+      await supabaseAdmin.from("email_send_log").insert({
+        message_id: messageId, template_name: "welcome-user", recipient_email: recipient,
+        status: "failed", error_message: enqErr.message,
+      });
+    }
+  } catch (err: any) {
+    console.error("Welcome email error (non-fatal):", err?.message || err);
   }
 }
 
