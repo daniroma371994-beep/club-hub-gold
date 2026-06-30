@@ -192,7 +192,6 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
       const { reply, navigateTo } = await respond({
         data: { transcript: text, history: [] },
       });
-      if (!navigateTo && reply) toast.message(reply);
       // Voz solo en el saludo inicial; las respuestas del agente se muestran en pantalla.
       if (navigateTo) navigate({ to: navigateTo as any });
     } catch (e: any) {
