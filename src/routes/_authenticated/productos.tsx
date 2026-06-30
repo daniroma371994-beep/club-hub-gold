@@ -1,13 +1,33 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { SnoopLayout } from "@/components/SnoopLayout";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Package, Tag, Plus, Trash2, Pencil, Save, X, Mic } from "lucide-react";
+import { Package, Tag, Plus, Trash2, Pencil, Save, X, Mic, Search, Loader2 } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { transcribeAudio } from "@/lib/voice-agent.functions";
+import { parseProductCommand } from "@/lib/products-voice.functions";
 
 export const Route = createFileRoute("/_authenticated/productos")({
   component: ProductosPage,
 });
+
+// Lightweight Web Speech dictation hook for the search box
+function useDictation(onText: (t: string) => void, lang = "es-ES") {
+  const [listening, setListening] = useState(false);
+  const recRef = useRef<any>(null);
+  function start() {
+    const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { toast.error("Tu navegador no soporta dictado"); return; }
+    const r = new SR(); r.lang = lang; r.interimResults = false; r.continuous = false;
+    r.onresult = (e: any) => onText(e.results[0][0].transcript);
+    r.onend = () => setListening(false);
+    r.onerror = () => setListening(false);
+    recRef.current = r; setListening(true); r.start();
+  }
+  function stop() { try { recRef.current?.stop(); } catch {} setListening(false); }
+  return { listening, start, stop };
+}
 
 type UnitType = "gr" | "unit";
 type Strain = "indica" | "sativa" | "hibrida";
@@ -35,6 +55,64 @@ function ProductosPage() {
   const [cats, setCats] = useState<Category[]>([]);
   const [prods, setProds] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [stockSearch, setStockSearch] = useState("");
+  const [prefillProduct, setPrefillProduct] = useState<any>(null);
+  const [prefillCategory, setPrefillCategory] = useState<any>(null);
+
+  // Voice command (AI)
+  const transcribe = useServerFn(transcribeAudio);
+  const parseCmd = useServerFn(parseProductCommand);
+  const [recording, setRecording] = useState(false);
+  const [thinking, setThinking] = useState(false);
+  const mediaRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+
+  async function startCommand() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream);
+      chunksRef.current = [];
+      mr.ondataavailable = (e) => e.data.size && chunksRef.current.push(e.data);
+      mr.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        setRecording(false);
+        setThinking(true);
+        try {
+          const blob = new Blob(chunksRef.current, { type: mr.mimeType || "audio/webm" });
+          const buf = await blob.arrayBuffer();
+          let bin = ""; const u8 = new Uint8Array(buf);
+          for (let i = 0; i < u8.length; i++) bin += String.fromCharCode(u8[i]);
+          const b64 = btoa(bin);
+          const { text } = await transcribe({ data: { audioBase64: b64, mimeType: blob.type } });
+          if (!text) { toast.error("No te he oído"); return; }
+          toast.message("Escuché", { description: text });
+          const cmd = await parseCmd({ data: { transcript: text, categories: cats.map((c) => ({ id: c.id, name: c.name, unit_type: c.unit_type, is_smokeable: c.is_smokeable })) } });
+          if (cmd.action === "search") {
+            setTab("stock"); setStockSearch(cmd.query || text);
+          } else if (cmd.action === "create_category") {
+            setPrefillCategory({ name: cmd.category_name, unit_type: cmd.unit_type || "unit", is_smokeable: cmd.is_smokeable });
+            setTab("categoria");
+          } else if (cmd.action === "create_product") {
+            setPrefillProduct({
+              category_id: cmd.category_id,
+              name: cmd.product_name,
+              stock: cmd.stock, buy_price: cmd.buy_price, sell_price: cmd.sell_price,
+              strain: cmd.strain || "",
+            });
+            setTab("nuevo");
+          } else {
+            toast.error("No he entendido el comando");
+          }
+        } catch (e: any) {
+          toast.error(e?.message || "Error de voz");
+        } finally { setThinking(false); }
+      };
+      mediaRef.current = mr; mr.start(); setRecording(true);
+    } catch {
+      toast.error("No se pudo acceder al micrófono");
+    }
+  }
+  function stopCommand() { try { mediaRef.current?.stop(); } catch {} }
 
   async function load() {
     setLoading(true);
@@ -46,12 +124,27 @@ function ProductosPage() {
     setProds((p as any) ?? []);
     setLoading(false);
   }
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
   return (
     <SnoopLayout title="Productos" subtitle="Stock, categorías y altas">
+      {/* Voice command bar */}
+      <div className="mb-4 flex items-center gap-2 bg-card/60 border border-neon/20 rounded-2xl p-3">
+        <button
+          onClick={recording ? stopCommand : startCommand}
+          disabled={thinking}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs uppercase tracking-[0.2em] font-display border transition ${
+            recording ? "border-neon text-neon bg-neon/10 glow-neon" : "border-neon/40 text-neon hover:bg-neon/10"
+          } disabled:opacity-50`}
+        >
+          {thinking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mic className="w-4 h-4" />}
+          {thinking ? "Procesando…" : recording ? "Detener" : "Comando voz"}
+        </button>
+        <span className="text-[11px] text-muted-foreground leading-tight">
+          Di "buscar amnesia", "crear categoría flores fumable gramos", "crear producto X en flores stock 50 compra 5 venta 10".
+        </span>
+      </div>
+
       <div className="flex gap-2 mb-6 flex-wrap">
         {TABS.map((t) => (
           <button
@@ -71,11 +164,11 @@ function ProductosPage() {
       {loading ? (
         <div className="text-muted-foreground">Cargando…</div>
       ) : tab === "stock" ? (
-        <Stock cats={cats} prods={prods} onChange={load} />
+        <Stock cats={cats} prods={prods} onChange={load} search={stockSearch} setSearch={setStockSearch} />
       ) : tab === "nuevo" ? (
-        <NuevoProducto cats={cats} onCreated={load} />
+        <NuevoProducto cats={cats} onCreated={load} prefill={prefillProduct} clearPrefill={() => setPrefillProduct(null)} />
       ) : (
-        <NuevaCategoria onCreated={load} />
+        <NuevaCategoria onCreated={load} prefill={prefillCategory} clearPrefill={() => setPrefillCategory(null)} />
       )}
     </SnoopLayout>
   );
@@ -83,18 +176,21 @@ function ProductosPage() {
 
 /* ---------------- STOCK ---------------- */
 
-function Stock({ cats, prods, onChange }: { cats: Category[]; prods: Product[]; onChange: () => void }) {
+function Stock({ cats, prods, onChange, search, setSearch }: { cats: Category[]; prods: Product[]; onChange: () => void; search: string; setSearch: (v: string) => void }) {
   const [filter, setFilter] = useState<string>("all");
+  const dict = useDictation((t) => setSearch(t));
+  const q = search.trim().toLowerCase();
   const grouped = useMemo(() => {
     const map = new Map<string, Product[]>();
     for (const p of prods) {
       if (filter !== "all" && p.category_id !== filter) continue;
+      if (q && !p.name.toLowerCase().includes(q)) continue;
       const arr = map.get(p.category_id) ?? [];
       arr.push(p);
       map.set(p.category_id, arr);
     }
     return map;
-  }, [prods, filter]);
+  }, [prods, filter, q]);
 
   if (cats.length === 0)
     return (
@@ -108,6 +204,29 @@ function Stock({ cats, prods, onChange }: { cats: Category[]; prods: Product[]; 
 
   return (
     <div className="space-y-6">
+      {/* Search bar (works on all categories) */}
+      <div className="flex items-center gap-2 bg-input/40 border border-border rounded-lg px-3 py-2 focus-within:border-neon">
+        <Search className="w-4 h-4 text-muted-foreground" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar en todos los productos…"
+          className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground"
+        />
+        {search && (
+          <button onClick={() => setSearch("")} className="text-muted-foreground hover:text-foreground">
+            <X className="w-4 h-4" />
+          </button>
+        )}
+        <button
+          onClick={dict.listening ? dict.stop : dict.start}
+          className={`p-1.5 rounded ${dict.listening ? "text-neon glow-neon" : "text-muted-foreground hover:text-neon"}`}
+          title="Dictar búsqueda"
+        >
+          <Mic className="w-4 h-4" />
+        </button>
+      </div>
+
       <div className="flex flex-wrap gap-2">
         <button
           onClick={() => setFilter("all")}
@@ -271,7 +390,7 @@ function NumField({ label, value, onChange }: { label: string; value: number; on
 
 /* ---------------- NUEVO PRODUCTO ---------------- */
 
-function NuevoProducto({ cats, onCreated }: { cats: Category[]; onCreated: () => void }) {
+function NuevoProducto({ cats, onCreated, prefill, clearPrefill }: { cats: Category[]; onCreated: () => void; prefill: any; clearPrefill: () => void }) {
   const [categoryId, setCategoryId] = useState("");
   const [name, setName] = useState("");
   const [stock, setStock] = useState(0);
@@ -280,6 +399,18 @@ function NuevoProducto({ cats, onCreated }: { cats: Category[]; onCreated: () =>
   const [strain, setStrain] = useState<Strain | "">("");
   const [saving, setSaving] = useState(false);
   const cat = cats.find((c) => c.id === categoryId);
+
+  useEffect(() => {
+    if (!prefill) return;
+    if (prefill.category_id) setCategoryId(prefill.category_id);
+    if (prefill.name) setName(prefill.name);
+    if (prefill.stock) setStock(prefill.stock);
+    if (prefill.buy_price) setBuy(prefill.buy_price);
+    if (prefill.sell_price) setSell(prefill.sell_price);
+    if (prefill.strain) setStrain(prefill.strain);
+    clearPrefill();
+    toast.success("Datos rellenados por voz — revisa y guarda");
+  }, [prefill]);
 
   // voice input for product name
   const [listening, setListening] = useState(false);
@@ -406,11 +537,21 @@ function NuevoProducto({ cats, onCreated }: { cats: Category[]; onCreated: () =>
 
 /* ---------------- NUEVA CATEGORIA ---------------- */
 
-function NuevaCategoria({ onCreated }: { onCreated: () => void }) {
+function NuevaCategoria({ onCreated, prefill, clearPrefill }: { onCreated: () => void; prefill: any; clearPrefill: () => void }) {
   const [name, setName] = useState("");
   const [unit, setUnit] = useState<UnitType>("unit");
   const [smokeable, setSmokeable] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!prefill) return;
+    if (prefill.name) setName(prefill.name);
+    if (prefill.unit_type) setUnit(prefill.unit_type);
+    if (typeof prefill.is_smokeable === "boolean") setSmokeable(prefill.is_smokeable);
+    clearPrefill();
+    toast.success("Datos rellenados por voz — revisa y guarda");
+  }, [prefill]);
+
 
   async function submit() {
     if (!name.trim()) return toast.error("Nombre obligatorio");
