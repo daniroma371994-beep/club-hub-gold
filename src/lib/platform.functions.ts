@@ -49,7 +49,8 @@ async function sendWelcomeEmail(opts: {
   origin: string;
   userToken: string;
 }) {
-  const res = await fetch(`${opts.origin}/lovable/email/transactional/send`, {
+  try {
+    const res = await fetch(`${opts.origin}/lovable/email/transactional/send`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
