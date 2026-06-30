@@ -180,8 +180,8 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
         data: { transcript: text, history: messagesRef.current.slice(-20) },
       });
       setMessages((m) => [...m, { role: "assistant", content: reply }]);
-      await speak(reply);
-      if (navigateTo) setTimeout(() => navigate({ to: navigateTo as any }), 1000);
+      // Voz solo en el saludo inicial; las respuestas del agente se muestran en pantalla.
+      if (navigateTo) setTimeout(() => navigate({ to: navigateTo as any }), 400);
     } catch (e: any) {
       toast.error(e.message ?? "Error en el asistente");
     } finally {
