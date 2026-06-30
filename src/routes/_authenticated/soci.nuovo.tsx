@@ -352,7 +352,7 @@ function NewSocio() {
         dni_photo_path: form.dni_file ? dniPath : "",
         plan_id: form.plan_id || "",
         joined_at: joined.toISOString().slice(0, 10),
-        expires_at: expires ? expires.toISOString().slice(0, 10) : null,
+        expires_at: expires ? expires.toISOString().slice(0, 10) : joined.toISOString().slice(0, 10),
         signature_path: sigUploaded ? sigPath : "",
         contract_signed_at: sigUploaded ? new Date().toISOString() : null,
         contract_version: sigUploaded ? CONTRACT_VERSION : "",
