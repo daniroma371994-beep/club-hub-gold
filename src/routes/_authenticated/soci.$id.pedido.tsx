@@ -530,10 +530,13 @@ function PedidoPage() {
                         <label className="text-[10px] uppercase tracking-widest text-neon-dim">Merma</label>
                         <input
                           inputMode="decimal"
-                          value={c.merma || ""}
+                          value={mermaText[c.product_id] ?? (c.merma ? String(c.merma) : "")}
                           onChange={(e) => {
-                            const v = parseFloat(e.target.value.replace(",", "."));
-                            updateLine(i, { merma: isNaN(v) ? 0 : v });
+                            const raw = e.target.value;
+                            setMermaText((s) => ({ ...s, [c.product_id]: raw }));
+                            if (raw.trim() === "") { updateLine(i, { merma: 0 }); return; }
+                            const v = parseFloat(raw.replace(",", "."));
+                            if (!isNaN(v) && v >= 0) updateLine(i, { merma: v });
                           }}
                           placeholder="0,05"
                           className="w-20 bg-input border border-border rounded px-2 py-1 text-xs focus:border-neon outline-none"
