@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { SnoopLayout } from "@/components/SnoopLayout";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,6 +35,7 @@ type Member = {
 function SocioDetail() {
   const { id } = Route.useParams();
   const nav = useNavigate();
+  const location = useLocation();
   const { isAdmin } = useAuth();
   const [member, setMember] = useState<Member | null>(null);
   const [plan, setPlan] = useState<Plan | null>(null);
@@ -93,6 +94,10 @@ function SocioDetail() {
     supabase.from("membership_plans").select("*").eq("active", true).order("sort_order").then(({ data }) => setPlans((data as any) ?? []));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  if (location.pathname.endsWith("/pedido")) {
+    return <Outlet />;
+  }
 
   async function renew() {
     if (!newPlanId) return toast.error("Selecciona una cuota");
