@@ -49,7 +49,8 @@ async function sendWelcomeEmail(opts: {
   origin: string;
   userToken: string;
 }) {
-  const res = await fetch(`${opts.origin}/lovable/email/transactional/send`, {
+  try {
+    const res = await fetch(`${opts.origin}/lovable/email/transactional/send`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -69,9 +70,13 @@ async function sendWelcomeEmail(opts: {
       },
     }),
   });
-  if (!res.ok) {
-    const text = await res.text();
-    console.error("Welcome email failed:", res.status, text);
+    if (!res.ok) {
+      const text = await res.text();
+      console.error("Welcome email failed:", res.status, text);
+    }
+  } catch (err) {
+    // Never block account creation on email delivery
+    console.error("Welcome email error (non-fatal):", err);
   }
 }
 
