@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SnoopLayout } from "@/components/SnoopLayout";
-import { UserPlus, Users, ShieldCheck } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { UserPlus, Users } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/soci/")({
   component: SociMenu,
@@ -23,17 +22,12 @@ function Tile({ to, icon: Icon, title, text }: any) {
 }
 
 function SociMenu() {
-  const { isAdmin } = useAuth();
   return (
-    <SnoopLayout title="Socios" subtitle="Crea un socio nuevo, gestiona los existentes o tus colaboradores">
-      <div className="grid md:grid-cols-3 gap-5 max-w-4xl">
+    <SnoopLayout title="Socios" subtitle="Crea un socio nuevo o gestiona los existentes">
+      <div className="grid md:grid-cols-2 gap-5 max-w-3xl">
         <Tile to="/soci/nuovo" icon={UserPlus} title="Crear socio" text="Registra un nuevo socio con datos, foto del DNI y firma." />
         <Tile to="/soci/gestisci" icon={Users} title="Gestionar socios" text="Busca un socio, renueva, edita o haz un pedido." />
-        {isAdmin && (
-          <Tile to="/soci/colaboratori" icon={ShieldCheck} title="Colaboradores" text="Crea colaboradores y define qué pueden hacer." />
-        )}
       </div>
     </SnoopLayout>
   );
 }
-
