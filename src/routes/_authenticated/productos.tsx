@@ -390,7 +390,7 @@ function NumField({ label, value, onChange }: { label: string; value: number; on
 
 /* ---------------- NUEVO PRODUCTO ---------------- */
 
-function NuevoProducto({ cats, onCreated }: { cats: Category[]; onCreated: () => void }) {
+function NuevoProducto({ cats, onCreated, prefill, clearPrefill }: { cats: Category[]; onCreated: () => void; prefill: any; clearPrefill: () => void }) {
   const [categoryId, setCategoryId] = useState("");
   const [name, setName] = useState("");
   const [stock, setStock] = useState(0);
@@ -399,6 +399,18 @@ function NuevoProducto({ cats, onCreated }: { cats: Category[]; onCreated: () =>
   const [strain, setStrain] = useState<Strain | "">("");
   const [saving, setSaving] = useState(false);
   const cat = cats.find((c) => c.id === categoryId);
+
+  useEffect(() => {
+    if (!prefill) return;
+    if (prefill.category_id) setCategoryId(prefill.category_id);
+    if (prefill.name) setName(prefill.name);
+    if (prefill.stock) setStock(prefill.stock);
+    if (prefill.buy_price) setBuy(prefill.buy_price);
+    if (prefill.sell_price) setSell(prefill.sell_price);
+    if (prefill.strain) setStrain(prefill.strain);
+    clearPrefill();
+    toast.success("Datos rellenados por voz — revisa y guarda");
+  }, [prefill]);
 
   // voice input for product name
   const [listening, setListening] = useState(false);
