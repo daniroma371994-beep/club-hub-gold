@@ -297,15 +297,25 @@ function NewSocio() {
 
   async function submit() {
     if (!form.first_name.trim() || !form.last_name.trim()) return toast.error("Falta nombre y apellido");
-    if (!form.birth_date) return toast.error("Falta la fecha de nacimiento");
-    const age = (Date.now() - new Date(form.birth_date).getTime()) / (1000 * 60 * 60 * 24 * 365.25);
-    if (age < 18) return toast.error("El socio debe ser mayor de edad");
-    if (!form.city.trim() || !form.phone.trim()) return toast.error("Faltan ciudad o teléfono");
-    if (!form.dni_number.trim()) return toast.error("Falta el número de DNI");
-    if (!form.dni_file) return toast.error("Falta la foto del DNI");
-    if (!form.plan_id) return toast.error("Selecciona una cuota");
-    if (!form.contract_read) return toast.error("Marca que has leído el contrato");
-    if (sigRef.current?.isEmpty()) return toast.error("Falta la firma del socio");
+    const req = (k: keyof FieldConfigMap) => fieldCfg[k].visible && fieldCfg[k].required;
+    const vis = (k: keyof FieldConfigMap) => fieldCfg[k].visible;
+    if (req("birth_date")) {
+      if (!form.birth_date) return toast.error("Falta la fecha de nacimiento");
+      const age = (Date.now() - new Date(form.birth_date).getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+      if (age < 18) return toast.error("El socio debe ser mayor de edad");
+    }
+    if (req("address") && !form.address.trim()) return toast.error("Falta la dirección");
+    if (req("city") && !form.city.trim()) return toast.error("Falta la ciudad");
+    if (req("postal_code") && !form.postal_code.trim()) return toast.error("Falta el código postal");
+    if (req("phone") && !form.phone.trim()) return toast.error("Falta el teléfono");
+    if (req("email") && !form.email.trim()) return toast.error("Falta el email");
+    if (req("dni_number") && !form.dni_number.trim()) return toast.error("Falta el número de DNI");
+    if (req("dni_photo") && !form.dni_file) return toast.error("Falta la foto del DNI");
+    if (req("plan") && !form.plan_id) return toast.error("Selecciona una cuota");
+    if (req("signature")) {
+      if (!form.contract_read) return toast.error("Marca que has leído el contrato");
+      if (sigRef.current?.isEmpty()) return toast.error("Falta la firma del socio");
+    }
 
     setSaving(true);
     try {
@@ -314,13 +324,15 @@ function NewSocio() {
       const dniPath = `members/${memberId}/dni.jpg`;
       const sigPath = `members/${memberId}/signature.png`;
 
-      await uploadToSnoopDocs(form.dni_file!, dniPath);
-      const sigBlob = await sigRef.current!.toBlob();
-      if (!sigBlob) throw new Error("Firma vacía");
-      await uploadToSnoopDocs(sigBlob, sigPath);
+      if (form.dni_file) await uploadToSnoopDocs(form.dni_file, dniPath);
+      let sigUploaded = false;
+      if (vis("signature") && !sigRef.current?.isEmpty()) {
+        const sigBlob = await sigRef.current!.toBlob();
+        if (sigBlob) { await uploadToSnoopDocs(sigBlob, sigPath); sigUploaded = true; }
+      }
 
       const joined = new Date();
-      const expires = new Date(joined.getTime() + selectedPlan!.duration_days * 86400000);
+      const expires = selectedPlan ? new Date(joined.getTime() + selectedPlan.duration_days * 86400000) : null;
 
       const { getCurrentClubId } = await import("@/lib/club");
       const clubId = await getCurrentClubId();
@@ -330,18 +342,20 @@ function NewSocio() {
         id: memberId,
         first_name: form.first_name.trim(),
         last_name: form.last_name.trim(),
-        birth_date: form.birth_date,
-        city: form.city.trim(),
-        phone: form.phone.trim(),
+        birth_date: form.birth_date || null,
+        address: form.address.trim() || null,
+        city: form.city.trim() || null,
+        postal_code: form.postal_code.trim() || null,
+        phone: form.phone.trim() || null,
         email: form.email.trim() || null,
-        dni_number: form.dni_number.trim().toUpperCase(),
-        dni_photo_path: dniPath,
-        plan_id: form.plan_id,
+        dni_number: form.dni_number.trim().toUpperCase() || null,
+        dni_photo_path: form.dni_file ? dniPath : null,
+        plan_id: form.plan_id || null,
         joined_at: joined.toISOString().slice(0, 10),
-        expires_at: expires.toISOString().slice(0, 10),
-        signature_path: sigPath,
-        contract_signed_at: new Date().toISOString(),
-        contract_version: CONTRACT_VERSION,
+        expires_at: expires ? expires.toISOString().slice(0, 10) : null,
+        signature_path: sigUploaded ? sigPath : null,
+        contract_signed_at: sigUploaded ? new Date().toISOString() : null,
+        contract_version: sigUploaded ? CONTRACT_VERSION : null,
         created_by: user.user?.id ?? null,
       });
       if (error) throw error;
