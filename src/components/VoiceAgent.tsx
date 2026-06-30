@@ -70,6 +70,7 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
       audioRef.current = audio;
       audio.onended = () => {
         speakingRef.current = false;
+        muteUntilRef.current = Date.now() + 700; // ignora eco residual
         setStatus(wantOnRef.current ? "listening" : "off");
       };
       await audio.play().catch(() => {});
