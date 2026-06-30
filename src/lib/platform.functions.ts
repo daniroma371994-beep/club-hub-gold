@@ -38,6 +38,38 @@ function loginUrl(req: Request) {
   return `${u.protocol}//${u.host}/auth`;
 }
 
+async function findUserIdByEmail(admin: any, email: string): Promise<string | null> {
+  const target = email.toLowerCase();
+  for (let page = 1; page <= 20; page++) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+    if (error) throw error;
+    const found = data?.users?.find((u: any) => (u.email ?? "").toLowerCase() === target);
+    if (found) return found.id;
+    if (!data?.users || data.users.length < 200) return null;
+  }
+  return null;
+}
+
+async function upsertAuthUser(admin: any, opts: { email: string; full_name: string }): Promise<{ user_id: string; password: string; existed: boolean }> {
+  const password = genPassword();
+  const { data: created, error } = await admin.auth.admin.createUser({
+    email: opts.email, password, email_confirm: true, user_metadata: { full_name: opts.full_name },
+  });
+  if (!error && created?.user) return { user_id: created.user.id, password, existed: false };
+  // If the email is already registered, reuse the existing account and reset password.
+  const msg = (error?.message || "").toLowerCase();
+  const isDuplicate = msg.includes("already") || msg.includes("registered") || msg.includes("exists") || (error as any)?.status === 422;
+  if (!isDuplicate) throw error;
+  const existingId = await findUserIdByEmail(admin, opts.email);
+  if (!existingId) throw error;
+  const { error: upErr } = await admin.auth.admin.updateUserById(existingId, {
+    password, user_metadata: { full_name: opts.full_name },
+  });
+  if (upErr) throw upErr;
+  return { user_id: existingId, password, existed: true };
+}
+
+
 async function sendWelcomeEmail(opts: {
   recipient: string;
   full_name: string;
@@ -124,17 +156,13 @@ export const createClubAdmin = createServerFn({ method: "POST" })
     const { data: club, error: cErr } = await supabaseAdmin.from("clubs").select("name").eq("id", data.club_id).single();
     if (cErr) throw cErr;
 
-    const password = genPassword();
-    const { data: created, error: uErr } = await supabaseAdmin.auth.admin.createUser({
-      email: data.email, password, email_confirm: true, user_metadata: { full_name: data.full_name },
-    });
-    if (uErr) throw uErr;
+    const { user_id: userId, password } = await upsertAuthUser(supabaseAdmin, { email: data.email, full_name: data.full_name });
 
-    const userId = created.user!.id;
-    const { error: rErr } = await supabaseAdmin.from("user_roles").insert({
+    // Upsert role (idempotent if user already had it for this club)
+    const { error: rErr } = await supabaseAdmin.from("user_roles").upsert({
       user_id: userId, role: "admin", club_id: data.club_id,
       permissions: ["manage_members","manage_products","manage_collaborators","view_reports","use_cash"],
-    });
+    }, { onConflict: "user_id,role" });
     if (rErr) throw rErr;
 
     const req = (await import("@tanstack/react-start/server")).getRequest();
@@ -190,16 +218,11 @@ export const createCollaborator = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: club } = await supabaseAdmin.from("clubs").select("name").eq("id", clubId).single();
-    const password = genPassword();
-    const { data: created, error: uErr } = await supabaseAdmin.auth.admin.createUser({
-      email: data.email, password, email_confirm: true, user_metadata: { full_name: data.full_name },
-    });
-    if (uErr) throw uErr;
+    const { user_id: userId, password } = await upsertAuthUser(supabaseAdmin, { email: data.email, full_name: data.full_name });
 
-    const userId = created.user!.id;
-    const { error: rErr } = await supabaseAdmin.from("user_roles").insert({
+    const { error: rErr } = await supabaseAdmin.from("user_roles").upsert({
       user_id: userId, role: "collaborator", club_id: clubId, permissions: data.permissions,
-    });
+    }, { onConflict: "user_id,role" });
     if (rErr) throw rErr;
 
     const req = (await import("@tanstack/react-start/server")).getRequest();
