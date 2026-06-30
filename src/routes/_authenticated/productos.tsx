@@ -3,10 +3,11 @@ import { SnoopLayout } from "@/components/SnoopLayout";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Package, Tag, Plus, Trash2, Pencil, Save, X, Mic, Search, Loader2 } from "lucide-react";
+import { Package, Tag, Plus, Trash2, Pencil, Save, X, Mic, Search, Loader2, Sparkles, ImageIcon } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { transcribeAudio } from "@/lib/voice-agent.functions";
 import { parseProductCommand } from "@/lib/products-voice.functions";
+import { enrichProduct } from "@/lib/products-enrich.functions";
 
 export const Route = createFileRoute("/_authenticated/productos")({
   component: ProductosPage,
@@ -41,6 +42,8 @@ type Product = {
   sell_price: number;
   strain: Strain | null;
   notes: string | null;
+  image_url: string | null;
+  description: string | null;
 };
 
 const TABS = [
@@ -283,6 +286,8 @@ function Stock({ cats, prods, onChange, search, setSearch }: { cats: Category[];
 function ProductRow({ p, cat, onChange }: { p: Product; cat: Category; onChange: () => void }) {
   const [edit, setEdit] = useState(false);
   const [form, setForm] = useState<Product>(p);
+  const [enriching, setEnriching] = useState(false);
+  const enrich = useServerFn(enrichProduct);
   useEffect(() => setForm(p), [p]);
 
   async function save() {
@@ -309,10 +314,44 @@ function ProductRow({ p, cat, onChange }: { p: Product; cat: Category; onChange:
     toast.success("Eliminado");
     onChange();
   }
+  async function runEnrich() {
+    setEnriching(true);
+    try {
+      const r = await enrich({
+        data: {
+          name: p.name,
+          strain: p.strain ?? "",
+          is_smokeable: cat.is_smokeable,
+          category_name: cat.name,
+        },
+      });
+      const patch: any = {};
+      if (r.description) patch.description = r.description;
+      if (r.image_url) patch.image_url = r.image_url;
+      if (Object.keys(patch).length === 0) {
+        toast.error("La IA no devolvió datos");
+      } else {
+        const { error } = await supabase.from("products").update(patch).eq("id", p.id);
+        if (error) toast.error(error.message);
+        else { toast.success("Enriquecido con IA"); onChange(); }
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error enriqueciendo");
+    } finally {
+      setEnriching(false);
+    }
+  }
 
   if (!edit) {
     return (
-      <div className="flex items-center justify-between gap-3 bg-input/40 rounded-lg px-3 py-2">
+      <div className="flex items-start gap-3 bg-input/40 rounded-lg px-3 py-2">
+        <div className="w-14 h-14 rounded-md bg-background/60 border border-border overflow-hidden flex items-center justify-center shrink-0">
+          {p.image_url ? (
+            <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
+          ) : (
+            <ImageIcon className="w-5 h-5 text-muted-foreground" />
+          )}
+        </div>
         <div className="min-w-0 flex-1">
           <div className="text-sm text-foreground truncate">
             {p.name}
@@ -324,8 +363,14 @@ function ProductRow({ p, cat, onChange }: { p: Product; cat: Category; onChange:
             Stock: <span className="text-foreground">{Number(p.stock)} {cat.unit_type === "gr" ? "gr" : "u"}</span>
             {" · "}Compra: €{Number(p.buy_price).toFixed(2)} · Venta: €{Number(p.sell_price).toFixed(2)}
           </div>
+          {p.description && (
+            <div className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{p.description}</div>
+          )}
         </div>
-        <div className="flex gap-1">
+        <div className="flex gap-1 shrink-0">
+          <button onClick={runEnrich} disabled={enriching} className="p-2 text-muted-foreground hover:text-neon disabled:opacity-50" title="Enriquecer con IA (foto + descripción)">
+            {enriching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+          </button>
           <button onClick={() => setEdit(true)} className="p-2 text-muted-foreground hover:text-neon">
             <Pencil className="w-4 h-4" />
           </button>
@@ -427,6 +472,8 @@ function NuevoProducto({ cats, onCreated, prefill, clearPrefill }: { cats: Categ
     r.start();
   }
 
+  const enrich = useServerFn(enrichProduct);
+
   async function submit() {
     if (!categoryId) return toast.error("Selecciona categoría");
     if (!name.trim()) return toast.error("Nombre obligatorio");
@@ -434,24 +481,47 @@ function NuevoProducto({ cats, onCreated, prefill, clearPrefill }: { cats: Categ
     const { getCurrentClubId } = await import("@/lib/club");
     const clubId = await getCurrentClubId();
     if (!clubId) { setSaving(false); return toast.error("No tienes un club asignado"); }
-    const { error } = await supabase.from("products").insert({
-      club_id: clubId,
-      category_id: categoryId,
-      name: name.trim(),
-      stock,
-      buy_price: buy,
-      sell_price: sell,
-      strain: cat?.is_smokeable && strain ? strain : null,
-    });
+    const productName = name.trim();
+    const { data: inserted, error } = await supabase
+      .from("products")
+      .insert({
+        club_id: clubId,
+        category_id: categoryId,
+        name: productName,
+        stock,
+        buy_price: buy,
+        sell_price: sell,
+        strain: cat?.is_smokeable && strain ? strain : null,
+      })
+      .select("id")
+      .single();
+    if (error) { setSaving(false); return toast.error(error.message); }
+    toast.success("Producto creado · enriqueciendo con IA…");
+    setName(""); setStock(0); setBuy(0); setSell(0); setStrain("");
     setSaving(false);
-    if (error) return toast.error(error.message);
-    toast.success("Producto creado");
-    setName("");
-    setStock(0);
-    setBuy(0);
-    setSell(0);
-    setStrain("");
     onCreated();
+    // Fire-and-forget enrichment
+    (async () => {
+      try {
+        const r = await enrich({
+          data: {
+            name: productName,
+            strain: strain || "",
+            is_smokeable: !!cat?.is_smokeable,
+            category_name: cat?.name || "",
+          },
+        });
+        const patch: any = {};
+        if (r.description) patch.description = r.description;
+        if (r.image_url) patch.image_url = r.image_url;
+        if (inserted?.id && Object.keys(patch).length) {
+          await supabase.from("products").update(patch).eq("id", inserted.id);
+          onCreated();
+        }
+      } catch (e) {
+        console.error("auto enrich failed", e);
+      }
+    })();
   }
 
   if (cats.length === 0)
