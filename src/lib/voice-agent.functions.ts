@@ -61,11 +61,11 @@ export const synthesizeSpeech = createServerFn({ method: "POST" })
       body: JSON.stringify({
         model: "openai/gpt-4o-mini-tts",
         input: data.text,
-        voice: "nova",
+        voice: "ash",
         response_format: "mp3",
-        speed: 1.08,
+        speed: 1.05,
         instructions:
-          "Habla en español con voz alegre, juguetona y simpática, como un personaje de dibujos animados amigable. Energía cálida y divertida, ritmo natural, sin gritar ni cansar. Tono cercano, expresivo y un punto travieso.",
+          "Habla en español con VOZ MASCULINA, joven, simpática y divertida, estilo personaje de dibujos animados (tipo Genio de Aladdin pero más calmado). Tono cálido, amigable y un punto travieso. Energía alegre sin gritar, ritmo natural, expresivo y cercano. NUNCA voz femenina.",
       }),
     });
     if (!res.ok) {
