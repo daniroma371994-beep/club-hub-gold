@@ -198,27 +198,69 @@ function PedidoPage() {
     });
   }
 
+  /** Local fallback: match product names in transcript when AI returns nothing. */
+  function localMatch(transcript: string): Array<{ product_id: string; quantity: number }> {
+    const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const t = " " + norm(transcript).replace(/[^\w\s.,]/g, " ").replace(/\s+/g, " ") + " ";
+    const numWords: Record<string, number> = {
+      medio: 0.5, media: 0.5, mezzo: 0.5, mezza: 0.5,
+      un: 1, una: 1, uno: 1, dos: 2, due: 2, tres: 3, tre: 3,
+      cuatro: 4, quattro: 4, cinco: 5, cinque: 5, seis: 6, sei: 6,
+    };
+    const out: Array<{ product_id: string; quantity: number }> = [];
+    const seen = new Set<string>();
+    for (const p of products) {
+      const tokens = norm(p.name).split(/\s+/).filter((x) => x.length >= 3);
+      if (!tokens.length) continue;
+      let idx = -1;
+      for (const tok of tokens) {
+        const at = t.indexOf(" " + tok);
+        if (at >= 0) { idx = at; break; }
+      }
+      if (idx < 0 || seen.has(p.id)) continue;
+      seen.add(p.id);
+      const before = t.slice(Math.max(0, idx - 40), idx);
+      let qty = 1;
+      const num = before.match(/(\d+(?:[.,]\d+)?)\s*(?:gr|g|gramos?|grammi)?\s*(?:de|di|del|della)?\s*$/);
+      if (num) qty = parseFloat(num[1].replace(",", "."));
+      else {
+        for (const [w, v] of Object.entries(numWords)) {
+          if (new RegExp(`\\b${w}\\b\\s*(?:gramos?|grammi|gr|g)?\\s*(?:de|di|del|della)?\\s*$`).test(before)) {
+            qty = v; break;
+          }
+        }
+      }
+      if (qty > 0) out.push({ product_id: p.id, quantity: qty });
+    }
+    return out;
+  }
+
   async function processTranscript(t: string) {
     if (!t.trim()) return;
     setBusy(true);
     try {
-      const { items } = await parse({
-        data: {
-          transcript: t,
-          products: products.map((p) => ({
-            id: p.id,
-            name: p.name,
-            unit_type: p.unit_type,
-            sell_price: priceCents(p),
-            stock: p.stock,
-          })),
-        },
-      });
+      let items: Array<{ product_id: string; quantity: number }> = [];
+      try {
+        const r = await parse({
+          data: {
+            transcript: t,
+            products: products.map((p) => ({
+              id: p.id, name: p.name, unit_type: p.unit_type,
+              sell_price: priceCents(p), stock: p.stock,
+            })),
+          },
+        });
+        items = r.items;
+      } catch {}
+      if (!items.length) items = localMatch(t);
       if (!items.length) {
-        toast.error("No encontré productos en lo que dictaste");
+        toast.error("No encontré productos. Prueba: \"dos gramos de amnesia, una cerveza\"");
         return;
       }
-      for (const it of items) addToCart(it.product_id, it.quantity);
+      for (const it of items) {
+        const p = products.find((x) => x.id === it.product_id);
+        addToCart(it.product_id, it.quantity, { autoTolerance: p?.unit_type === "gr" });
+      }
       toast.success(`Añadidos ${items.length} item${items.length > 1 ? "s" : ""}`);
       setText("");
     } catch (e: any) {
