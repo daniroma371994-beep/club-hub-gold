@@ -64,6 +64,18 @@ function ProductosPage() {
   // Voice command (AI)
   const parseCmd = useServerFn(parseProductCommand);
 
+  function cleanProductNameFromCommand(text: string) {
+    return text
+      .replace(/\bsnoop\b/gi, "")
+      .replace(/\b(portami|lleva(?:me)?|apr[eimi]*|abrir|abre|vai|ve|ir|a)\b/gi, "")
+      .replace(/\b(crea|crear|creare|nuevo|nuovo|nueva|alta|a[nñ]adir|agregar|registrar)\b/gi, "")
+      .replace(/\b(prod(?:u[cç]?t[oa]|ott[oi])|produvto|productos?)\b/gi, "")
+      .replace(/\b(en|nel|nella|nello|categoria|categor[ií]a)\b.*$/i, "")
+      .replace(/[.,;:!?]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
   async function applyProductCommand(text: string, requestedTab?: TabId) {
     if (requestedTab === "nuevo" || requestedTab === "categoria" || requestedTab === "stock") setTab(requestedTab);
     try {
@@ -76,16 +88,20 @@ function ProductosPage() {
       } else if (cmd.action === "create_product") {
         setPrefillProduct({
           category_id: cmd.category_id,
-          name: cmd.product_name,
+          name: cmd.product_name || cleanProductNameFromCommand(text),
           stock: cmd.stock, buy_price: cmd.buy_price, sell_price: cmd.sell_price,
           strain: cmd.strain || "",
         });
         setTab("nuevo");
       } else if (requestedTab) {
+        if (requestedTab === "nuevo") setPrefillProduct({ name: cleanProductNameFromCommand(text) });
         setTab(requestedTab);
       }
     } catch (e: any) {
-      if (!requestedTab) toast.error(e?.message || "Error de voz");
+      if (requestedTab === "nuevo") {
+        setPrefillProduct({ name: cleanProductNameFromCommand(text) });
+        setTab("nuevo");
+      } else if (!requestedTab) toast.error(e?.message || "Error de voz");
     }
   }
 
