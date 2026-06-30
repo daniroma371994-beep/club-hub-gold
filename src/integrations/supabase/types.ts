@@ -64,6 +64,47 @@ export type Database = {
           },
         ]
       }
+      club_member_field_config: {
+        Row: {
+          club_id: string
+          created_at: string
+          field_key: string
+          id: string
+          required: boolean
+          sort_order: number
+          updated_at: string
+          visible: boolean
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          field_key: string
+          id?: string
+          required?: boolean
+          sort_order?: number
+          updated_at?: string
+          visible?: boolean
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          field_key?: string
+          id?: string
+          required?: boolean
+          sort_order?: number
+          updated_at?: string
+          visible?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_member_field_config_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clubs: {
         Row: {
           active: boolean
@@ -189,6 +230,7 @@ export type Database = {
       }
       members: {
         Row: {
+          address: string | null
           birth_date: string
           city: string | null
           club_id: string
@@ -208,10 +250,12 @@ export type Database = {
           notes: string | null
           phone: string | null
           plan_id: string | null
+          postal_code: string | null
           signature_path: string | null
           updated_at: string
         }
         Insert: {
+          address?: string | null
           birth_date: string
           city?: string | null
           club_id: string
@@ -231,10 +275,12 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           plan_id?: string | null
+          postal_code?: string | null
           signature_path?: string | null
           updated_at?: string
         }
         Update: {
+          address?: string | null
           birth_date?: string
           city?: string | null
           club_id?: string
@@ -254,6 +300,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           plan_id?: string | null
+          postal_code?: string | null
           signature_path?: string | null
           updated_at?: string
         }
