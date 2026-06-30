@@ -531,7 +531,9 @@ export type Database = {
           category_id: string
           club_id: string
           created_at: string
+          description: string | null
           id: string
+          image_url: string | null
           name: string
           notes: string | null
           sell_price: number
@@ -544,7 +546,9 @@ export type Database = {
           category_id: string
           club_id: string
           created_at?: string
+          description?: string | null
           id?: string
+          image_url?: string | null
           name: string
           notes?: string | null
           sell_price?: number
@@ -557,7 +561,9 @@ export type Database = {
           category_id?: string
           club_id?: string
           created_at?: string
+          description?: string | null
           id?: string
+          image_url?: string | null
           name?: string
           notes?: string | null
           sell_price?: number
