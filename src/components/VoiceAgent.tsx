@@ -252,9 +252,9 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
     try { rec.start(); } catch {}
     if (!greetedRef.current) {
       greetedRef.current = true;
-      const greet = `¡Hola${clubName ? " " + clubName : ""}! ¿En qué te puedo ayudar?`;
+      const greet = `Listo${clubName ? ", " + clubName : ""}. Dime.`;
       setMessages((m) => [...m, { role: "assistant", content: greet }]);
-      speak(greet);
+      // No TTS aquí — evita que el micro recoja el saludo y entre en bucle.
     }
   }, [clubName, ensureRec, speak]);
 
