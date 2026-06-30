@@ -1,27 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useLocation, useNavigate } from "@tanstack/react-router";
-import { Mic, Square, Loader2, X, Trash2, Volume2 } from "lucide-react";
+import { Mic, MicOff, Loader2, X, Trash2, Volume2, Ear } from "lucide-react";
 import { toast } from "sonner";
-import { agentRespond, transcribeAudio, synthesizeSpeech } from "@/lib/voice-agent.functions";
+import { agentRespond, synthesizeSpeech } from "@/lib/voice-agent.functions";
 
-type Status = "idle" | "recording" | "processing" | "speaking";
+type Status = "off" | "listening" | "processing" | "speaking";
 type Msg = { role: "user" | "assistant"; content: string };
-
-function pickMime(): string | null {
-  const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/mpeg"];
-  for (const t of candidates) {
-    if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(t)) return t;
-  }
-  return null;
-}
-
-async function blobToBase64(blob: Blob): Promise<string> {
-  const buf = new Uint8Array(await blob.arrayBuffer());
-  let bin = "";
-  for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
-  return btoa(bin);
-}
 
 // Client-side navigation intents (so home wake word can dispatch commands quickly).
 const NAV_INTENTS: Array<{ to: string; rx: RegExp; label: string }> = [
@@ -35,295 +20,301 @@ const NAV_INTENTS: Array<{ to: string; rx: RegExp; label: string }> = [
   { to: "/", rx: /\b(inicio|home|principal|men[uú] principal)\b/i, label: "Inicio" },
 ];
 
+const WAKE_RX = /\b(hola|oye|hey|ok)\s*,?\s*snoop\b/i;
+
+function getSpeechRecognition(): any {
+  if (typeof window === "undefined") return null;
+  return (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition || null;
+}
+
 export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
-  const [status, setStatus] = useState<Status>("idle");
+  const [status, setStatus] = useState<Status>("off");
+  const [enabled, setEnabled] = useState(false); // always-on toggle
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const streamRef = useRef<MediaStream | null>(null);
-  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [interim, setInterim] = useState("");
+  const recRef = useRef<any>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const wakeRef = useRef<any>(null);
-  const wakeActiveRef = useRef(false);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const wantOnRef = useRef(false);
+  const processingRef = useRef(false);
+  const speakingRef = useRef(false);
+  const greetedRef = useRef(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const locRef = useRef(location);
+  const messagesRef = useRef<Msg[]>([]);
+  useEffect(() => { locRef.current = location; }, [location]);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
 
-  const transcribe = useServerFn(transcribeAudio);
   const respond = useServerFn(agentRespond);
   const tts = useServerFn(synthesizeSpeech);
 
-  useEffect(() => () => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    try { wakeRef.current?.stop?.(); } catch {}
-    audioRef.current?.pause();
+  // --- TTS playback with barge-in ---
+  const stopSpeaking = useCallback(() => {
+    const a = audioRef.current;
+    if (a) { try { a.pause(); a.currentTime = 0; } catch {} }
+    speakingRef.current = false;
+    setStatus((s) => (s === "speaking" ? (wantOnRef.current ? "listening" : "off") : s));
   }, []);
 
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, status]);
-
-  // External trigger (e.g. SnoopLayout buttons)
-  useEffect(() => {
-    function onStart() { if (status === "idle") startRec(); }
-    window.addEventListener("snoop:voice-start", onStart);
-    return () => window.removeEventListener("snoop:voice-start", onStart);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status]);
-
-  // Wake-word listener — ONLY on home route, using Web Speech API
-  useEffect(() => {
-    const isHome = location.pathname === "/";
-    const SR: any =
-      typeof window !== "undefined"
-        ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-        : null;
-    if (!isHome || !SR) {
-      try { wakeRef.current?.stop?.(); } catch {}
-      wakeRef.current = null;
-      wakeActiveRef.current = false;
-      return;
+  const speak = useCallback(async (text: string) => {
+    try {
+      stopSpeaking();
+      speakingRef.current = true;
+      setStatus("speaking");
+      const { audioBase64, mimeType } = await tts({ data: { text } });
+      if (!speakingRef.current) return; // got interrupted while loading
+      const audio = new Audio(`data:${mimeType};base64,${audioBase64}`);
+      audioRef.current = audio;
+      audio.onended = () => {
+        speakingRef.current = false;
+        setStatus(wantOnRef.current ? "listening" : "off");
+      };
+      await audio.play().catch(() => {});
+    } catch (e: any) {
+      console.warn("TTS error:", e?.message);
+      speakingRef.current = false;
+      setStatus(wantOnRef.current ? "listening" : "off");
     }
+  }, [stopSpeaking, tts]);
+
+  // --- Process a final transcript ---
+  const handleTranscript = useCallback(async (raw: string) => {
+    const text = raw.trim();
+    if (!text) return;
+    if (processingRef.current) return;
+    processingRef.current = true;
+    setStatus("processing");
+    setOpen(true);
+    setInterim("");
+    setMessages((m) => [...m, { role: "user", content: text }]);
+
+    try {
+      const path = locRef.current.pathname;
+
+      // Route-specific shortcuts
+      if (path === "/soci/nuovo") {
+        const payload = JSON.stringify({ text, at: Date.now() });
+        window.localStorage.setItem("snoop:new-member-transcript", payload);
+        window.dispatchEvent(new StorageEvent("storage", { key: "snoop:new-member-transcript", newValue: payload }));
+        const reply = "Perfecto, voy rellenando.";
+        setMessages((m) => [...m, { role: "assistant", content: reply }]);
+        await speak(reply);
+        return;
+      }
+
+      if (path === "/soci/gestisci" || path === "/soci") {
+        const cleaned = text
+          .replace(/^(buscar?|busca|buscame|encuentra|encontrar|cerca|cercar|trova|trovami|busca a|busca el|busca la)\s+/i, "")
+          .replace(/[.,;:!?]+$/g, "")
+          .trim();
+        window.dispatchEvent(new CustomEvent("snoop:search-members", { detail: { query: cleaned } }));
+        const reply = `Buscando ${cleaned}.`;
+        setMessages((m) => [...m, { role: "assistant", content: reply }]);
+        await speak(reply);
+        return;
+      }
+
+      if (/^\/soci\/[^/]+\/pedido/.test(path)) {
+        window.dispatchEvent(new CustomEvent("snoop:pedido-transcript", { detail: { text } }));
+        return;
+      }
+
+      if (path.startsWith("/soci/") && path !== "/soci/nuovo" && path !== "/soci/gestisci") {
+        const lower = text.toLowerCase();
+        if (/(hacer|nuevo|crear)\s+(un\s+)?(pedido|orden|ordine)/i.test(lower) || /^(pedido|ordine|orden)\.?$/i.test(lower.trim())) {
+          window.dispatchEvent(new CustomEvent("snoop:member-action", { detail: { action: "order" } }));
+          const r = "Abro un pedido."; setMessages((m) => [...m, { role: "assistant", content: r }]); await speak(r);
+          return;
+        }
+        if (/(renovar|renueva|rinnova)/i.test(lower)) {
+          window.dispatchEvent(new CustomEvent("snoop:member-action", { detail: { action: "renew" } }));
+          const r = "Renovando."; setMessages((m) => [...m, { role: "assistant", content: r }]); await speak(r);
+          return;
+        }
+        if (/(volver|atr[aá]s|indietro|back)/i.test(lower)) {
+          navigate({ to: "/soci/gestisci" });
+          return;
+        }
+      }
+
+      // Navigation intents (work from anywhere, very fast)
+      const lower = text.toLowerCase();
+      const hit = NAV_INTENTS.find((n) => n.rx.test(lower));
+      if (hit) {
+        const r = `Voy a ${hit.label}.`;
+        setMessages((m) => [...m, { role: "assistant", content: r }]);
+        await speak(r);
+        navigate({ to: hit.to as any });
+        return;
+      }
+
+      // Fallback: full agent
+      const { reply, navigateTo } = await respond({
+        data: { transcript: text, history: messagesRef.current.slice(-20) },
+      });
+      setMessages((m) => [...m, { role: "assistant", content: reply }]);
+      await speak(reply);
+      if (navigateTo) setTimeout(() => navigate({ to: navigateTo as any }), 1000);
+    } catch (e: any) {
+      toast.error(e.message ?? "Error en el asistente");
+    } finally {
+      processingRef.current = false;
+      if (!speakingRef.current) setStatus(wantOnRef.current ? "listening" : "off");
+    }
+  }, [navigate, respond, speak]);
+
+  // --- Continuous SpeechRecognition (always-on) ---
+  const ensureRec = useCallback(() => {
+    if (recRef.current) return recRef.current;
+    const SR = getSpeechRecognition();
+    if (!SR) return null;
     const rec = new SR();
     rec.continuous = true;
     rec.interimResults = true;
     rec.lang = "es-ES";
     rec.onresult = (e: any) => {
+      let finalText = "";
+      let interimText = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
-        const t = String(e.results[i][0].transcript || "").toLowerCase();
-        if (/\b(hola|oye|hey|ok)\s*,?\s*snoop\b/.test(t)) {
-          try { rec.stop(); } catch {}
-          wakeActiveRef.current = false;
-          handleWake();
-          return;
-        }
+        const r = e.results[i];
+        const t = String(r[0].transcript || "");
+        if (r.isFinal) finalText += t + " ";
+        else interimText += t;
+      }
+      // Barge-in: if Snoop is speaking and user starts talking, cut audio.
+      if ((interimText.trim().length > 2 || finalText.trim()) && speakingRef.current) {
+        stopSpeaking();
+      }
+      if (interimText) setInterim(interimText);
+      if (finalText.trim()) {
+        const txt = finalText.trim();
+        // wake word stripping
+        const cleaned = txt.replace(WAKE_RX, "").trim();
+        if (!cleaned) return;
+        handleTranscript(cleaned);
       }
     };
     rec.onend = () => {
-      // Auto-restart wake listener while we're on home and not busy
-      if (wakeActiveRef.current && location.pathname === "/") {
+      // auto-restart while user wants it on
+      if (wantOnRef.current) {
         try { rec.start(); } catch {}
       }
     };
-    rec.onerror = () => { /* swallow no-speech / aborted */ };
-
-    wakeRef.current = rec;
-    wakeActiveRef.current = true;
-    try { rec.start(); } catch {}
-
-    return () => {
-      wakeActiveRef.current = false;
-      try { rec.stop(); } catch {}
-      wakeRef.current = null;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname]);
-
-  // Pause wake word while recording / speaking to avoid mic conflicts
-  useEffect(() => {
-    const rec = wakeRef.current;
-    if (!rec) return;
-    if (status === "idle") {
-      wakeActiveRef.current = true;
-      try { rec.start(); } catch {}
-    } else {
-      wakeActiveRef.current = false;
-      try { rec.stop(); } catch {}
-    }
-  }, [status]);
-
-  function stopSpeaking() {
-    const a = audioRef.current;
-    if (a) {
-      a.pause();
-      a.currentTime = 0;
-    }
-    if (status === "speaking") setStatus("idle");
-  }
-
-  async function speak(text: string) {
-    try {
-      stopSpeaking();
-      setStatus("speaking");
-      const { audioBase64, mimeType } = await tts({ data: { text } });
-      const audio = new Audio(`data:${mimeType};base64,${audioBase64}`);
-      audioRef.current = audio;
-      audio.onended = () => { if (status !== "recording") setStatus("idle"); };
-      await audio.play().catch(() => {});
-    } catch (e: any) {
-      console.warn("TTS error:", e?.message);
-      setStatus("idle");
-    }
-  }
-
-  async function handleWake() {
-    setOpen(true);
-    const greet = `¡Hola${clubName ? " " + clubName : ""}! ¿En qué te puedo ayudar?`;
-    setMessages((m) => [...m, { role: "assistant", content: greet }]);
-    await speak(greet);
-    // After greeting, open the mic automatically
-    setTimeout(() => { if (status !== "recording") startRec(); }, 250);
-  }
-
-  async function startRec() {
-    try {
-      stopSpeaking();
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-      const mime = pickMime();
-      if (!mime) {
-        stream.getTracks().forEach((t) => t.stop());
-        toast.error("Este navegador no soporta grabación de audio compatible.");
-        return;
+    rec.onerror = (ev: any) => {
+      // 'not-allowed' = mic permission denied; everything else: restart loop handles it
+      if (ev?.error === "not-allowed" || ev?.error === "service-not-allowed") {
+        wantOnRef.current = false;
+        setEnabled(false);
+        setStatus("off");
+        toast.error("Permiso de micrófono denegado.");
       }
-      const rec = new MediaRecorder(stream, { mimeType: mime });
-      chunksRef.current = [];
-      rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      rec.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
-        streamRef.current = null;
-        const blob = new Blob(chunksRef.current, { type: rec.mimeType });
-        if (blob.size < 1500) {
-          setStatus("idle");
-          toast.error("No te he oído, vuelve a intentar.");
-          return;
-        }
-        setStatus("processing");
-        try {
-          const b64 = await blobToBase64(blob);
-          const { text } = await transcribe({ data: { audioBase64: b64, mimeType: rec.mimeType } });
-          if (!text) { setStatus("idle"); toast.error("No se entendió nada."); return; }
-          const history = messages;
-          setMessages((m) => [...m, { role: "user", content: text }]);
+    };
+    recRef.current = rec;
+    return rec;
+  }, [handleTranscript, stopSpeaking]);
 
-          // Route-specific shortcuts
-          if (location.pathname === "/soci/nuovo") {
-            window.localStorage.setItem("snoop:new-member-transcript", JSON.stringify({ text, at: Date.now() }));
-            window.dispatchEvent(new StorageEvent("storage", {
-              key: "snoop:new-member-transcript",
-              newValue: JSON.stringify({ text, at: Date.now() }),
-            }));
-            const reply = "Perfecto, voy rellenando las casillas.";
-            setMessages((m) => [...m, { role: "assistant", content: reply }]);
-            speak(reply);
-            return;
-          }
-
-          if (location.pathname === "/soci/gestisci" || location.pathname === "/soci") {
-            const cleaned = text
-              .replace(/^(buscar?|busca|buscame|encuentra|encontrar|cerca|cercar|trova|trovami|busca a|busca el|busca la)\s+/i, "")
-              .replace(/[.,;:!?]+$/g, "")
-              .trim();
-            window.dispatchEvent(new CustomEvent("snoop:search-members", { detail: { query: cleaned } }));
-            const reply = `Buscando ${cleaned}.`;
-            setMessages((m) => [...m, { role: "assistant", content: reply }]);
-            speak(reply);
-            return;
-          }
-
-          if (/^\/soci\/[^/]+\/pedido/.test(location.pathname)) {
-            window.dispatchEvent(new CustomEvent("snoop:pedido-transcript", { detail: { text } }));
-            return;
-          }
-
-          if (location.pathname.startsWith("/soci/") && location.pathname !== "/soci/nuovo" && location.pathname !== "/soci/gestisci") {
-            const lower = text.toLowerCase();
-            if (/(hacer|nuevo|crear)\s+(un\s+)?(pedido|orden|ordine)/i.test(lower) || /^(pedido|ordine|orden)\.?$/i.test(lower.trim())) {
-              window.dispatchEvent(new CustomEvent("snoop:member-action", { detail: { action: "order" } }));
-              const r = "Abro un pedido."; setMessages((m) => [...m, { role: "assistant", content: r }]); speak(r);
-              return;
-            }
-            if (/(renovar|renueva|rinnova)/i.test(lower)) {
-              window.dispatchEvent(new CustomEvent("snoop:member-action", { detail: { action: "renew" } }));
-              const r = "Renovando."; setMessages((m) => [...m, { role: "assistant", content: r }]); speak(r);
-              return;
-            }
-            if (/(volver|atr[aá]s|indietro|back)/i.test(lower)) {
-              navigate({ to: "/soci/gestisci" });
-              return;
-            }
-          }
-
-          // From home: try a client-side navigation intent first (fast & cheap)
-          if (location.pathname === "/") {
-            const lower = text.toLowerCase();
-            const hit = NAV_INTENTS.find((n) => n.rx.test(lower));
-            if (hit) {
-              const r = `Voy a ${hit.label}.`;
-              setMessages((m) => [...m, { role: "assistant", content: r }]);
-              await speak(r);
-              navigate({ to: hit.to as any });
-              return;
-            }
-          }
-
-          // Fallback: full agent
-          const { reply, navigateTo } = await respond({ data: { transcript: text, history } });
-          setMessages((m) => [...m, { role: "assistant", content: reply }]);
-          speak(reply);
-          if (navigateTo) {
-            setTimeout(() => navigate({ to: navigateTo as any }), 1200);
-          }
-        } catch (e: any) {
-          toast.error(e.message ?? "Error en el asistente");
-          setStatus("idle");
-        } finally {
-          if (status !== "speaking") setStatus("idle");
-        }
-      };
-      recorderRef.current = rec;
-      rec.start();
-      setStatus("recording");
-      setOpen(true);
+  const startListening = useCallback(async () => {
+    const SR = getSpeechRecognition();
+    if (!SR) {
+      toast.error("Tu navegador no soporta reconocimiento de voz continuo. Usa Chrome.");
+      return;
+    }
+    // request mic perm explicitly so the prompt fires from user gesture
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+      s.getTracks().forEach((t) => t.stop());
     } catch {
       toast.error("Permiso de micrófono denegado.");
+      return;
     }
-  }
+    const rec = ensureRec();
+    if (!rec) return;
+    wantOnRef.current = true;
+    setEnabled(true);
+    setOpen(true);
+    setStatus("listening");
+    try { rec.start(); } catch {}
+    if (!greetedRef.current) {
+      greetedRef.current = true;
+      const greet = `¡Hola${clubName ? " " + clubName : ""}! ¿En qué te puedo ayudar?`;
+      setMessages((m) => [...m, { role: "assistant", content: greet }]);
+      speak(greet);
+    }
+  }, [clubName, ensureRec, speak]);
 
-  function stopRec() { recorderRef.current?.stop(); }
+  const stopListening = useCallback(() => {
+    wantOnRef.current = false;
+    setEnabled(false);
+    stopSpeaking();
+    try { recRef.current?.stop?.(); } catch {}
+    setStatus("off");
+    setInterim("");
+  }, [stopSpeaking]);
+
+  // Cleanup on unmount
+  useEffect(() => () => {
+    wantOnRef.current = false;
+    try { recRef.current?.stop?.(); } catch {}
+    audioRef.current?.pause();
+  }, []);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages, status, interim]);
+
+  // External trigger
+  useEffect(() => {
+    function onStart() { startListening(); }
+    window.addEventListener("snoop:voice-start", onStart);
+    return () => window.removeEventListener("snoop:voice-start", onStart);
+  }, [startListening]);
+
   function toggle() {
-    if (status === "recording") stopRec();
-    else if (status === "speaking") { stopSpeaking(); startRec(); }
-    else if (status === "processing") return;
-    else startRec();
+    if (enabled) stopListening();
+    else startListening();
   }
 
   const ringClass =
-    status === "recording" ? "bg-destructive text-destructive-foreground animate-pulse shadow-[0_0_40px_-5px_oklch(0.65_0.25_25)]"
-    : status === "speaking" ? "bg-gradient-neon text-primary-foreground glow-neon animate-pulse"
-    : "bg-gradient-neon text-primary-foreground glow-neon";
+    status === "speaking" ? "bg-gradient-neon text-primary-foreground glow-neon animate-pulse"
+    : status === "processing" ? "bg-gradient-neon text-primary-foreground glow-neon"
+    : status === "listening" ? "bg-gradient-neon text-primary-foreground glow-neon shadow-[0_0_40px_-5px_oklch(0.85_0.25_140)] animate-pulse"
+    : "bg-card border border-neon/40 text-neon";
 
   return (
     <>
       <button
         type="button"
         onClick={toggle}
-        disabled={status === "processing"}
-        aria-label={status === "recording" ? "Detener" : "Hablar con Snoop"}
-        className={`fixed z-40 bottom-5 right-5 md:bottom-8 md:right-8 h-16 w-16 rounded-full flex items-center justify-center transition-all ${ringClass} disabled:opacity-60`}
+        aria-label={enabled ? "Apagar Snoop" : "Encender Snoop"}
+        className={`fixed z-40 bottom-5 right-5 md:bottom-8 md:right-8 h-16 w-16 rounded-full flex items-center justify-center transition-all ${ringClass}`}
       >
         {status === "processing" ? <Loader2 className="w-6 h-6 animate-spin" />
-          : status === "recording" ? <Square className="w-6 h-6" />
           : status === "speaking" ? <Volume2 className="w-6 h-6" />
-          : <Mic className="w-7 h-7" />}
+          : status === "listening" ? <Ear className="w-7 h-7" />
+          : enabled ? <Mic className="w-7 h-7" />
+          : <MicOff className="w-7 h-7" />}
       </button>
 
-      {open && (messages.length > 0 || status !== "idle") && (
+      {open && (
         <div className="fixed z-40 bottom-24 right-3 md:right-8 w-[min(92vw,400px)] rounded-2xl border border-neon/40 bg-card/95 backdrop-blur-xl shadow-2xl glow-neon-soft overflow-hidden flex flex-col">
           <div className="flex items-center justify-between px-4 py-2 border-b border-neon/20">
-            <span className="text-[10px] uppercase tracking-[0.3em] text-neon-dim font-display">Snoop</span>
+            <span className="text-[10px] uppercase tracking-[0.3em] text-neon-dim font-display">
+              Snoop {enabled ? "· escuchando" : "· apagado"}
+            </span>
             <div className="flex items-center gap-2">
               {messages.length > 0 && (
                 <button
                   onClick={() => { setMessages([]); stopSpeaking(); }}
                   className="text-muted-foreground hover:text-neon"
                   aria-label="Reiniciar"
-                  title="Reiniciar"
+                  title="Reiniciar conversación"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               )}
-              <button onClick={() => { setOpen(false); stopSpeaking(); }} className="text-muted-foreground hover:text-neon" aria-label="Cerrar">
+              <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-neon" aria-label="Cerrar">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -339,17 +330,17 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
                 </p>
               </div>
             ))}
-            {status === "recording" && (
-              <p className="text-xs text-destructive animate-pulse">● Escuchando… pulsa para parar.</p>
+            {interim && status === "listening" && (
+              <p className="text-xs text-neon-dim italic">… {interim}</p>
             )}
             {status === "processing" && (
               <p className="text-xs text-neon-dim flex items-center gap-2"><Loader2 className="w-3 h-3 animate-spin" /> Procesando…</p>
             )}
             {status === "speaking" && (
-              <p className="text-xs text-neon flex items-center gap-2"><Volume2 className="w-3 h-3" /> Hablando… pulsa para interrumpir.</p>
+              <p className="text-xs text-neon flex items-center gap-2"><Volume2 className="w-3 h-3" /> Hablando… habla para interrumpirme.</p>
             )}
-            {location.pathname === "/" && status === "idle" && messages.length === 0 && (
-              <p className="text-[11px] text-neon-dim">Di <span className="text-neon">"Hola Snoop"</span> o pulsa el micro.</p>
+            {!enabled && messages.length === 0 && (
+              <p className="text-[11px] text-neon-dim">Pulsa el micro para activar a Snoop. Una vez encendido, habla cuando quieras — no hace falta volver a pulsar.</p>
             )}
           </div>
         </div>
