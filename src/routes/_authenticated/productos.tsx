@@ -287,6 +287,7 @@ function ProductRow({ p, cat, onChange }: { p: Product; cat: Category; onChange:
   const [edit, setEdit] = useState(false);
   const [form, setForm] = useState<Product>(p);
   const [enriching, setEnriching] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const enrich = useServerFn(enrichProduct);
   useEffect(() => setForm(p), [p]);
 
