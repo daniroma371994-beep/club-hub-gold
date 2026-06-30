@@ -307,7 +307,11 @@ function NewSocio() {
       const joined = new Date();
       const expires = new Date(joined.getTime() + selectedPlan!.duration_days * 86400000);
 
+      const { getCurrentClubId } = await import("@/lib/club");
+      const clubId = await getCurrentClubId();
+      if (!clubId) throw new Error("No tienes un club asignado");
       const { error } = await supabase.from("members").insert({
+        club_id: clubId,
         id: memberId,
         first_name: form.first_name.trim(),
         last_name: form.last_name.trim(),

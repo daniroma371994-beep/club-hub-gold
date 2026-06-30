@@ -300,7 +300,11 @@ function NuevoProducto({ cats, onCreated }: { cats: Category[]; onCreated: () =>
     if (!categoryId) return toast.error("Selecciona categoría");
     if (!name.trim()) return toast.error("Nombre obligatorio");
     setSaving(true);
+    const { getCurrentClubId } = await import("@/lib/club");
+    const clubId = await getCurrentClubId();
+    if (!clubId) { setSaving(false); return toast.error("No tienes un club asignado"); }
     const { error } = await supabase.from("products").insert({
+      club_id: clubId,
       category_id: categoryId,
       name: name.trim(),
       stock,
@@ -411,7 +415,11 @@ function NuevaCategoria({ onCreated }: { onCreated: () => void }) {
   async function submit() {
     if (!name.trim()) return toast.error("Nombre obligatorio");
     setSaving(true);
+    const { getCurrentClubId } = await import("@/lib/club");
+    const clubId = await getCurrentClubId();
+    if (!clubId) { setSaving(false); return toast.error("No tienes un club asignado"); }
     const { error } = await supabase.from("product_categories").insert({
+      club_id: clubId,
       name: name.trim(),
       unit_type: unit,
       is_smokeable: smokeable,

@@ -9,19 +9,31 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
+import { Route as AuthenticatedSnoopAdminRouteImport } from './routes/_authenticated/snoop-admin'
 import { Route as AuthenticatedProductosRouteImport } from './routes/_authenticated/productos'
 import { Route as AuthenticatedPianiRouteImport } from './routes/_authenticated/piani'
 import { Route as AuthenticatedSociIndexRouteImport } from './routes/_authenticated/soci.index'
+import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as AuthenticatedSociNuovoRouteImport } from './routes/_authenticated/soci.nuovo'
 import { Route as AuthenticatedSociGestisciRouteImport } from './routes/_authenticated/soci.gestisci'
+import { Route as AuthenticatedSociColaboratoriRouteImport } from './routes/_authenticated/soci.colaboratori'
 import { Route as AuthenticatedSociIdRouteImport } from './routes/_authenticated/soci.$id'
+import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
+import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as AuthenticatedSociIdPedidoRouteImport } from './routes/_authenticated/soci.$id.pedido'
 
+const UnsubscribeRoute = UnsubscribeRouteImport.update({
+  id: '/unsubscribe',
+  path: '/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
@@ -41,6 +53,16 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
+  id: '/email/unsubscribe',
+  path: '/email/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedSnoopAdminRoute = AuthenticatedSnoopAdminRouteImport.update({
+  id: '/snoop-admin',
+  path: '/snoop-admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedProductosRoute = AuthenticatedProductosRouteImport.update({
   id: '/productos',
   path: '/productos',
@@ -56,6 +78,11 @@ const AuthenticatedSociIndexRoute = AuthenticatedSociIndexRouteImport.update({
   path: '/soci/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
+  id: '/lovable/email/suppression',
+  path: '/lovable/email/suppression',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedSociNuovoRoute = AuthenticatedSociNuovoRouteImport.update({
   id: '/soci/nuovo',
   path: '/soci/nuovo',
@@ -67,11 +94,29 @@ const AuthenticatedSociGestisciRoute =
     path: '/soci/gestisci',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedSociColaboratoriRoute =
+  AuthenticatedSociColaboratoriRouteImport.update({
+    id: '/soci/colaboratori',
+    path: '/soci/colaboratori',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSociIdRoute = AuthenticatedSociIdRouteImport.update({
   id: '/soci/$id',
   path: '/soci/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const LovableEmailTransactionalSendRoute =
+  LovableEmailTransactionalSendRouteImport.update({
+    id: '/lovable/email/transactional/send',
+    path: '/lovable/email/transactional/send',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const LovableEmailTransactionalPreviewRoute =
+  LovableEmailTransactionalPreviewRouteImport.update({
+    id: '/lovable/email/transactional/preview',
+    path: '/lovable/email/transactional/preview',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const LovableEmailQueueProcessRoute =
   LovableEmailQueueProcessRouteImport.update({
     id: '/lovable/email/queue/process',
@@ -89,42 +134,63 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/piani': typeof AuthenticatedPianiRoute
   '/productos': typeof AuthenticatedProductosRoute
+  '/snoop-admin': typeof AuthenticatedSnoopAdminRoute
+  '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/soci/$id': typeof AuthenticatedSociIdRouteWithChildren
+  '/soci/colaboratori': typeof AuthenticatedSociColaboratoriRoute
   '/soci/gestisci': typeof AuthenticatedSociGestisciRoute
   '/soci/nuovo': typeof AuthenticatedSociNuovoRoute
+  '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/soci/': typeof AuthenticatedSociIndexRoute
   '/soci/$id/pedido': typeof AuthenticatedSociIdPedidoRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
+  '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/piani': typeof AuthenticatedPianiRoute
   '/productos': typeof AuthenticatedProductosRoute
+  '/snoop-admin': typeof AuthenticatedSnoopAdminRoute
+  '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/': typeof AuthenticatedIndexRoute
   '/soci/$id': typeof AuthenticatedSociIdRouteWithChildren
+  '/soci/colaboratori': typeof AuthenticatedSociColaboratoriRoute
   '/soci/gestisci': typeof AuthenticatedSociGestisciRoute
   '/soci/nuovo': typeof AuthenticatedSociNuovoRoute
+  '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/soci': typeof AuthenticatedSociIndexRoute
   '/soci/$id/pedido': typeof AuthenticatedSociIdPedidoRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
+  '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/_authenticated/piani': typeof AuthenticatedPianiRoute
   '/_authenticated/productos': typeof AuthenticatedProductosRoute
+  '/_authenticated/snoop-admin': typeof AuthenticatedSnoopAdminRoute
+  '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/soci/$id': typeof AuthenticatedSociIdRouteWithChildren
+  '/_authenticated/soci/colaboratori': typeof AuthenticatedSociColaboratoriRoute
   '/_authenticated/soci/gestisci': typeof AuthenticatedSociGestisciRoute
   '/_authenticated/soci/nuovo': typeof AuthenticatedSociNuovoRoute
+  '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/_authenticated/soci/': typeof AuthenticatedSociIndexRoute
   '/_authenticated/soci/$id/pedido': typeof AuthenticatedSociIdPedidoRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
+  '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -132,52 +198,85 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/unsubscribe'
     | '/piani'
     | '/productos'
+    | '/snoop-admin'
+    | '/email/unsubscribe'
     | '/soci/$id'
+    | '/soci/colaboratori'
     | '/soci/gestisci'
     | '/soci/nuovo'
+    | '/lovable/email/suppression'
     | '/soci/'
     | '/soci/$id/pedido'
     | '/lovable/email/queue/process'
+    | '/lovable/email/transactional/preview'
+    | '/lovable/email/transactional/send'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
     | '/reset-password'
+    | '/unsubscribe'
     | '/piani'
     | '/productos'
+    | '/snoop-admin'
+    | '/email/unsubscribe'
     | '/'
     | '/soci/$id'
+    | '/soci/colaboratori'
     | '/soci/gestisci'
     | '/soci/nuovo'
+    | '/lovable/email/suppression'
     | '/soci'
     | '/soci/$id/pedido'
     | '/lovable/email/queue/process'
+    | '/lovable/email/transactional/preview'
+    | '/lovable/email/transactional/send'
   id:
     | '__root__'
     | '/_authenticated'
     | '/auth'
     | '/reset-password'
+    | '/unsubscribe'
     | '/_authenticated/piani'
     | '/_authenticated/productos'
+    | '/_authenticated/snoop-admin'
+    | '/email/unsubscribe'
     | '/_authenticated/'
     | '/_authenticated/soci/$id'
+    | '/_authenticated/soci/colaboratori'
     | '/_authenticated/soci/gestisci'
     | '/_authenticated/soci/nuovo'
+    | '/lovable/email/suppression'
     | '/_authenticated/soci/'
     | '/_authenticated/soci/$id/pedido'
     | '/lovable/email/queue/process'
+    | '/lovable/email/transactional/preview'
+    | '/lovable/email/transactional/send'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  UnsubscribeRoute: typeof UnsubscribeRoute
+  EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
+  LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
+  LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
+  LovableEmailTransactionalSendRoute: typeof LovableEmailTransactionalSendRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/unsubscribe': {
+      id: '/unsubscribe'
+      path: '/unsubscribe'
+      fullPath: '/unsubscribe'
+      preLoaderRoute: typeof UnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
@@ -206,6 +305,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/email/unsubscribe': {
+      id: '/email/unsubscribe'
+      path: '/email/unsubscribe'
+      fullPath: '/email/unsubscribe'
+      preLoaderRoute: typeof EmailUnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/snoop-admin': {
+      id: '/_authenticated/snoop-admin'
+      path: '/snoop-admin'
+      fullPath: '/snoop-admin'
+      preLoaderRoute: typeof AuthenticatedSnoopAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/productos': {
       id: '/_authenticated/productos'
       path: '/productos'
@@ -227,6 +340,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSociIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/lovable/email/suppression': {
+      id: '/lovable/email/suppression'
+      path: '/lovable/email/suppression'
+      fullPath: '/lovable/email/suppression'
+      preLoaderRoute: typeof LovableEmailSuppressionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/soci/nuovo': {
       id: '/_authenticated/soci/nuovo'
       path: '/soci/nuovo'
@@ -241,12 +361,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSociGestisciRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/soci/colaboratori': {
+      id: '/_authenticated/soci/colaboratori'
+      path: '/soci/colaboratori'
+      fullPath: '/soci/colaboratori'
+      preLoaderRoute: typeof AuthenticatedSociColaboratoriRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/soci/$id': {
       id: '/_authenticated/soci/$id'
       path: '/soci/$id'
       fullPath: '/soci/$id'
       preLoaderRoute: typeof AuthenticatedSociIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/lovable/email/transactional/send': {
+      id: '/lovable/email/transactional/send'
+      path: '/lovable/email/transactional/send'
+      fullPath: '/lovable/email/transactional/send'
+      preLoaderRoute: typeof LovableEmailTransactionalSendRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/transactional/preview': {
+      id: '/lovable/email/transactional/preview'
+      path: '/lovable/email/transactional/preview'
+      fullPath: '/lovable/email/transactional/preview'
+      preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/lovable/email/queue/process': {
       id: '/lovable/email/queue/process'
@@ -279,8 +420,10 @@ const AuthenticatedSociIdRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedPianiRoute: typeof AuthenticatedPianiRoute
   AuthenticatedProductosRoute: typeof AuthenticatedProductosRoute
+  AuthenticatedSnoopAdminRoute: typeof AuthenticatedSnoopAdminRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedSociIdRoute: typeof AuthenticatedSociIdRouteWithChildren
+  AuthenticatedSociColaboratoriRoute: typeof AuthenticatedSociColaboratoriRoute
   AuthenticatedSociGestisciRoute: typeof AuthenticatedSociGestisciRoute
   AuthenticatedSociNuovoRoute: typeof AuthenticatedSociNuovoRoute
   AuthenticatedSociIndexRoute: typeof AuthenticatedSociIndexRoute
@@ -289,8 +432,10 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPianiRoute: AuthenticatedPianiRoute,
   AuthenticatedProductosRoute: AuthenticatedProductosRoute,
+  AuthenticatedSnoopAdminRoute: AuthenticatedSnoopAdminRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedSociIdRoute: AuthenticatedSociIdRouteWithChildren,
+  AuthenticatedSociColaboratoriRoute: AuthenticatedSociColaboratoriRoute,
   AuthenticatedSociGestisciRoute: AuthenticatedSociGestisciRoute,
   AuthenticatedSociNuovoRoute: AuthenticatedSociNuovoRoute,
   AuthenticatedSociIndexRoute: AuthenticatedSociIndexRoute,
@@ -303,7 +448,12 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  UnsubscribeRoute: UnsubscribeRoute,
+  EmailUnsubscribeRoute: EmailUnsubscribeRoute,
+  LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
+  LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
+  LovableEmailTransactionalSendRoute: LovableEmailTransactionalSendRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

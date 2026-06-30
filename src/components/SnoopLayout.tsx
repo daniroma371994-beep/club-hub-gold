@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Home, Users, BadgeEuro, Package, LogOut, Menu, X } from "lucide-react";
+import { Home, Users, BadgeEuro, Package, LogOut, Menu, X, Shield } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import logoAsset from "@/assets/snoop-logo.png.asset.json";
@@ -7,20 +7,23 @@ import { cn } from "@/lib/utils";
 import { useState, type ReactNode } from "react";
 import { VoiceAgent } from "@/components/VoiceAgent";
 
-const NAV = [
-  { to: "/", label: "Inicio", icon: Home, adminOnly: false },
-  { to: "/soci", label: "Socios", icon: Users, adminOnly: false },
-  { to: "/productos", label: "Productos", icon: Package, adminOnly: false },
-  { to: "/piani", label: "Cuotas", icon: BadgeEuro, adminOnly: true },
+type NavItem = { to: string; label: string; icon: any; show: (a: { isAdmin: boolean; isSuperAdmin: boolean }) => boolean };
+
+const NAV: NavItem[] = [
+  { to: "/", label: "Inicio", icon: Home, show: () => true },
+  { to: "/snoop-admin", label: "Snoop Admin", icon: Shield, show: (a) => a.isSuperAdmin },
+  { to: "/soci", label: "Socios", icon: Users, show: () => true },
+  { to: "/productos", label: "Productos", icon: Package, show: () => true },
+  { to: "/piani", label: "Cuotas", icon: BadgeEuro, show: (a) => a.isAdmin },
 ];
 
 export function SnoopLayout({ children, title, subtitle }: { children: ReactNode; title?: string; subtitle?: string }) {
-  const { user, access, isAdmin } = useAuth();
+  const { user, access, isAdmin, isSuperAdmin } = useAuth();
   const nav = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
 
-  const visible = NAV.filter((n) => (n.adminOnly ? isAdmin : true));
+  const visible = NAV.filter((n) => n.show({ isAdmin, isSuperAdmin }));
 
   async function signOut() {
     await supabase.auth.signOut();
