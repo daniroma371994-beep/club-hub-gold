@@ -69,9 +69,13 @@ async function sendWelcomeEmail(opts: {
       },
     }),
   });
-  if (!res.ok) {
-    const text = await res.text();
-    console.error("Welcome email failed:", res.status, text);
+    if (!res.ok) {
+      const text = await res.text();
+      console.error("Welcome email failed:", res.status, text);
+    }
+  } catch (err) {
+    // Never block account creation on email delivery
+    console.error("Welcome email error (non-fatal):", err);
   }
 }
 
