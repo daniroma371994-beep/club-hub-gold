@@ -511,7 +511,6 @@ function NuevoProducto({ cats, onCreated, prefill, clearPrefill }: { cats: Categ
     if (prefill.sell_price) setSell(prefill.sell_price);
     if (prefill.strain) setStrain(prefill.strain);
     clearPrefill();
-    toast.success("Datos rellenados por voz — revisa y guarda");
   }, [prefill]);
 
   // voice input for product name
@@ -676,7 +675,6 @@ function NuevaCategoria({ onCreated, prefill, clearPrefill }: { onCreated: () =>
     if (prefill.unit_type) setUnit(prefill.unit_type);
     if (typeof prefill.is_smokeable === "boolean") setSmokeable(prefill.is_smokeable);
     clearPrefill();
-    toast.success("Datos rellenados por voz — revisa y guarda");
   }, [prefill]);
 
 
