@@ -275,8 +275,6 @@ export const createCollaborator = createServerFn({ method: "POST" })
     await sendWelcomeEmail({
       recipient: data.email, full_name: data.full_name, temporary_password: password,
       role_label: "colaborador", club_name: club?.name ?? "", login_url: loginUrl(req),
-      apiKey: process.env.LOVABLE_API_KEY!, origin: new URL(req.url).origin,
-      userToken: req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "",
     });
 
     return { user_id: userId, email: data.email };
