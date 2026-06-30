@@ -41,6 +41,42 @@ export const transcribeAudio = createServerFn({ method: "POST" })
     return { text: (j.text ?? "").trim() };
   });
 
+// ---------- Text-to-Speech (Snoop voice) ----------
+const TTSInput = z.object({
+  text: z.string().min(1).max(800),
+});
+
+export const synthesizeSpeech = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => TTSInput.parse(d))
+  .handler(async ({ data }) => {
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key) throw new Error("Missing LOVABLE_API_KEY");
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/audio/speech", {
+      method: "POST",
+      headers: {
+        "Lovable-API-Key": key,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "openai/gpt-4o-mini-tts",
+        input: data.text,
+        voice: "nova",
+        response_format: "mp3",
+        speed: 1.08,
+        instructions:
+          "Habla en español con voz alegre, juguetona y simpática, como un personaje de dibujos animados amigable. Energía cálida y divertida, ritmo natural, sin gritar ni cansar. Tono cercano, expresivo y un punto travieso.",
+      }),
+    });
+    if (!res.ok) {
+      const t = await res.text().catch(() => "");
+      throw new Error(`TTS falló: ${res.status} ${t.slice(0, 200)}`);
+    }
+    const buf = await res.arrayBuffer();
+    const b64 = Buffer.from(buf).toString("base64");
+    return { audioBase64: b64, mimeType: "audio/mpeg" };
+  });
+
 // ---------- Field extraction for the new-socio page ----------
 const ExtractInput = z.object({
   transcript: z.string().min(1),

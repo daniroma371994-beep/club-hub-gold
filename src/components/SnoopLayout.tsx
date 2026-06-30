@@ -142,7 +142,7 @@ export function SnoopLayout({ children, title, subtitle }: { children: ReactNode
         </div>
       </main>
 
-      <VoiceAgent />
+      <VoiceAgent clubName={access.clubName} />
     </div>
   );
 }
