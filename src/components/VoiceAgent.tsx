@@ -219,12 +219,10 @@ export function VoiceAgent({ clubName }: { clubName?: string | null } = {}) {
         return;
       }
       let finalText = "";
-      let interimText = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const r = e.results[i];
         const t = String(r[0].transcript || "");
         if (r.isFinal) finalText += t + " ";
-        else interimText += t;
       }
       if (finalText.trim()) {
         const txt = finalText.trim();
