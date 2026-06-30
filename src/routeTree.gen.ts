@@ -18,6 +18,7 @@ import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe
 import { Route as AuthenticatedSnoopAdminRouteImport } from './routes/_authenticated/snoop-admin'
 import { Route as AuthenticatedProductosRouteImport } from './routes/_authenticated/productos'
 import { Route as AuthenticatedPianiRouteImport } from './routes/_authenticated/piani'
+import { Route as AuthenticatedCajaRouteImport } from './routes/_authenticated/caja'
 import { Route as AuthenticatedSociIndexRouteImport } from './routes/_authenticated/soci.index'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as AuthenticatedSociNuovoRouteImport } from './routes/_authenticated/soci.nuovo'
@@ -71,6 +72,11 @@ const AuthenticatedProductosRoute = AuthenticatedProductosRouteImport.update({
 const AuthenticatedPianiRoute = AuthenticatedPianiRouteImport.update({
   id: '/piani',
   path: '/piani',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCajaRoute = AuthenticatedCajaRouteImport.update({
+  id: '/caja',
+  path: '/caja',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedSociIndexRoute = AuthenticatedSociIndexRouteImport.update({
@@ -135,6 +141,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/caja': typeof AuthenticatedCajaRoute
   '/piani': typeof AuthenticatedPianiRoute
   '/productos': typeof AuthenticatedProductosRoute
   '/snoop-admin': typeof AuthenticatedSnoopAdminRoute
@@ -154,6 +161,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/caja': typeof AuthenticatedCajaRoute
   '/piani': typeof AuthenticatedPianiRoute
   '/productos': typeof AuthenticatedProductosRoute
   '/snoop-admin': typeof AuthenticatedSnoopAdminRoute
@@ -176,6 +184,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/_authenticated/caja': typeof AuthenticatedCajaRoute
   '/_authenticated/piani': typeof AuthenticatedPianiRoute
   '/_authenticated/productos': typeof AuthenticatedProductosRoute
   '/_authenticated/snoop-admin': typeof AuthenticatedSnoopAdminRoute
@@ -199,6 +208,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/unsubscribe'
+    | '/caja'
     | '/piani'
     | '/productos'
     | '/snoop-admin'
@@ -218,6 +228,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/unsubscribe'
+    | '/caja'
     | '/piani'
     | '/productos'
     | '/snoop-admin'
@@ -239,6 +250,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/unsubscribe'
+    | '/_authenticated/caja'
     | '/_authenticated/piani'
     | '/_authenticated/productos'
     | '/_authenticated/snoop-admin'
@@ -333,6 +345,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPianiRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/caja': {
+      id: '/_authenticated/caja'
+      path: '/caja'
+      fullPath: '/caja'
+      preLoaderRoute: typeof AuthenticatedCajaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/soci/': {
       id: '/_authenticated/soci/'
       path: '/soci'
@@ -418,6 +437,7 @@ const AuthenticatedSociIdRouteWithChildren =
   AuthenticatedSociIdRoute._addFileChildren(AuthenticatedSociIdRouteChildren)
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedCajaRoute: typeof AuthenticatedCajaRoute
   AuthenticatedPianiRoute: typeof AuthenticatedPianiRoute
   AuthenticatedProductosRoute: typeof AuthenticatedProductosRoute
   AuthenticatedSnoopAdminRoute: typeof AuthenticatedSnoopAdminRoute
@@ -430,6 +450,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedCajaRoute: AuthenticatedCajaRoute,
   AuthenticatedPianiRoute: AuthenticatedPianiRoute,
   AuthenticatedProductosRoute: AuthenticatedProductosRoute,
   AuthenticatedSnoopAdminRoute: AuthenticatedSnoopAdminRoute,
