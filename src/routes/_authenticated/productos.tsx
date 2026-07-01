@@ -31,6 +31,7 @@ function useDictation(onText: (t: string) => void, lang = "es-ES") {
   const [interim, setInterim] = useState("");
   const recRef = useRef<any>(null);
   const finalRef = useRef("");
+  const interimRef = useRef("");
   const silenceRef = useRef<number | null>(null);
   const stoppingRef = useRef(false);
 
