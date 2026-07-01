@@ -29,13 +29,52 @@ export const Route = createFileRoute("/_authenticated/productos")({
 function compactVoiceText(text: string) {
   const words = text.replace(/[“”"']/g, " ").replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
   const out: string[] = [];
+  const normWord = (w: string) => w.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   for (const word of words) {
-    const current = word.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    const previous = out[out.length - 1]?.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const current = normWord(word);
+    const previous = out[out.length - 1] ? normWord(out[out.length - 1]) : "";
     if (current && current === previous) continue;
     out.push(word);
+    // Chrome mobile can replay chunks: "stock más stock más stock más".
+    // Collapse repeated phrases at the end, not only repeated single words.
+    let changed = true;
+    while (changed) {
+      changed = false;
+      const max = Math.min(6, Math.floor(out.length / 2));
+      for (let size = max; size >= 1; size--) {
+        const a = out.slice(out.length - size * 2, out.length - size).map(normWord).join(" ");
+        const b = out.slice(out.length - size).map(normWord).join(" ");
+        if (a && a === b) {
+          out.splice(out.length - size, size);
+          changed = true;
+          break;
+        }
+      }
+    }
   }
   return out.join(" ").trim();
+}
+
+function mergeVoiceText(previous: string, incoming: string) {
+  const prev = compactVoiceText(previous);
+  const next = compactVoiceText(incoming);
+  if (!prev) return next;
+  if (!next) return prev;
+  const normWord = (w: string) => w.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const a = prev.split(/\s+/).filter(Boolean);
+  const b = next.split(/\s+/).filter(Boolean);
+  const an = a.map(normWord);
+  const bn = b.map(normWord);
+  if (bn.join(" ").startsWith(an.join(" "))) return next;
+  let overlap = 0;
+  const max = Math.min(an.length, bn.length);
+  for (let size = max; size >= 1; size--) {
+    if (an.slice(-size).join(" ") === bn.slice(0, size).join(" ")) {
+      overlap = size;
+      break;
+    }
+  }
+  return compactVoiceText([...a, ...b.slice(overlap)].join(" "));
 }
 
 // Web Speech dictation hook — manual stop: records until the user presses stop.
@@ -91,11 +130,10 @@ function useDictation(onText: (t: string) => void, lang = "es-ES") {
           interimTxt = `${interimTxt} ${piece}`.trim();
         }
       }
-      const instanceText = instanceFinal.filter(Boolean).join(" ").trim();
-      const base = finalRef.current ? finalRef.current + " " : "";
+      const instanceText = compactVoiceText(instanceFinal.filter(Boolean).join(" ").trim());
       interimRef.current = interimTxt;
       // Combined = previous instances' final + this instance's final + interim
-      const combined = compactVoiceText((base + instanceText + " " + interimTxt).replace(/\s+/g, " ").trim());
+      const combined = mergeVoiceText(mergeVoiceText(finalRef.current, instanceText), interimTxt);
       setInterim(combined);
       // Store current instance's final so a graceful onend can commit it
       (r as any)._committed = instanceText;
@@ -103,14 +141,22 @@ function useDictation(onText: (t: string) => void, lang = "es-ES") {
     r.onend = () => {
       const committed = (r as any)._committed || "";
       if (committed) {
-        finalRef.current = (finalRef.current + " " + committed).trim();
+        finalRef.current = mergeVoiceText(finalRef.current, committed);
       }
       recRef.current = null;
-      // Do NOT auto-restart. Auto-restart on mobile causes the browser to
-      // replay the audio buffer and duplicate words infinitely. If the
-      // browser ended prematurely, the user will press mic again.
-      shouldListenRef.current = false;
-      finalize();
+      if (manualStopRef.current || !shouldListenRef.current) {
+        shouldListenRef.current = false;
+        finalize();
+        return;
+      }
+      // If Chrome mobile interrupts recognition before the user presses stop,
+      // continue listening but merge overlapping text so replayed chunks do not repeat.
+      const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SR) {
+        restartTimerRef.current = window.setTimeout(() => {
+          if (shouldListenRef.current && !recRef.current) startRecognition(SR);
+        }, 250);
+      }
     };
     r.onerror = (ev: any) => {
       if (ev?.error === "not-allowed" || ev?.error === "service-not-allowed") {
