@@ -25,34 +25,89 @@ export const Route = createFileRoute("/_authenticated/productos")({
   component: ProductosPage,
 });
 
-// Lightweight Web Speech dictation hook for the search box
+// Web Speech dictation hook — continuous + silence detection (mobile-friendly)
 function useDictation(onText: (t: string) => void, lang = "es-ES") {
   const [listening, setListening] = useState(false);
+  const [interim, setInterim] = useState("");
   const recRef = useRef<any>(null);
+  const finalRef = useRef("");
+  const interimRef = useRef("");
+  const silenceRef = useRef<number | null>(null);
+  const stoppingRef = useRef(false);
+
+  function clearSilence() {
+    if (silenceRef.current) {
+      window.clearTimeout(silenceRef.current);
+      silenceRef.current = null;
+    }
+  }
+  function armSilence() {
+    clearSilence();
+    silenceRef.current = window.setTimeout(() => {
+      // finalize on silence
+      try {
+        stoppingRef.current = true;
+        recRef.current?.stop();
+      } catch {}
+    }, 1500);
+  }
+
   function start() {
     const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) {
       toast.error("Tu navegador no soporta dictado");
       return;
     }
+    finalRef.current = "";
+    setInterim("");
+    stoppingRef.current = false;
     const r = new SR();
     r.lang = lang;
-    r.interimResults = false;
-    r.continuous = false;
-    r.onresult = (e: any) => onText(e.results[0][0].transcript);
-    r.onend = () => setListening(false);
-    r.onerror = () => setListening(false);
+    r.interimResults = true;
+    r.continuous = true;
+    r.onresult = (e: any) => {
+      let interimTxt = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const res = e.results[i];
+        if (res.isFinal) finalRef.current += res[0].transcript + " ";
+        else interimTxt += res[0].transcript;
+      }
+      interimRef.current = interimTxt;
+      setInterim(interimTxt);
+      armSilence();
+    };
+    r.onend = () => {
+      clearSilence();
+      setListening(false);
+      const text = (finalRef.current + " " + interimRef.current).trim();
+      interimRef.current = "";
+      setInterim("");
+      if (text) onText(text);
+    };
+    r.onerror = (ev: any) => {
+      clearSilence();
+      setListening(false);
+      if (ev?.error && ev.error !== "no-speech" && ev.error !== "aborted") {
+        toast.error("Error micrófono: " + ev.error);
+      }
+    };
     recRef.current = r;
     setListening(true);
-    r.start();
+    try {
+      r.start();
+      armSilence();
+    } catch {
+      setListening(false);
+    }
   }
   function stop() {
+    stoppingRef.current = true;
+    clearSilence();
     try {
       recRef.current?.stop();
     } catch {}
-    setListening(false);
   }
-  return { listening, start, stop };
+  return { listening, interim, start, stop };
 }
 
 type UnitType = "gr" | "unit";
@@ -324,39 +379,41 @@ function ProductosPage() {
 
   return (
     <SnoopLayout title="Productos" subtitle="Stock, categorías y altas">
-      {/* Voice dictation bar (idéntico a Crear socio) */}
-      <div className="max-w-3xl mb-6 rounded-2xl border border-neon/30 bg-card/70 backdrop-blur p-4 flex items-center gap-4">
+      {/* Voice dictation bar — mobile-first */}
+      <div className="mb-4 sm:mb-6 rounded-2xl border border-neon/30 bg-card/70 backdrop-blur p-3 sm:p-4 flex items-center gap-3 sm:gap-4">
         <button
           type="button"
           onClick={pageDict.listening ? pageDict.stop : pageDict.start}
-          className={`h-14 w-14 shrink-0 rounded-full flex items-center justify-center transition
+          className={`h-16 w-16 sm:h-14 sm:w-14 shrink-0 rounded-full flex items-center justify-center transition active:scale-95
             ${pageDict.listening
-              ? "bg-destructive text-destructive-foreground animate-pulse"
+              ? "bg-destructive text-destructive-foreground animate-pulse shadow-lg shadow-destructive/40"
               : "bg-gradient-neon text-primary-foreground glow-neon"}`}
           aria-label="Comando de voz"
         >
-          <Mic className="w-6 h-6" />
+          <Mic className="w-7 h-7 sm:w-6 sm:h-6" />
         </button>
         <div className="flex-1 min-w-0">
           <div className="text-[10px] uppercase tracking-[0.3em] text-neon-dim">Comando de voz</div>
           {pageDict.listening ? (
-            <p className="text-sm text-destructive animate-pulse">● Escuchando… pulsa para parar</p>
+            <p className="text-sm text-destructive animate-pulse truncate">
+              ● Escuchando… {pageDict.interim && <span className="text-foreground/80 italic">"{pageDict.interim}"</span>}
+            </p>
           ) : lastHeard ? (
             <p className="text-sm text-muted-foreground italic truncate">"{lastHeard}"</p>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              Di: "crear producto Amnesia en flores stock 20 compra 5 venta 10 indica".
+            <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2">
+              Pulsa y di: "crear producto Amnesia en flores stock 20 compra 5 venta 10 indica".
             </p>
           )}
         </div>
       </div>
 
-      <div className="flex gap-2 flex-wrap mb-6">
+      <div className="flex gap-2 overflow-x-auto -mx-1 px-1 mb-4 sm:mb-6 sm:flex-wrap scrollbar-thin">
         {TABS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`px-4 py-2 rounded-lg text-xs uppercase tracking-[0.2em] font-display border transition ${
+            className={`shrink-0 px-3 sm:px-4 py-2 rounded-lg text-[11px] sm:text-xs uppercase tracking-[0.18em] font-display border transition ${
               tab === t.id
                 ? "border-neon text-neon bg-neon/10 glow-neon-soft"
                 : "border-border text-muted-foreground hover:text-neon hover:border-neon/40"
