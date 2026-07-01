@@ -12,6 +12,7 @@ import {
   Save,
   X,
   Mic,
+  Square,
   Search,
   Loader2,
   Sparkles,
@@ -25,31 +26,90 @@ export const Route = createFileRoute("/_authenticated/productos")({
   component: ProductosPage,
 });
 
-// Web Speech dictation hook — continuous + silence detection (mobile-friendly)
+// Web Speech dictation hook — manual stop: records until the user presses stop.
 function useDictation(onText: (t: string) => void, lang = "es-ES") {
   const [listening, setListening] = useState(false);
   const [interim, setInterim] = useState("");
   const recRef = useRef<any>(null);
   const finalRef = useRef("");
   const interimRef = useRef("");
-  const silenceRef = useRef<number | null>(null);
-  const stoppingRef = useRef(false);
+  const shouldListenRef = useRef(false);
+  const manualStopRef = useRef(false);
+  const restartTimerRef = useRef<number | null>(null);
 
-  function clearSilence() {
-    if (silenceRef.current) {
-      window.clearTimeout(silenceRef.current);
-      silenceRef.current = null;
+  function clearRestart() {
+    if (restartTimerRef.current) {
+      window.clearTimeout(restartTimerRef.current);
+      restartTimerRef.current = null;
     }
   }
-  function armSilence() {
-    clearSilence();
-    silenceRef.current = window.setTimeout(() => {
-      // finalize on silence
-      try {
-        stoppingRef.current = true;
-        recRef.current?.stop();
-      } catch {}
-    }, 1500);
+
+  function combinedText() {
+    return (finalRef.current + " " + interimRef.current).replace(/\s+/g, " ").trim();
+  }
+
+  function finalize() {
+    const text = combinedText();
+    finalRef.current = "";
+    interimRef.current = "";
+    setInterim("");
+    setListening(false);
+    if (text) onText(text);
+  }
+
+  function startRecognition(SR: any) {
+    const r = new SR();
+    r.lang = lang;
+    r.interimResults = true;
+    r.continuous = true;
+    r.maxAlternatives = 1;
+    r.onresult = (e: any) => {
+      let interimTxt = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const res = e.results[i];
+        const piece = String(res?.[0]?.transcript || "").trim();
+        if (!piece) continue;
+        if (res.isFinal) finalRef.current = `${finalRef.current} ${piece}`.trim();
+        else interimTxt = `${interimTxt} ${piece}`.trim();
+      }
+      interimRef.current = interimTxt;
+      setInterim(combinedText());
+    };
+    r.onend = () => {
+      recRef.current = null;
+      if (shouldListenRef.current && !manualStopRef.current) {
+        // Chrome/mobile may end after the first word: restart silently and keep the transcript.
+        clearRestart();
+        restartTimerRef.current = window.setTimeout(() => {
+          if (!shouldListenRef.current) return;
+          try {
+            startRecognition(SR);
+          } catch {
+            finalize();
+          }
+        }, 120);
+        return;
+      }
+      finalize();
+    };
+    r.onerror = (ev: any) => {
+      if (ev?.error === "not-allowed" || ev?.error === "service-not-allowed") {
+        shouldListenRef.current = false;
+        toast.error("Permiso de micrófono denegado");
+        finalize();
+        return;
+      }
+      if (ev?.error && ev.error !== "no-speech" && ev.error !== "aborted") {
+        toast.error("Error micrófono: " + ev.error);
+      }
+    };
+    recRef.current = r;
+    try {
+      r.start();
+    } catch {
+      recRef.current = null;
+      if (!shouldListenRef.current) finalize();
+    }
   }
 
   function start() {
@@ -58,55 +118,32 @@ function useDictation(onText: (t: string) => void, lang = "es-ES") {
       toast.error("Tu navegador no soporta dictado");
       return;
     }
+    clearRestart();
     finalRef.current = "";
+    interimRef.current = "";
     setInterim("");
-    stoppingRef.current = false;
-    const r = new SR();
-    r.lang = lang;
-    r.interimResults = true;
-    r.continuous = true;
-    r.onresult = (e: any) => {
-      let interimTxt = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const res = e.results[i];
-        if (res.isFinal) finalRef.current += res[0].transcript + " ";
-        else interimTxt += res[0].transcript;
-      }
-      interimRef.current = interimTxt;
-      setInterim(interimTxt);
-      armSilence();
-    };
-    r.onend = () => {
-      clearSilence();
-      setListening(false);
-      const text = (finalRef.current + " " + interimRef.current).trim();
-      interimRef.current = "";
-      setInterim("");
-      if (text) onText(text);
-    };
-    r.onerror = (ev: any) => {
-      clearSilence();
-      setListening(false);
-      if (ev?.error && ev.error !== "no-speech" && ev.error !== "aborted") {
-        toast.error("Error micrófono: " + ev.error);
-      }
-    };
-    recRef.current = r;
+    shouldListenRef.current = true;
+    manualStopRef.current = false;
     setListening(true);
+    startRecognition(SR);
+  }
+
+  function stop() {
+    manualStopRef.current = true;
+    shouldListenRef.current = false;
+    clearRestart();
+    const rec = recRef.current;
+    if (!rec) {
+      finalize();
+      return;
+    }
     try {
-      r.start();
-      armSilence();
+      rec.stop();
     } catch {
-      setListening(false);
+      finalize();
     }
   }
-  function stop() {
-    stoppingRef.current = true;
-    clearSilence();
-    try {
-      recRef.current?.stop();
-    } catch {}
-  }
+
   return { listening, interim, start, stop };
 }
 
@@ -390,13 +427,17 @@ function ProductosPage() {
               : "bg-gradient-neon text-primary-foreground glow-neon"}`}
           aria-label="Comando de voz"
         >
-          <Mic className="w-7 h-7 sm:w-6 sm:h-6" />
+          {pageDict.listening ? (
+            <Square className="w-7 h-7 sm:w-6 sm:h-6 fill-current" />
+          ) : (
+            <Mic className="w-7 h-7 sm:w-6 sm:h-6" />
+          )}
         </button>
         <div className="flex-1 min-w-0">
           <div className="text-[10px] uppercase tracking-[0.3em] text-neon-dim">Comando de voz</div>
           {pageDict.listening ? (
             <p className="text-sm text-destructive animate-pulse truncate">
-              ● Escuchando… {pageDict.interim && <span className="text-foreground/80 italic">"{pageDict.interim}"</span>}
+              ● Escuchando… pulsa stop cuando termines {pageDict.interim && <span className="text-foreground/80 italic">“{pageDict.interim}”</span>}
             </p>
           ) : lastHeard ? (
             <p className="text-sm text-muted-foreground italic truncate">"{lastHeard}"</p>
@@ -580,7 +621,7 @@ function Stock({
           className={`p-1.5 rounded ${dict.listening ? "text-neon glow-neon" : "text-muted-foreground hover:text-neon"}`}
           title="Dictar búsqueda"
         >
-          <Mic className="w-4 h-4" />
+          {dict.listening ? <Square className="w-4 h-4 fill-current" /> : <Mic className="w-4 h-4" />}
         </button>
       </div>
 
@@ -891,20 +932,7 @@ function NuevoProducto({
     if (shouldSubmit) setTimeout(() => submitRef.current(), 80);
   }, [prefill]);
 
-  // voice input for product name
-  const [listening, setListening] = useState(false);
-  function startVoice() {
-    const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) return toast.error("Tu navegador no soporta dictado");
-    const r = new SR();
-    r.lang = "es-ES";
-    r.interimResults = false;
-    r.onresult = (e: any) => setName(e.results[0][0].transcript);
-    r.onend = () => setListening(false);
-    r.onerror = () => setListening(false);
-    setListening(true);
-    r.start();
-  }
+  const nameDict = useDictation((t) => setName(t));
 
   const enrich = useServerFn(enrichProduct);
 
@@ -1004,11 +1032,11 @@ function NuevoProducto({
           />
           <button
             type="button"
-            onClick={startVoice}
-            className={`px-3 rounded-lg border ${listening ? "border-neon text-neon glow-neon" : "border-border text-muted-foreground"}`}
+            onClick={nameDict.listening ? nameDict.stop : nameDict.start}
+            className={`px-3 rounded-lg border ${nameDict.listening ? "border-neon text-neon glow-neon" : "border-border text-muted-foreground"}`}
             title="Dictar nombre"
           >
-            <Mic className="w-4 h-4" />
+            {nameDict.listening ? <Square className="w-4 h-4 fill-current" /> : <Mic className="w-4 h-4" />}
           </button>
         </div>
       </Field>
