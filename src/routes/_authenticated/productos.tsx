@@ -25,34 +25,86 @@ export const Route = createFileRoute("/_authenticated/productos")({
   component: ProductosPage,
 });
 
-// Lightweight Web Speech dictation hook for the search box
+// Web Speech dictation hook — continuous + silence detection (mobile-friendly)
 function useDictation(onText: (t: string) => void, lang = "es-ES") {
   const [listening, setListening] = useState(false);
+  const [interim, setInterim] = useState("");
   const recRef = useRef<any>(null);
+  const finalRef = useRef("");
+  const silenceRef = useRef<number | null>(null);
+  const stoppingRef = useRef(false);
+
+  function clearSilence() {
+    if (silenceRef.current) {
+      window.clearTimeout(silenceRef.current);
+      silenceRef.current = null;
+    }
+  }
+  function armSilence() {
+    clearSilence();
+    silenceRef.current = window.setTimeout(() => {
+      // finalize on silence
+      try {
+        stoppingRef.current = true;
+        recRef.current?.stop();
+      } catch {}
+    }, 1500);
+  }
+
   function start() {
     const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) {
       toast.error("Tu navegador no soporta dictado");
       return;
     }
+    finalRef.current = "";
+    setInterim("");
+    stoppingRef.current = false;
     const r = new SR();
     r.lang = lang;
-    r.interimResults = false;
-    r.continuous = false;
-    r.onresult = (e: any) => onText(e.results[0][0].transcript);
-    r.onend = () => setListening(false);
-    r.onerror = () => setListening(false);
+    r.interimResults = true;
+    r.continuous = true;
+    r.onresult = (e: any) => {
+      let interimTxt = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const res = e.results[i];
+        if (res.isFinal) finalRef.current += res[0].transcript + " ";
+        else interimTxt += res[0].transcript;
+      }
+      setInterim(interimTxt);
+      armSilence();
+    };
+    r.onend = () => {
+      clearSilence();
+      setListening(false);
+      const text = (finalRef.current + " " + interim).trim();
+      setInterim("");
+      if (text) onText(text);
+    };
+    r.onerror = (ev: any) => {
+      clearSilence();
+      setListening(false);
+      if (ev?.error && ev.error !== "no-speech" && ev.error !== "aborted") {
+        toast.error("Error micrófono: " + ev.error);
+      }
+    };
     recRef.current = r;
     setListening(true);
-    r.start();
+    try {
+      r.start();
+      armSilence();
+    } catch {
+      setListening(false);
+    }
   }
   function stop() {
+    stoppingRef.current = true;
+    clearSilence();
     try {
       recRef.current?.stop();
     } catch {}
-    setListening(false);
   }
-  return { listening, start, stop };
+  return { listening, interim, start, stop };
 }
 
 type UnitType = "gr" | "unit";
