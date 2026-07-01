@@ -276,7 +276,7 @@ function ProductosPage() {
     return (
       /\b(stock|stok)\b/.test(low) &&
       (/\b(mas|menos|anad|agreg|sum|quit|rest|sac|remov)\w*\b\s+\d/.test(low) ||
-        /\d+(?:[.,]\d+)?\s*(?:gr|g|gramos?|u|unidad(?:es)?)?\s+\b(mas|menos|anad|agreg|sum|quit|rest|sac|remov)\w*\b/.test(low) ||
+        /\d+(?:[.,]\d+)?\s*(?:gramos?|gr|g|u|unidad(?:es)?)?\s+\b(mas|menos|anad|agreg|sum|quit|rest|sac|remov)\w*\b/.test(low) ||
         /[+-]\s*\d/.test(low))
     ) ||
       /^\s*(?:mas|menos|anad|agreg|sum|quit|rest|sac|remov|[+-])\w*\s+\d/i.test(low) ||
@@ -634,13 +634,13 @@ function Stock({
 
     // --- Stock adjustment: "stock <nombre> añadir/quitar N", "más 10 gr amnesia", "amnesia +10"
     const adjRx =
-      /^(?:stock\s+)?(.+?)\s+(a[nñ]ad\w*|agreg\w*|sum\w*|mas|\+|quit\w*|rest\w*|menos|-|remov\w*|sac\w*)\s+(\d+(?:[.,]\d+)?)\s*(?:gr|g|gramos?|u|unidad(?:es)?)?(?:\s+(?:gr|g|gramos?|u|unidad(?:es)?))*$/i;
+      /^(?:stock\s+)?(.+?)\s+(a[nñ]ad\w*|agreg\w*|sum\w*|mas|\+|quit\w*|rest\w*|menos|-|remov\w*|sac\w*)\s+(\d+(?:[.,]\d+)?)\s*(?:gramos?|gr|g|u|unidad(?:es)?)?(?:\s+(?:gramos?|gr|g|u|unidad(?:es)?))*$/i;
     const addToRx =
-      /^(?:stock\s+)?(?:a[nñ]ad\w*|sum\w*|agreg\w*|met\w*|pon\w*|mas|\+)\s+(\d+(?:[.,]\d+)?)\s*(?:gr|g|gramos?|u|unidad(?:es)?)?(?:\s+(?:a|al|en|de|del))?\s*(.*?)(?:\s+(?:gr|g|gramos?|u|unidad(?:es)?))*$/i;
+      /^(?:stock\s+)?(?:a[nñ]ad\w*|sum\w*|agreg\w*|met\w*|pon\w*|mas|\+)\s+(\d+(?:[.,]\d+)?)\s*(?:gramos?|gr|g|u|unidad(?:es)?)?(?:\s+(?:a|al|en|de|del))?\s*(.*?)(?:\s+(?:gramos?|gr|g|u|unidad(?:es)?))*$/i;
     const removeFromRx =
-      /^(?:stock\s+)?(?:quit\w*|rest\w*|sac\w*|remov\w*|menos|-)\s+(\d+(?:[.,]\d+)?)\s*(?:gr|g|gramos?|u|unidad(?:es)?)?(?:\s+(?:de|del|a|al|en))?\s*(.*?)(?:\s+(?:gr|g|gramos?|u|unidad(?:es)?))*$/i;
+      /^(?:stock\s+)?(?:quit\w*|rest\w*|sac\w*|remov\w*|menos|-)\s+(\d+(?:[.,]\d+)?)\s*(?:gramos?|gr|g|u|unidad(?:es)?)?(?:\s+(?:de|del|a|al|en))?\s*(.*?)(?:\s+(?:gramos?|gr|g|u|unidad(?:es)?))*$/i;
     const qtyFirstRx =
-      /^(?:stock\s+)?(\d+(?:[.,]\d+)?)\s*(?:gr|g|gramos?|u|unidad(?:es)?)?\s+(mas|menos|a[nñ]ad\w*|agreg\w*|sum\w*|quit\w*|rest\w*|sac\w*|remov\w*|\+|-)\s*(.*?)(?:\s+(?:gr|g|gramos?|u|unidad(?:es)?))*$/i;
+      /^(?:stock\s+)?(\d+(?:[.,]\d+)?)\s*(?:gramos?|gr|g|u|unidad(?:es)?)?\s+(mas|menos|a[nñ]ad\w*|agreg\w*|sum\w*|quit\w*|rest\w*|sac\w*|remov\w*|\+|-)\s*(.*?)(?:\s+(?:gramos?|gr|g|u|unidad(?:es)?))*$/i;
 
     let adjName = "";
     let adjSign = 0;
@@ -668,7 +668,7 @@ function Stock({
 
     if (adjQty > 0 && adjSign !== 0) {
       const target = norm(adjName)
-        .replace(/\b(stock|gr|g|gramos?|unidad(?:es)?|u)\b/g, " ")
+        .replace(/\b(stock|gramos?|gr|g|unidad(?:es)?|u)\b/g, " ")
         .replace(/^(el|la|los|las)\s+/, "")
         .replace(/\s+/g, " ")
         .trim();
