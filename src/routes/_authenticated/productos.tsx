@@ -583,25 +583,12 @@ function Stock({
         toast.error(`Stock insuficiente (${prod.stock}) para restar ${adjQty}`);
         return;
       }
-      const { error } = await supabase
-        .from("products")
-        .update({ stock: newStock })
-        .eq("id", prod.id);
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
-      await supabase.from("stock_movements").insert({
-        club_id: (prod as any).club_id,
-        product_id: prod.id,
-        delta,
-        reason: delta > 0 ? "voice_add" : "voice_remove",
-        notes: raw,
-      } as any);
-      toast.success(`${prod.name}: ${delta > 0 ? "+" : ""}${delta} → ${newStock}`);
-      onChange();
+      // Stage the change: user must confirm before we write it.
+      setPendingAdj({ prod, delta, newStock, raw });
+      toast.info(`Revisa y confirma: ${prod.name} ${delta > 0 ? "+" : ""}${delta}`);
       return;
     }
+
 
     // Strip filler verbs for category / search matching
     const cleaned = t
