@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { SnoopLayout } from "@/components/SnoopLayout";
-import { BadgeEuro, Users, ShieldCheck, Cable } from "lucide-react";
+import { BadgeEuro, Users, ShieldCheck, Cable, BarChart3 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect } from "react";
 

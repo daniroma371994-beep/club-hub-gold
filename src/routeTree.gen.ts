@@ -25,6 +25,7 @@ import { Route as AuthenticatedSociNuovoRouteImport } from './routes/_authentica
 import { Route as AuthenticatedSociGestisciRouteImport } from './routes/_authenticated/soci.gestisci'
 import { Route as AuthenticatedSociIdRouteImport } from './routes/_authenticated/soci.$id'
 import { Route as AuthenticatedAjustesSociosRouteImport } from './routes/_authenticated/ajustes.socios'
+import { Route as AuthenticatedAjustesInformesRouteImport } from './routes/_authenticated/ajustes.informes'
 import { Route as AuthenticatedAjustesDispositivosRouteImport } from './routes/_authenticated/ajustes.dispositivos'
 import { Route as AuthenticatedAjustesCuotasRouteImport } from './routes/_authenticated/ajustes.cuotas'
 import { Route as AuthenticatedAjustesColaboradoresRouteImport } from './routes/_authenticated/ajustes.colaboradores'
@@ -115,6 +116,12 @@ const AuthenticatedAjustesSociosRoute =
     path: '/ajustes/socios',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAjustesInformesRoute =
+  AuthenticatedAjustesInformesRouteImport.update({
+    id: '/ajustes/informes',
+    path: '/ajustes/informes',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAjustesDispositivosRoute =
   AuthenticatedAjustesDispositivosRouteImport.update({
     id: '/ajustes/dispositivos',
@@ -170,6 +177,7 @@ export interface FileRoutesByFullPath {
   '/ajustes/colaboradores': typeof AuthenticatedAjustesColaboradoresRoute
   '/ajustes/cuotas': typeof AuthenticatedAjustesCuotasRoute
   '/ajustes/dispositivos': typeof AuthenticatedAjustesDispositivosRoute
+  '/ajustes/informes': typeof AuthenticatedAjustesInformesRoute
   '/ajustes/socios': typeof AuthenticatedAjustesSociosRoute
   '/soci/$id': typeof AuthenticatedSociIdRouteWithChildren
   '/soci/gestisci': typeof AuthenticatedSociGestisciRoute
@@ -194,6 +202,7 @@ export interface FileRoutesByTo {
   '/ajustes/colaboradores': typeof AuthenticatedAjustesColaboradoresRoute
   '/ajustes/cuotas': typeof AuthenticatedAjustesCuotasRoute
   '/ajustes/dispositivos': typeof AuthenticatedAjustesDispositivosRoute
+  '/ajustes/informes': typeof AuthenticatedAjustesInformesRoute
   '/ajustes/socios': typeof AuthenticatedAjustesSociosRoute
   '/soci/$id': typeof AuthenticatedSociIdRouteWithChildren
   '/soci/gestisci': typeof AuthenticatedSociGestisciRoute
@@ -220,6 +229,7 @@ export interface FileRoutesById {
   '/_authenticated/ajustes/colaboradores': typeof AuthenticatedAjustesColaboradoresRoute
   '/_authenticated/ajustes/cuotas': typeof AuthenticatedAjustesCuotasRoute
   '/_authenticated/ajustes/dispositivos': typeof AuthenticatedAjustesDispositivosRoute
+  '/_authenticated/ajustes/informes': typeof AuthenticatedAjustesInformesRoute
   '/_authenticated/ajustes/socios': typeof AuthenticatedAjustesSociosRoute
   '/_authenticated/soci/$id': typeof AuthenticatedSociIdRouteWithChildren
   '/_authenticated/soci/gestisci': typeof AuthenticatedSociGestisciRoute
@@ -246,6 +256,7 @@ export interface FileRouteTypes {
     | '/ajustes/colaboradores'
     | '/ajustes/cuotas'
     | '/ajustes/dispositivos'
+    | '/ajustes/informes'
     | '/ajustes/socios'
     | '/soci/$id'
     | '/soci/gestisci'
@@ -270,6 +281,7 @@ export interface FileRouteTypes {
     | '/ajustes/colaboradores'
     | '/ajustes/cuotas'
     | '/ajustes/dispositivos'
+    | '/ajustes/informes'
     | '/ajustes/socios'
     | '/soci/$id'
     | '/soci/gestisci'
@@ -295,6 +307,7 @@ export interface FileRouteTypes {
     | '/_authenticated/ajustes/colaboradores'
     | '/_authenticated/ajustes/cuotas'
     | '/_authenticated/ajustes/dispositivos'
+    | '/_authenticated/ajustes/informes'
     | '/_authenticated/ajustes/socios'
     | '/_authenticated/soci/$id'
     | '/_authenticated/soci/gestisci'
@@ -434,6 +447,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAjustesSociosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/ajustes/informes': {
+      id: '/_authenticated/ajustes/informes'
+      path: '/ajustes/informes'
+      fullPath: '/ajustes/informes'
+      preLoaderRoute: typeof AuthenticatedAjustesInformesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/ajustes/dispositivos': {
       id: '/_authenticated/ajustes/dispositivos'
       path: '/ajustes/dispositivos'
@@ -505,6 +525,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAjustesColaboradoresRoute: typeof AuthenticatedAjustesColaboradoresRoute
   AuthenticatedAjustesCuotasRoute: typeof AuthenticatedAjustesCuotasRoute
   AuthenticatedAjustesDispositivosRoute: typeof AuthenticatedAjustesDispositivosRoute
+  AuthenticatedAjustesInformesRoute: typeof AuthenticatedAjustesInformesRoute
   AuthenticatedAjustesSociosRoute: typeof AuthenticatedAjustesSociosRoute
   AuthenticatedSociIdRoute: typeof AuthenticatedSociIdRouteWithChildren
   AuthenticatedSociGestisciRoute: typeof AuthenticatedSociGestisciRoute
@@ -522,6 +543,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
     AuthenticatedAjustesColaboradoresRoute,
   AuthenticatedAjustesCuotasRoute: AuthenticatedAjustesCuotasRoute,
   AuthenticatedAjustesDispositivosRoute: AuthenticatedAjustesDispositivosRoute,
+  AuthenticatedAjustesInformesRoute: AuthenticatedAjustesInformesRoute,
   AuthenticatedAjustesSociosRoute: AuthenticatedAjustesSociosRoute,
   AuthenticatedSociIdRoute: AuthenticatedSociIdRouteWithChildren,
   AuthenticatedSociGestisciRoute: AuthenticatedSociGestisciRoute,
