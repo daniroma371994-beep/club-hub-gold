@@ -115,7 +115,7 @@ function InformesPage() {
     return [...buckets.values()];
   }, [items, range]);
 
-  // Movimientos por día (entradas / salidas manuales)
+  // Movimientos por día (entradas / salidas por ventas o retiradas)
   const dailyMovs = useMemo(() => {
     const days = RANGES.find((r) => r.id === range)!.days;
     const buckets = new Map<string, { day: string; entradas: number; salidas: number }>();
