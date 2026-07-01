@@ -12,6 +12,7 @@ import {
   Save,
   X,
   Mic,
+  Square,
   Search,
   Loader2,
   Sparkles,
@@ -25,31 +26,87 @@ export const Route = createFileRoute("/_authenticated/productos")({
   component: ProductosPage,
 });
 
-// Web Speech dictation hook — continuous + silence detection (mobile-friendly)
+// Web Speech dictation hook — manual stop: records until the user presses stop.
 function useDictation(onText: (t: string) => void, lang = "es-ES") {
   const [listening, setListening] = useState(false);
   const [interim, setInterim] = useState("");
   const recRef = useRef<any>(null);
   const finalRef = useRef("");
   const interimRef = useRef("");
-  const silenceRef = useRef<number | null>(null);
-  const stoppingRef = useRef(false);
+  const shouldListenRef = useRef(false);
+  const manualStopRef = useRef(false);
+  const restartTimerRef = useRef<number | null>(null);
 
-  function clearSilence() {
-    if (silenceRef.current) {
-      window.clearTimeout(silenceRef.current);
-      silenceRef.current = null;
+  function clearRestart() {
+    if (restartTimerRef.current) {
+      window.clearTimeout(restartTimerRef.current);
+      restartTimerRef.current = null;
     }
   }
-  function armSilence() {
-    clearSilence();
-    silenceRef.current = window.setTimeout(() => {
-      // finalize on silence
-      try {
-        stoppingRef.current = true;
-        recRef.current?.stop();
-      } catch {}
-    }, 1500);
+
+  function combinedText() {
+    return (finalRef.current + " " + interimRef.current).replace(/\s+/g, " ").trim();
+  }
+
+  function finalize() {
+    const text = combinedText();
+    finalRef.current = "";
+    interimRef.current = "";
+    setInterim("");
+    setListening(false);
+    if (text) onText(text);
+  }
+
+  function startRecognition(SR: any) {
+    const r = new SR();
+    r.lang = lang;
+    r.interimResults = true;
+    r.continuous = true;
+    r.maxAlternatives = 1;
+    r.onresult = (e: any) => {
+      let interimTxt = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const res = e.results[i];
+        const piece = String(res?.[0]?.transcript || "").trim();
+        if (!piece) continue;
+        if (res.isFinal) finalRef.current = `${finalRef.current} ${piece}`.trim();
+        else interimTxt = `${interimTxt} ${piece}`.trim();
+      }
+      interimRef.current = interimTxt;
+      setInterim(combinedText());
+    };
+    r.onend = () => {
+      recRef.current = null;
+      if (shouldListenRef.current && !manualStopRef.current) {
+        // Chrome/mobile may end after the first word: restart silently and keep the transcript.
+        clearRestart();
+        restartTimerRef.current = window.setTimeout(() => {
+          if (!shouldListenRef.current) return;
+          try {
+            startRecognition(SR);
+          } catch {
+            finalize();
+          }
+        }, 120);
+        return;
+      }
+      finalize();
+    };
+    r.onerror = (ev: any) => {
+      if (ev?.error === "not-allowed" || ev?.error === "service-not-allowed") {
+        shouldListenRef.current = false;
+        toast.error("Permiso de micrófono denegado");
+        finalize();
+        return;
+      }
+      if (ev?.error && ev.error !== "no-speech" && ev.error !== "aborted") {
+        toast.error("Error micrófono: " + ev.error);
+      }
+    };
+    recRef.current = r;
+    try {
+      r.start();
+    } catch {}
   }
 
   function start() {
@@ -58,55 +115,27 @@ function useDictation(onText: (t: string) => void, lang = "es-ES") {
       toast.error("Tu navegador no soporta dictado");
       return;
     }
+    clearRestart();
     finalRef.current = "";
+    interimRef.current = "";
     setInterim("");
-    stoppingRef.current = false;
-    const r = new SR();
-    r.lang = lang;
-    r.interimResults = true;
-    r.continuous = true;
-    r.onresult = (e: any) => {
-      let interimTxt = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const res = e.results[i];
-        if (res.isFinal) finalRef.current += res[0].transcript + " ";
-        else interimTxt += res[0].transcript;
-      }
-      interimRef.current = interimTxt;
-      setInterim(interimTxt);
-      armSilence();
-    };
-    r.onend = () => {
-      clearSilence();
-      setListening(false);
-      const text = (finalRef.current + " " + interimRef.current).trim();
-      interimRef.current = "";
-      setInterim("");
-      if (text) onText(text);
-    };
-    r.onerror = (ev: any) => {
-      clearSilence();
-      setListening(false);
-      if (ev?.error && ev.error !== "no-speech" && ev.error !== "aborted") {
-        toast.error("Error micrófono: " + ev.error);
-      }
-    };
-    recRef.current = r;
+    shouldListenRef.current = true;
+    manualStopRef.current = false;
     setListening(true);
-    try {
-      r.start();
-      armSilence();
-    } catch {
-      setListening(false);
-    }
+    startRecognition(SR);
   }
+
   function stop() {
-    stoppingRef.current = true;
-    clearSilence();
+    manualStopRef.current = true;
+    shouldListenRef.current = false;
+    clearRestart();
     try {
       recRef.current?.stop();
-    } catch {}
+    } catch {
+      finalize();
+    }
   }
+
   return { listening, interim, start, stop };
 }
 
