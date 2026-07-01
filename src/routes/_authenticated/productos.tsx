@@ -1063,6 +1063,8 @@ function NuevaCategoria({
     setSmokeable(false);
     onCreated();
   }
+  submitRef.current = submit;
+
 
   const ejemplos = ["Flores", "Hash", "Extracciones", "Bebidas", "Parafernalia", "Prerolled"];
 
