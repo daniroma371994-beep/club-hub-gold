@@ -526,11 +526,11 @@ function ProductosPage() {
         <div className="flex-1 min-w-0">
           <div className="text-[10px] uppercase tracking-[0.3em] text-neon-dim">Comando de voz</div>
           {pageDict.listening ? (
-            <p className="text-sm text-destructive animate-pulse truncate">
+            <p className="text-sm text-destructive animate-pulse line-clamp-2 break-words">
               ● Escuchando… pulsa stop cuando termines {pageDict.interim && <span className="text-foreground/80 italic">“{pageDict.interim}”</span>}
             </p>
           ) : lastHeard ? (
-            <p className="text-sm text-muted-foreground italic truncate">"{lastHeard}"</p>
+            <p className="text-sm text-muted-foreground italic line-clamp-2 break-words">"{lastHeard}"</p>
           ) : (
             <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2">
               Pulsa y di: "crear producto Amnesia en flores stock 20 compra 5 venta 10 indica".
