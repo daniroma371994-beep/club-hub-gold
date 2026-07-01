@@ -86,6 +86,7 @@ function ProductosPage() {
   const [stockSearch, setStockSearch] = useState("");
   const [prefillProduct, setPrefillProduct] = useState<any>(null);
   const [prefillCategory, setPrefillCategory] = useState<any>(null);
+  const [lastHeard, setLastHeard] = useState("");
 
   // Voice command (AI)
   const parseCmd = useServerFn(parseProductCommand);
