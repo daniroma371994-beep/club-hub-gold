@@ -72,13 +72,15 @@ function useDictation(onText: (t: string) => void, lang = "es-ES") {
         if (res.isFinal) finalRef.current += res[0].transcript + " ";
         else interimTxt += res[0].transcript;
       }
+      interimRef.current = interimTxt;
       setInterim(interimTxt);
       armSilence();
     };
     r.onend = () => {
       clearSilence();
       setListening(false);
-      const text = (finalRef.current + " " + interim).trim();
+      const text = (finalRef.current + " " + interimRef.current).trim();
+      interimRef.current = "";
       setInterim("");
       if (text) onText(text);
     };
