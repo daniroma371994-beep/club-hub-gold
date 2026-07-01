@@ -379,39 +379,41 @@ function ProductosPage() {
 
   return (
     <SnoopLayout title="Productos" subtitle="Stock, categorías y altas">
-      {/* Voice dictation bar (idéntico a Crear socio) */}
-      <div className="max-w-3xl mb-6 rounded-2xl border border-neon/30 bg-card/70 backdrop-blur p-4 flex items-center gap-4">
+      {/* Voice dictation bar — mobile-first */}
+      <div className="mb-4 sm:mb-6 rounded-2xl border border-neon/30 bg-card/70 backdrop-blur p-3 sm:p-4 flex items-center gap-3 sm:gap-4">
         <button
           type="button"
           onClick={pageDict.listening ? pageDict.stop : pageDict.start}
-          className={`h-14 w-14 shrink-0 rounded-full flex items-center justify-center transition
+          className={`h-16 w-16 sm:h-14 sm:w-14 shrink-0 rounded-full flex items-center justify-center transition active:scale-95
             ${pageDict.listening
-              ? "bg-destructive text-destructive-foreground animate-pulse"
+              ? "bg-destructive text-destructive-foreground animate-pulse shadow-lg shadow-destructive/40"
               : "bg-gradient-neon text-primary-foreground glow-neon"}`}
           aria-label="Comando de voz"
         >
-          <Mic className="w-6 h-6" />
+          <Mic className="w-7 h-7 sm:w-6 sm:h-6" />
         </button>
         <div className="flex-1 min-w-0">
           <div className="text-[10px] uppercase tracking-[0.3em] text-neon-dim">Comando de voz</div>
           {pageDict.listening ? (
-            <p className="text-sm text-destructive animate-pulse">● Escuchando… pulsa para parar</p>
+            <p className="text-sm text-destructive animate-pulse truncate">
+              ● Escuchando… {pageDict.interim && <span className="text-foreground/80 italic">"{pageDict.interim}"</span>}
+            </p>
           ) : lastHeard ? (
             <p className="text-sm text-muted-foreground italic truncate">"{lastHeard}"</p>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              Di: "crear producto Amnesia en flores stock 20 compra 5 venta 10 indica".
+            <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2">
+              Pulsa y di: "crear producto Amnesia en flores stock 20 compra 5 venta 10 indica".
             </p>
           )}
         </div>
       </div>
 
-      <div className="flex gap-2 flex-wrap mb-6">
+      <div className="flex gap-2 overflow-x-auto -mx-1 px-1 mb-4 sm:mb-6 sm:flex-wrap scrollbar-thin">
         {TABS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`px-4 py-2 rounded-lg text-xs uppercase tracking-[0.2em] font-display border transition ${
+            className={`shrink-0 px-3 sm:px-4 py-2 rounded-lg text-[11px] sm:text-xs uppercase tracking-[0.18em] font-display border transition ${
               tab === t.id
                 ? "border-neon text-neon bg-neon/10 glow-neon-soft"
                 : "border-border text-muted-foreground hover:text-neon hover:border-neon/40"
