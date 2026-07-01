@@ -194,19 +194,26 @@ function ProductosPage() {
   }
 
   async function applyProductCommand(text: string, requestedTab?: TabId) {
+    setLastHeard(text);
     if (requestedTab === "nuevo" || requestedTab === "categoria" || requestedTab === "stock")
       setTab(requestedTab);
 
     // 1) Fast local parse — fill fields immediately.
     const local = localParse(text);
     if (local.action === "create_product") {
-      setPrefillProduct(local.prod);
+      const complete =
+        !!local.prod?.category_id &&
+        !!local.prod?.name &&
+        local.prod?.stock > 0 &&
+        local.prod?.sell_price > 0;
+      setPrefillProduct({ ...local.prod, autoSubmit: complete, _at: Date.now() });
       setTab("nuevo");
-      toast.success("Producto pre-rellenado");
+      toast.success(complete ? "Creando producto…" : "Producto pre-rellenado");
     } else if (local.action === "create_category") {
-      setPrefillCategory(local.cat);
+      const complete = !!local.cat?.name;
+      setPrefillCategory({ ...local.cat, autoSubmit: complete, _at: Date.now() });
       setTab("categoria");
-      toast.success("Categoría pre-rellenada");
+      toast.success(complete ? "Creando categoría…" : "Categoría pre-rellenada");
     } else if (local.action === "search") {
       setTab("stock");
       setStockSearch(local.query || text);
@@ -229,31 +236,35 @@ function ProductosPage() {
         setTab("stock");
         setStockSearch(cmd.query || text);
       } else if (cmd.action === "create_category") {
-        setPrefillCategory({
+        const merged = {
           name: cmd.category_name || local.cat?.name || "",
           unit_type: cmd.unit_type || local.cat?.unit_type || "unit",
           is_smokeable: cmd.is_smokeable || local.cat?.is_smokeable || false,
-        });
+        };
+        setPrefillCategory({ ...merged, autoSubmit: !!merged.name, _at: Date.now() });
         setTab("categoria");
       } else if (cmd.action === "create_product") {
-        setPrefillProduct({
+        const merged = {
           category_id: cmd.category_id || local.prod?.category_id || "",
           name: cmd.product_name || local.prod?.name || cleanProductNameFromCommand(text),
           stock: cmd.stock || local.prod?.stock || 0,
           buy_price: cmd.buy_price || local.prod?.buy_price || 0,
           sell_price: cmd.sell_price || local.prod?.sell_price || 0,
           strain: cmd.strain || local.prod?.strain || "",
-        });
+        };
+        const complete =
+          !!merged.category_id && !!merged.name && merged.stock > 0 && merged.sell_price > 0;
+        setPrefillProduct({ ...merged, autoSubmit: complete, _at: Date.now() });
         setTab("nuevo");
       } else if (requestedTab && local.action === "none") {
         if (requestedTab === "nuevo")
-          setPrefillProduct({ name: cleanProductNameFromCommand(text) });
+          setPrefillProduct({ name: cleanProductNameFromCommand(text), _at: Date.now() });
         setTab(requestedTab);
       }
     } catch (e: any) {
       if (local.action === "none") {
         if (requestedTab === "nuevo") {
-          setPrefillProduct({ name: cleanProductNameFromCommand(text) });
+          setPrefillProduct({ name: cleanProductNameFromCommand(text), _at: Date.now() });
           setTab("nuevo");
         } else if (!requestedTab) toast.error(e?.message || "Error de voz");
       }
