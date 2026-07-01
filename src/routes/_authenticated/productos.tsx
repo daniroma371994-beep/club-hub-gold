@@ -280,7 +280,8 @@ function ProductosPage() {
         /[+-]\s*\d/.test(low))
     ) ||
       /^\s*(?:mas|menos|anad|agreg|sum|quit|rest|sac|remov|[+-])\w*\s+\d/i.test(low) ||
-      /\b(?:mas|menos|anad|agreg|sum|quit|rest|sac|remov|[+-])\w*\s+\d/i.test(low);
+      /\b(?:mas|menos|anad|agreg|sum|quit|rest|sac|remov|[+-])\w*\s+\d/i.test(low) ||
+      /\b[a-z0-9]{2,}\b\s+(?:mas|menos|anad|agreg|sum|quit|rest|sac|remov|[+-])\w*\s+\d/i.test(low);
   }
 
   // Fast local parser: fills fields instantly without waiting for AI.
