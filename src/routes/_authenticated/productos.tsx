@@ -852,6 +852,7 @@ function NuevoProducto({
   const enrich = useServerFn(enrichProduct);
 
   async function submit() {
+    submitRef.current = submit;
     if (!categoryId) return toast.error("Selecciona categoría");
     if (!name.trim()) return toast.error("Nombre obligatorio");
     setSaving(true);
