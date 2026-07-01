@@ -270,7 +270,7 @@ function InformesPage() {
             />
             <Kpi
               icon={TrendingDown}
-              label="Retirado (manual)"
+              label="Salidas stock"
               value={`-${stats.removed.toFixed(2)}`}
               tint="red"
             />
@@ -330,7 +330,7 @@ function InformesPage() {
           </ChartCard>
 
           {/* Movimientos de stock */}
-          <ChartCard title="Movimientos manuales de stock">
+          <ChartCard title="Movimientos de stock por día">
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={dailyMovs}>
                 <CartesianGrid stroke="#333" strokeDasharray="3 3" />
