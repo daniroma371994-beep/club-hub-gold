@@ -634,13 +634,13 @@ function Stock({
 
     // --- Stock adjustment: "stock <nombre> añadir/quitar N", "más 10 gr amnesia", "amnesia +10"
     const adjRx =
-      /^(?:stock\s+)?(.+?)\s+(a[nñ]ad\w*|agreg\w*|sum\w*|mas|\+|quit\w*|rest\w*|menos|-|remov\w*|sac\w*)\s+(\d+(?:[.,]\d+)?)\s*(?:gramos?|gr|g|u|unidad(?:es)?)?(?:\s+(?:gramos?|gr|g|u|unidad(?:es)?))*$/i;
+      /^(?:stock\s+)?(.+?)\s+(a[nñ]ad\w*|agreg\w*|sum\w*|mas|\+|quit\w*|rest\w*|menos|-|remov\w*|sac\w*)\s+(\d+(?:[.,]\d+)?)\s*(?:gramos?|gr|g|unidades?|unidad|u)?\b(?:\s+(?:gramos?|gr|g|unidades?|unidad|u)\b)*$/i;
     const addToRx =
-      /^(?:stock\s+)?(?:a[nñ]ad\w*|sum\w*|agreg\w*|met\w*|pon\w*|mas|\+)\s+(\d+(?:[.,]\d+)?)\s*(?:gramos?|gr|g|u|unidad(?:es)?)?(?:\s+(?:a|al|en|de|del))?\s*(.*?)(?:\s+(?:gramos?|gr|g|u|unidad(?:es)?))*$/i;
+      /^(?:stock\s+)?(?:a[nñ]ad\w*|sum\w*|agreg\w*|met\w*|pon\w*|mas|\+)\s+(\d+(?:[.,]\d+)?)\s*(?:gramos?|gr|g|unidades?|unidad|u)?\b(?:\s+(?:al|del|a|en|de)\b)?\s*(.*?)(?:\s+(?:gramos?|gr|g|unidades?|unidad|u)\b)*$/i;
     const removeFromRx =
-      /^(?:stock\s+)?(?:quit\w*|rest\w*|sac\w*|remov\w*|menos|-)\s+(\d+(?:[.,]\d+)?)\s*(?:gramos?|gr|g|u|unidad(?:es)?)?(?:\s+(?:de|del|a|al|en))?\s*(.*?)(?:\s+(?:gramos?|gr|g|u|unidad(?:es)?))*$/i;
+      /^(?:stock\s+)?(?:quit\w*|rest\w*|sac\w*|remov\w*|menos|-)\s+(\d+(?:[.,]\d+)?)\s*(?:gramos?|gr|g|unidades?|unidad|u)?\b(?:\s+(?:del|al|de|a|en)\b)?\s*(.*?)(?:\s+(?:gramos?|gr|g|unidades?|unidad|u)\b)*$/i;
     const qtyFirstRx =
-      /^(?:stock\s+)?(\d+(?:[.,]\d+)?)\s*(?:gramos?|gr|g|u|unidad(?:es)?)?\s+(mas|menos|a[nñ]ad\w*|agreg\w*|sum\w*|quit\w*|rest\w*|sac\w*|remov\w*|\+|-)\s*(.*?)(?:\s+(?:gramos?|gr|g|u|unidad(?:es)?))*$/i;
+      /^(?:stock\s+)?(\d+(?:[.,]\d+)?)\s*(?:gramos?|gr|g|unidades?|unidad|u)?\b\s+(mas|menos|a[nñ]ad\w*|agreg\w*|sum\w*|quit\w*|rest\w*|sac\w*|remov\w*|\+|-)\s*(.*?)(?:\s+(?:gramos?|gr|g|unidades?|unidad|u)\b)*$/i;
 
     let adjName = "";
     let adjSign = 0;
@@ -668,7 +668,7 @@ function Stock({
 
     if (adjQty > 0 && adjSign !== 0) {
       const target = norm(adjName)
-        .replace(/\b(stock|gramos?|gr|g|unidad(?:es)?|u)\b/g, " ")
+        .replace(/\b(stock|gramos?|gr|g|unidades?|unidad|u)\b/g, " ")
         .replace(/^(el|la|los|las)\s+/, "")
         .replace(/\s+/g, " ")
         .trim();
