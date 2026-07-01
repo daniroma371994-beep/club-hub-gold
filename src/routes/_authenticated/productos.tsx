@@ -86,6 +86,7 @@ function ProductosPage() {
   const [stockSearch, setStockSearch] = useState("");
   const [prefillProduct, setPrefillProduct] = useState<any>(null);
   const [prefillCategory, setPrefillCategory] = useState<any>(null);
+  const [lastHeard, setLastHeard] = useState("");
 
   // Voice command (AI)
   const parseCmd = useServerFn(parseProductCommand);
@@ -194,19 +195,26 @@ function ProductosPage() {
   }
 
   async function applyProductCommand(text: string, requestedTab?: TabId) {
+    setLastHeard(text);
     if (requestedTab === "nuevo" || requestedTab === "categoria" || requestedTab === "stock")
       setTab(requestedTab);
 
     // 1) Fast local parse — fill fields immediately.
     const local = localParse(text);
     if (local.action === "create_product") {
-      setPrefillProduct(local.prod);
+      const complete =
+        !!local.prod?.category_id &&
+        !!local.prod?.name &&
+        local.prod?.stock > 0 &&
+        local.prod?.sell_price > 0;
+      setPrefillProduct({ ...local.prod, autoSubmit: complete, _at: Date.now() });
       setTab("nuevo");
-      toast.success("Producto pre-rellenado");
+      toast.success(complete ? "Creando producto…" : "Producto pre-rellenado");
     } else if (local.action === "create_category") {
-      setPrefillCategory(local.cat);
+      const complete = !!local.cat?.name;
+      setPrefillCategory({ ...local.cat, autoSubmit: complete, _at: Date.now() });
       setTab("categoria");
-      toast.success("Categoría pre-rellenada");
+      toast.success(complete ? "Creando categoría…" : "Categoría pre-rellenada");
     } else if (local.action === "search") {
       setTab("stock");
       setStockSearch(local.query || text);
@@ -229,31 +237,35 @@ function ProductosPage() {
         setTab("stock");
         setStockSearch(cmd.query || text);
       } else if (cmd.action === "create_category") {
-        setPrefillCategory({
+        const merged = {
           name: cmd.category_name || local.cat?.name || "",
           unit_type: cmd.unit_type || local.cat?.unit_type || "unit",
           is_smokeable: cmd.is_smokeable || local.cat?.is_smokeable || false,
-        });
+        };
+        setPrefillCategory({ ...merged, autoSubmit: !!merged.name, _at: Date.now() });
         setTab("categoria");
       } else if (cmd.action === "create_product") {
-        setPrefillProduct({
+        const merged = {
           category_id: cmd.category_id || local.prod?.category_id || "",
           name: cmd.product_name || local.prod?.name || cleanProductNameFromCommand(text),
           stock: cmd.stock || local.prod?.stock || 0,
           buy_price: cmd.buy_price || local.prod?.buy_price || 0,
           sell_price: cmd.sell_price || local.prod?.sell_price || 0,
           strain: cmd.strain || local.prod?.strain || "",
-        });
+        };
+        const complete =
+          !!merged.category_id && !!merged.name && merged.stock > 0 && merged.sell_price > 0;
+        setPrefillProduct({ ...merged, autoSubmit: complete, _at: Date.now() });
         setTab("nuevo");
       } else if (requestedTab && local.action === "none") {
         if (requestedTab === "nuevo")
-          setPrefillProduct({ name: cleanProductNameFromCommand(text) });
+          setPrefillProduct({ name: cleanProductNameFromCommand(text), _at: Date.now() });
         setTab(requestedTab);
       }
     } catch (e: any) {
       if (local.action === "none") {
         if (requestedTab === "nuevo") {
-          setPrefillProduct({ name: cleanProductNameFromCommand(text) });
+          setPrefillProduct({ name: cleanProductNameFromCommand(text), _at: Date.now() });
           setTab("nuevo");
         } else if (!requestedTab) toast.error(e?.message || "Error de voz");
       }
@@ -312,36 +324,49 @@ function ProductosPage() {
 
   return (
     <SnoopLayout title="Productos" subtitle="Stock, categorías y altas">
-      <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
-        <div className="flex gap-2 flex-wrap">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`px-4 py-2 rounded-lg text-xs uppercase tracking-[0.2em] font-display border transition ${
-                tab === t.id
-                  ? "border-neon text-neon bg-neon/10 glow-neon-soft"
-                  : "border-border text-muted-foreground hover:text-neon hover:border-neon/40"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+      {/* Voice dictation bar (idéntico a Crear socio) */}
+      <div className="max-w-3xl mb-6 rounded-2xl border border-neon/30 bg-card/70 backdrop-blur p-4 flex items-center gap-4">
         <button
           type="button"
           onClick={pageDict.listening ? pageDict.stop : pageDict.start}
+          className={`h-14 w-14 shrink-0 rounded-full flex items-center justify-center transition
+            ${pageDict.listening
+              ? "bg-destructive text-destructive-foreground animate-pulse"
+              : "bg-gradient-neon text-primary-foreground glow-neon"}`}
           aria-label="Comando de voz"
-          title='Di "crear producto", "stock" o "crear categoría"'
-          className={`h-11 w-11 rounded-full border flex items-center justify-center transition ${
-            pageDict.listening
-              ? "border-neon text-neon bg-neon/10 glow-neon animate-pulse"
-              : "border-neon/40 text-neon hover:bg-neon/10"
-          }`}
         >
-          <Mic className="w-5 h-5" />
+          <Mic className="w-6 h-6" />
         </button>
+        <div className="flex-1 min-w-0">
+          <div className="text-[10px] uppercase tracking-[0.3em] text-neon-dim">Comando de voz</div>
+          {pageDict.listening ? (
+            <p className="text-sm text-destructive animate-pulse">● Escuchando… pulsa para parar</p>
+          ) : lastHeard ? (
+            <p className="text-sm text-muted-foreground italic truncate">"{lastHeard}"</p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Di: "crear producto Amnesia en flores stock 20 compra 5 venta 10 indica".
+            </p>
+          )}
+        </div>
       </div>
+
+      <div className="flex gap-2 flex-wrap mb-6">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`px-4 py-2 rounded-lg text-xs uppercase tracking-[0.2em] font-display border transition ${
+              tab === t.id
+                ? "border-neon text-neon bg-neon/10 glow-neon-soft"
+                : "border-border text-muted-foreground hover:text-neon hover:border-neon/40"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
 
 
       {loading ? (
@@ -789,15 +814,24 @@ function NuevoProducto({
   const [saving, setSaving] = useState(false);
   const cat = cats.find((c) => c.id === categoryId);
 
+  const submitRef = useRef<() => void>(() => {});
   useEffect(() => {
     if (!prefill) return;
-    if (prefill.category_id) setCategoryId(prefill.category_id);
-    if (prefill.name) setName(prefill.name);
-    if (prefill.stock) setStock(prefill.stock);
-    if (prefill.buy_price) setBuy(prefill.buy_price);
-    if (prefill.sell_price) setSell(prefill.sell_price);
-    if (prefill.strain) setStrain(prefill.strain);
+    const catId = prefill.category_id || "";
+    const nm = prefill.name || "";
+    const st = prefill.stock || 0;
+    const bp = prefill.buy_price || 0;
+    const sp = prefill.sell_price || 0;
+    const str = prefill.strain || "";
+    if (catId) setCategoryId(catId);
+    if (nm) setName(nm);
+    if (st) setStock(st);
+    if (bp) setBuy(bp);
+    if (sp) setSell(sp);
+    if (str) setStrain(str as Strain);
+    const shouldSubmit = prefill.autoSubmit && catId && nm && st > 0 && sp > 0;
     clearPrefill();
+    if (shouldSubmit) setTimeout(() => submitRef.current(), 80);
   }, [prefill]);
 
   // voice input for product name
@@ -876,6 +910,8 @@ function NuevoProducto({
       }
     })();
   }
+  submitRef.current = submit;
+
 
   if (cats.length === 0)
     return (
@@ -992,12 +1028,16 @@ function NuevaCategoria({
   const [smokeable, setSmokeable] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const submitRef = useRef<() => void>(() => {});
   useEffect(() => {
     if (!prefill) return;
-    if (prefill.name) setName(prefill.name);
+    const nm = prefill.name || "";
+    if (nm) setName(nm);
     if (prefill.unit_type) setUnit(prefill.unit_type);
     if (typeof prefill.is_smokeable === "boolean") setSmokeable(prefill.is_smokeable);
+    const shouldSubmit = prefill.autoSubmit && nm.trim();
     clearPrefill();
+    if (shouldSubmit) setTimeout(() => submitRef.current(), 80);
   }, [prefill]);
 
   async function submit() {
@@ -1023,6 +1063,8 @@ function NuevaCategoria({
     setSmokeable(false);
     onCreated();
   }
+  submitRef.current = submit;
+
 
   const ejemplos = ["Flores", "Hash", "Extracciones", "Bebidas", "Parafernalia", "Prerolled"];
 
