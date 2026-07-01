@@ -198,23 +198,41 @@ function ProductosPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, cats]);
 
+  const pageDict = useDictation((t) => applyProductCommand(t));
+
   return (
     <SnoopLayout title="Productos" subtitle="Stock, categorías y altas">
-      <div className="flex gap-2 mb-6 flex-wrap">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`px-4 py-2 rounded-lg text-xs uppercase tracking-[0.2em] font-display border transition ${
-              tab === t.id
-                ? "border-neon text-neon bg-neon/10 glow-neon-soft"
-                : "border-border text-muted-foreground hover:text-neon hover:border-neon/40"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+      <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
+        <div className="flex gap-2 flex-wrap">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`px-4 py-2 rounded-lg text-xs uppercase tracking-[0.2em] font-display border transition ${
+                tab === t.id
+                  ? "border-neon text-neon bg-neon/10 glow-neon-soft"
+                  : "border-border text-muted-foreground hover:text-neon hover:border-neon/40"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={pageDict.listening ? pageDict.stop : pageDict.start}
+          aria-label="Comando de voz"
+          title='Di "crear producto", "stock" o "crear categoría"'
+          className={`h-11 w-11 rounded-full border flex items-center justify-center transition ${
+            pageDict.listening
+              ? "border-neon text-neon bg-neon/10 glow-neon animate-pulse"
+              : "border-neon/40 text-neon hover:bg-neon/10"
+          }`}
+        >
+          <Mic className="w-5 h-5" />
+        </button>
       </div>
+
 
       {loading ? (
         <div className="text-muted-foreground">Cargando…</div>
