@@ -156,6 +156,73 @@ function InformesPage() {
       .slice(0, 8);
   }, [products]);
 
+  const movementRows = useMemo(() => {
+    const prodMap = new Map(products.map((p) => [p.id, p]));
+    const byProduct = new Map<string, any[]>();
+    for (const m of movs) {
+      const arr = byProduct.get(m.product_id) ?? [];
+      arr.push(m);
+      byProduct.set(m.product_id, arr);
+    }
+
+    const totals = new Map<string, Map<string, number>>();
+    for (const [productId, list] of byProduct.entries()) {
+      const p = prodMap.get(productId);
+      let running = Number(p?.stock ?? 0);
+      const totalByMovement = new Map<string, number>();
+      [...list]
+        .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
+        .forEach((m) => {
+          totalByMovement.set(m.id, running);
+          running -= Number(m.delta || 0);
+        });
+      totals.set(productId, totalByMovement);
+    }
+
+    return [...movs]
+      .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
+      .map((m) => {
+        const p = prodMap.get(m.product_id);
+        const delta = Number(m.delta || 0);
+        return {
+          id: m.id,
+          productId: m.product_id,
+          productName: p?.name ?? "Producto eliminado",
+          day: String(m.created_at).slice(0, 10),
+          time: new Date(m.created_at).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }),
+          delta,
+          reason: String(m.reason || "manual"),
+          notes: m.notes || "",
+          totalAfter: totals.get(m.product_id)?.get(m.id) ?? Number(p?.stock ?? 0),
+        };
+      });
+  }, [movs, products]);
+
+  const dailyProductHistory = useMemo(() => {
+    const map = new Map<
+      string,
+      { key: string; day: string; productName: string; added: number; removed: number; sold: number; totalAfter: number }
+    >();
+    for (const row of [...movementRows].reverse()) {
+      const key = `${row.day}|${row.productId}`;
+      const prev = map.get(key) ?? {
+        key,
+        day: row.day,
+        productName: row.productName,
+        added: 0,
+        removed: 0,
+        sold: 0,
+        totalAfter: row.totalAfter,
+      };
+      if (row.reason === "sale") prev.sold += Math.abs(row.delta);
+      else if (row.delta > 0) prev.added += row.delta;
+      else prev.removed += Math.abs(row.delta);
+      prev.totalAfter = row.totalAfter;
+      map.set(key, prev);
+    }
+    return [...map.values()].sort((a, b) => b.day.localeCompare(a.day) || a.productName.localeCompare(b.productName));
+  }, [movementRows]);
+
   if (loading || !isAdmin)
     return (
       <SnoopLayout>
@@ -279,6 +346,65 @@ function InformesPage() {
             </ResponsiveContainer>
           </ChartCard>
 
+          <ChartCard title="Histórico diario por producto">
+            {dailyProductHistory.length === 0 ? (
+              <div className="text-xs text-muted-foreground">Sin movimientos de stock en este periodo.</div>
+            ) : (
+              <div className="overflow-x-auto -mx-2 px-2">
+                <table className="w-full min-w-[620px] text-sm">
+                  <thead>
+                    <tr className="text-[10px] uppercase tracking-widest text-neon-dim border-b border-neon/20">
+                      <th className="text-left py-2 font-normal">Día</th>
+                      <th className="text-left py-2 font-normal">Producto</th>
+                      <th className="text-right py-2 font-normal">Más</th>
+                      <th className="text-right py-2 font-normal">Ventas</th>
+                      <th className="text-right py-2 font-normal">Menos</th>
+                      <th className="text-right py-2 font-normal">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/60">
+                    {dailyProductHistory.map((row) => (
+                      <tr key={row.key}>
+                        <td className="py-2 text-muted-foreground whitespace-nowrap">{row.day}</td>
+                        <td className="py-2 text-foreground">{row.productName}</td>
+                        <td className="py-2 text-right text-neon font-mono">+{row.added.toFixed(2)}</td>
+                        <td className="py-2 text-right text-destructive font-mono">-{row.sold.toFixed(2)}</td>
+                        <td className="py-2 text-right text-destructive/80 font-mono">-{row.removed.toFixed(2)}</td>
+                        <td className="py-2 text-right text-foreground font-mono">{row.totalAfter.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </ChartCard>
+
+          <ChartCard title="Lista completa de movimientos">
+            {movementRows.length === 0 ? (
+              <div className="text-xs text-muted-foreground">Sin movimientos en este periodo.</div>
+            ) : (
+              <div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">
+                {movementRows.map((row) => (
+                  <div key={row.id} className="flex items-center justify-between gap-3 rounded-lg bg-input/35 border border-border/60 px-3 py-2">
+                    <div className="min-w-0">
+                      <div className="text-sm text-foreground truncate">{row.productName}</div>
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                        {row.day} · {row.time} · {movementLabel(row.reason)}
+                      </div>
+                      {row.notes && <div className="text-[10px] text-muted-foreground truncate">{row.notes}</div>}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className={`font-display text-sm ${row.delta >= 0 ? "text-neon" : "text-destructive"}`}>
+                        {row.delta >= 0 ? "+" : ""}{row.delta.toFixed(2)}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">total {row.totalAfter.toFixed(2)}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ChartCard>
+
           {/* Ingresos por categoría */}
           {byCategory.length > 0 && (
             <ChartCard title="Ingresos por categoría">
@@ -327,6 +453,13 @@ function InformesPage() {
       )}
     </SnoopLayout>
   );
+}
+
+function movementLabel(reason: string) {
+  if (reason === "sale") return "venta";
+  if (reason.includes("add")) return "carga";
+  if (reason.includes("remove")) return "retirada";
+  return reason || "manual";
 }
 
 function Kpi({

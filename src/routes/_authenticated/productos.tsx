@@ -26,6 +26,18 @@ export const Route = createFileRoute("/_authenticated/productos")({
   component: ProductosPage,
 });
 
+function compactVoiceText(text: string) {
+  const words = text.replace(/[“”"']/g, " ").replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
+  const out: string[] = [];
+  for (const word of words) {
+    const current = word.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const previous = out[out.length - 1]?.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (current && current === previous) continue;
+    out.push(word);
+  }
+  return out.join(" ").trim();
+}
+
 // Web Speech dictation hook — manual stop: records until the user presses stop.
 function useDictation(onText: (t: string) => void, lang = "es-ES") {
   const [listening, setListening] = useState(false);
@@ -45,7 +57,7 @@ function useDictation(onText: (t: string) => void, lang = "es-ES") {
   }
 
   function combinedText() {
-    return (finalRef.current + " " + interimRef.current).replace(/\s+/g, " ").trim();
+    return compactVoiceText((finalRef.current + " " + interimRef.current).replace(/\s+/g, " ").trim());
   }
 
   function finalize() {
@@ -68,7 +80,7 @@ function useDictation(onText: (t: string) => void, lang = "es-ES") {
     const instanceFinal: string[] = [];
     r.onresult = (e: any) => {
       let interimTxt = "";
-      for (let i = 0; i < e.results.length; i++) {
+      for (let i = e.resultIndex ?? 0; i < e.results.length; i++) {
         const res = e.results[i];
         const piece = String(res?.[0]?.transcript || "").trim();
         if (!piece) continue;
@@ -83,7 +95,7 @@ function useDictation(onText: (t: string) => void, lang = "es-ES") {
       const base = finalRef.current ? finalRef.current + " " : "";
       interimRef.current = interimTxt;
       // Combined = previous instances' final + this instance's final + interim
-      const combined = (base + instanceText + " " + interimTxt).replace(/\s+/g, " ").trim();
+      const combined = compactVoiceText((base + instanceText + " " + interimTxt).replace(/\s+/g, " ").trim());
       setInterim(combined);
       // Store current instance's final so a graceful onend can commit it
       (r as any)._committed = instanceText;
@@ -161,6 +173,7 @@ type Strain = "indica" | "sativa" | "hibrida";
 type Category = { id: string; name: string; unit_type: UnitType; is_smokeable: boolean };
 type Product = {
   id: string;
+  club_id: string;
   category_id: string;
   name: string;
   stock: number;
@@ -171,6 +184,7 @@ type Product = {
   image_url: string | null;
   description: string | null;
 };
+type StockCommand = { text: string; at: number };
 
 const TABS = [
   { id: "stock", label: "Stock" },
@@ -187,6 +201,7 @@ function ProductosPage() {
   const [stockSearch, setStockSearch] = useState("");
   const [prefillProduct, setPrefillProduct] = useState<any>(null);
   const [prefillCategory, setPrefillCategory] = useState<any>(null);
+  const [stockCommand, setStockCommand] = useState<StockCommand | null>(null);
   const [lastHeard, setLastHeard] = useState("");
 
   // Voice command (AI)
@@ -204,6 +219,22 @@ function ProductosPage() {
       .replace(/[.,;:!?]+/g, " ")
       .replace(/\s+/g, " ")
       .trim();
+  }
+
+  function isStockAdjustmentCommand(text: string) {
+    const low = compactVoiceText(text)
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    if (/\b(crea|crear|creare|nuevo|nuovo|nueva|alta)\b/.test(low)) return false;
+    return (
+      /\b(stock|stok)\b/.test(low) &&
+      (/\b(mas|menos|anad|agreg|sum|quit|rest|sac|remov)\w*\b\s+\d/.test(low) ||
+        /\d+(?:[.,]\d+)?\s*(?:gr|g|gramos?|u|unidad(?:es)?)?\s+\b(mas|menos|anad|agreg|sum|quit|rest|sac|remov)\w*\b/.test(low) ||
+        /[+-]\s*\d/.test(low))
+    ) ||
+      /^\s*(?:mas|menos|anad|agreg|sum|quit|rest|sac|remov|[+-])\w*\s+\d/i.test(low) ||
+      /\b(?:mas|menos|anad|agreg|sum|quit|rest|sac|remov|[+-])\w*\s+\d/i.test(low);
   }
 
   // Fast local parser: fills fields instantly without waiting for AI.
@@ -296,12 +327,13 @@ function ProductosPage() {
   }
 
   async function applyProductCommand(text: string, requestedTab?: TabId) {
-    setLastHeard(text);
+    const heard = compactVoiceText(text);
+    setLastHeard(heard);
     if (requestedTab === "nuevo" || requestedTab === "categoria" || requestedTab === "stock")
       setTab(requestedTab);
 
     // 1) Fast local parse — fill fields immediately.
-    const local = localParse(text);
+    const local = localParse(heard);
     if (local.action === "create_product") {
       const complete =
         !!local.prod?.category_id &&
@@ -319,13 +351,18 @@ function ProductosPage() {
     } else if (local.action === "search") {
       setTab("stock");
       setStockSearch(local.query || text);
+    } else if (isStockAdjustmentCommand(heard)) {
+      setTab("stock");
+      setStockCommand({ text: heard, at: Date.now() });
+      toast.info("Movimiento de stock listo para revisar");
+      return;
     }
 
     // 2) AI refinement in background — improves category match / name.
     try {
       const cmd = await parseCmd({
         data: {
-          transcript: text,
+          transcript: heard,
           categories: cats.map((c) => ({
             id: c.id,
             name: c.name,
@@ -336,7 +373,7 @@ function ProductosPage() {
       });
       if (cmd.action === "search" && local.action === "none") {
         setTab("stock");
-        setStockSearch(cmd.query || text);
+        setStockSearch(cmd.query || heard);
       } else if (cmd.action === "create_category") {
         const merged = {
           name: cmd.category_name || local.cat?.name || "",
@@ -348,7 +385,7 @@ function ProductosPage() {
       } else if (cmd.action === "create_product") {
         const merged = {
           category_id: cmd.category_id || local.prod?.category_id || "",
-          name: cmd.product_name || local.prod?.name || cleanProductNameFromCommand(text),
+          name: cmd.product_name || local.prod?.name || cleanProductNameFromCommand(heard),
           stock: cmd.stock || local.prod?.stock || 0,
           buy_price: cmd.buy_price || local.prod?.buy_price || 0,
           sell_price: cmd.sell_price || local.prod?.sell_price || 0,
@@ -358,13 +395,13 @@ function ProductosPage() {
         setTab("nuevo");
       } else if (requestedTab && local.action === "none") {
         if (requestedTab === "nuevo")
-          setPrefillProduct({ name: cleanProductNameFromCommand(text), _at: Date.now() });
+          setPrefillProduct({ name: cleanProductNameFromCommand(heard), _at: Date.now() });
         setTab(requestedTab);
       }
     } catch (e: any) {
       if (local.action === "none") {
         if (requestedTab === "nuevo") {
-          setPrefillProduct({ name: cleanProductNameFromCommand(text), _at: Date.now() });
+          setPrefillProduct({ name: cleanProductNameFromCommand(heard), _at: Date.now() });
           setTab("nuevo");
         } else if (!requestedTab) toast.error(e?.message || "Error de voz");
       }
@@ -483,6 +520,8 @@ function ProductosPage() {
           onChange={load}
           search={stockSearch}
           setSearch={setStockSearch}
+          stockCommand={stockCommand}
+          clearStockCommand={() => setStockCommand(null)}
         />
       ) : tab === "nuevo" ? (
         <NuevoProducto
@@ -510,12 +549,16 @@ function Stock({
   onChange,
   search,
   setSearch,
+  stockCommand,
+  clearStockCommand,
 }: {
   cats: Category[];
   prods: Product[];
   onChange: () => void;
   search: string;
   setSearch: (v: string) => void;
+  stockCommand: StockCommand | null;
+  clearStockCommand: () => void;
 }) {
   const [filter, setFilter] = useState<string>("all");
   const [pendingAdj, setPendingAdj] = useState<
@@ -534,19 +577,23 @@ function Stock({
       .trim();
   }
   async function applyVoice(text: string) {
-    const raw = text.trim();
+    const raw = compactVoiceText(text.trim());
     const t = norm(raw)
       .replace(/[.,;:!?]+$/g, "")
+      .replace(/\b(stok)\b/g, "stock")
+      .replace(/\b(stock)(?:\s+\1\b)+/g, "$1")
       .trim();
     if (!t) return;
 
-    // --- Stock adjustment: "stock <nombre> añadir/quitar N (gr|u)" or "añade N a <nombre>"
+    // --- Stock adjustment: "stock <nombre> añadir/quitar N", "más 10 gr amnesia", "amnesia +10"
     const adjRx =
-      /^(?:stock\s+)?(.+?)\s+(a[nñ]ad[ei]r?|sumar?|mas|\+|quitar?|restar?|menos|-|remover)\s+(\d+(?:[.,]\d+)?)\s*(?:gr|gramos?|u|unidad(?:es)?)?$/i;
+      /^(?:stock\s+)?(.+?)\s+(a[nñ]ad\w*|agreg\w*|sum\w*|mas|\+|quit\w*|rest\w*|menos|-|remov\w*|sac\w*)\s+(\d+(?:[.,]\d+)?)\s*(?:gr|g|gramos?|u|unidad(?:es)?)?$/i;
     const addToRx =
-      /^(?:a[nñ]ad[ei]r?|suma(?:r)?|agrega(?:r)?|mete(?:r)?|pon(?:er)?)\s+(\d+(?:[.,]\d+)?)\s*(?:gr|gramos?|u|unidad(?:es)?)?\s+(?:a|al|en)\s+(.+)$/i;
+      /^(?:stock\s+)?(?:a[nñ]ad\w*|sum\w*|agreg\w*|met\w*|pon\w*|mas|\+)\s+(\d+(?:[.,]\d+)?)\s*(?:gr|g|gramos?|u|unidad(?:es)?)?(?:\s+(?:a|al|en|de|del))?\s*(.*)$/i;
     const removeFromRx =
-      /^(?:quita(?:r)?|resta(?:r)?|saca(?:r)?|remover)\s+(\d+(?:[.,]\d+)?)\s*(?:gr|gramos?|u|unidad(?:es)?)?\s+(?:de|del|a)\s+(.+)$/i;
+      /^(?:stock\s+)?(?:quit\w*|rest\w*|sac\w*|remov\w*|menos|-)\s+(\d+(?:[.,]\d+)?)\s*(?:gr|g|gramos?|u|unidad(?:es)?)?(?:\s+(?:de|del|a|al|en))?\s*(.*)$/i;
+    const qtyFirstRx =
+      /^(?:stock\s+)?(\d+(?:[.,]\d+)?)\s*(?:gr|g|gramos?|u|unidad(?:es)?)?\s+(mas|menos|a[nñ]ad\w*|agreg\w*|sum\w*|quit\w*|rest\w*|sac\w*|remov\w*|\+|-)\s*(.*)$/i;
 
     let adjName = "";
     let adjSign = 0;
@@ -565,16 +612,34 @@ function Stock({
       adjSign = -1;
       adjQty = parseFloat(m[1].replace(",", "."));
       adjName = m[2];
+    } else if ((m = t.match(qtyFirstRx))) {
+      adjQty = parseFloat(m[1].replace(",", "."));
+      const op = m[2].toLowerCase();
+      adjSign = /a[nñ]ad|agreg|sum|mas|\+/.test(op) ? 1 : -1;
+      adjName = m[3];
     }
 
-    if (adjName && adjQty > 0) {
-      const target = norm(adjName).replace(/^(el|la|los|las)\s+/, "").trim();
-      const prod = prods.find((p) => {
+    if (adjQty > 0 && adjSign !== 0) {
+      const target = norm(adjName)
+        .replace(/\b(stock|gr|g|gramos?|unidad(?:es)?|u)\b/g, " ")
+        .replace(/^(el|la|los|las)\s+/, "")
+        .replace(/\s+/g, " ")
+        .trim();
+      const visible = prods.filter((p) => {
+        if (filter !== "all" && p.category_id !== filter) return false;
+        if (q && !norm(p.name).includes(norm(q))) return false;
+        return true;
+      });
+      const prod = target
+        ? prods.find((p) => {
         const n = norm(p.name);
         return n === target || n.includes(target) || target.includes(n);
-      });
+          })
+        : visible.length === 1
+          ? visible[0]
+          : null;
       if (!prod) {
-        toast.error(`Producto no encontrado: ${adjName}`);
+        toast.error(target ? `Producto no encontrado: ${adjName}` : "Di también el nombre del producto");
         return;
       }
       const delta = adjSign * adjQty;
@@ -615,6 +680,13 @@ function Stock({
     setFilter("all");
     setSearch(cleaned);
   }
+
+  useEffect(() => {
+    if (!stockCommand) return;
+    applyVoice(stockCommand.text);
+    clearStockCommand();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stockCommand?.at]);
 
   // Listen to voice agent broadcasts
   useEffect(() => {
@@ -669,13 +741,19 @@ function Stock({
       toast.error(error.message);
       return;
     }
-    await supabase.from("stock_movements").insert({
-      club_id: (prod as any).club_id,
+    const { error: movError } = await supabase.from("stock_movements").insert({
+      club_id: prod.club_id,
       product_id: prod.id,
       delta,
       reason: delta > 0 ? "voice_add" : "voice_remove",
       notes: raw,
     } as any);
+    if (movError) {
+      toast.error(`Stock actualizado, pero no pude registrar el informe: ${movError.message}`);
+      setPendingAdj(null);
+      onChange();
+      return;
+    }
     toast.success(`${prod.name}: ${delta > 0 ? "+" : ""}${delta} → ${newStock}`);
     setPendingAdj(null);
     onChange();
