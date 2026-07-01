@@ -260,7 +260,7 @@ function Stock({
   setSearch: (v: string) => void;
 }) {
   const [filter, setFilter] = useState<string>("all");
-  const dict = useDictation((t) => setSearch(t));
+  const dict = useDictation((t) => applyVoice(t));
   const q = search.trim().toLowerCase();
 
   function norm(s: string) {
