@@ -658,8 +658,62 @@ function Stock({
       </div>
     );
 
+  async function confirmPending() {
+    if (!pendingAdj) return;
+    const { prod, delta, newStock, raw } = pendingAdj;
+    const { error } = await supabase
+      .from("products")
+      .update({ stock: newStock })
+      .eq("id", prod.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    await supabase.from("stock_movements").insert({
+      club_id: (prod as any).club_id,
+      product_id: prod.id,
+      delta,
+      reason: delta > 0 ? "voice_add" : "voice_remove",
+      notes: raw,
+    } as any);
+    toast.success(`${prod.name}: ${delta > 0 ? "+" : ""}${delta} → ${newStock}`);
+    setPendingAdj(null);
+    onChange();
+  }
+
   return (
     <div className="space-y-6">
+      {pendingAdj && (
+        <div className="rounded-2xl border-2 border-neon bg-neon/10 p-4 flex flex-col sm:flex-row sm:items-center gap-3 glow-neon-soft">
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] uppercase tracking-[0.3em] text-neon-dim">Confirmar movimiento</div>
+            <div className="text-sm">
+              <strong className="text-neon">{pendingAdj.prod.name}</strong>: {pendingAdj.prod.stock} →{" "}
+              <strong>{pendingAdj.newStock}</strong>{" "}
+              <span className={pendingAdj.delta > 0 ? "text-neon" : "text-destructive"}>
+                ({pendingAdj.delta > 0 ? "+" : ""}
+                {pendingAdj.delta})
+              </span>
+            </div>
+            <div className="text-xs italic text-muted-foreground truncate">"{pendingAdj.raw}"</div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={confirmPending}
+              className="px-4 py-2 rounded-lg bg-gradient-neon text-primary-foreground text-xs uppercase tracking-widest font-display glow-neon"
+            >
+              Confirmar
+            </button>
+            <button
+              onClick={() => setPendingAdj(null)}
+              className="px-4 py-2 rounded-lg border border-border text-xs uppercase tracking-widest text-muted-foreground"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Search bar (works on all categories) */}
       <div className="flex items-center gap-2 bg-input/40 border border-border rounded-lg px-3 py-2 focus-within:border-neon">
         <Search className="w-4 h-4 text-muted-foreground" />
