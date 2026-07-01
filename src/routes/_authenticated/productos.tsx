@@ -129,8 +129,13 @@ function useDictation(onText: (t: string) => void, lang = "es-ES") {
     manualStopRef.current = true;
     shouldListenRef.current = false;
     clearRestart();
+    const rec = recRef.current;
+    if (!rec) {
+      finalize();
+      return;
+    }
     try {
-      recRef.current?.stop();
+      rec.stop();
     } catch {
       finalize();
     }
@@ -613,7 +618,7 @@ function Stock({
           className={`p-1.5 rounded ${dict.listening ? "text-neon glow-neon" : "text-muted-foreground hover:text-neon"}`}
           title="Dictar búsqueda"
         >
-          <Mic className="w-4 h-4" />
+          {dict.listening ? <Square className="w-4 h-4 fill-current" /> : <Mic className="w-4 h-4" />}
         </button>
       </div>
 
@@ -924,20 +929,7 @@ function NuevoProducto({
     if (shouldSubmit) setTimeout(() => submitRef.current(), 80);
   }, [prefill]);
 
-  // voice input for product name
-  const [listening, setListening] = useState(false);
-  function startVoice() {
-    const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) return toast.error("Tu navegador no soporta dictado");
-    const r = new SR();
-    r.lang = "es-ES";
-    r.interimResults = false;
-    r.onresult = (e: any) => setName(e.results[0][0].transcript);
-    r.onend = () => setListening(false);
-    r.onerror = () => setListening(false);
-    setListening(true);
-    r.start();
-  }
+  const nameDict = useDictation((t) => setName(t));
 
   const enrich = useServerFn(enrichProduct);
 
@@ -1037,11 +1029,11 @@ function NuevoProducto({
           />
           <button
             type="button"
-            onClick={startVoice}
-            className={`px-3 rounded-lg border ${listening ? "border-neon text-neon glow-neon" : "border-border text-muted-foreground"}`}
+            onClick={nameDict.listening ? nameDict.stop : nameDict.start}
+            className={`px-3 rounded-lg border ${nameDict.listening ? "border-neon text-neon glow-neon" : "border-border text-muted-foreground"}`}
             title="Dictar nombre"
           >
-            <Mic className="w-4 h-4" />
+            {nameDict.listening ? <Square className="w-4 h-4 fill-current" /> : <Mic className="w-4 h-4" />}
           </button>
         </div>
       </Field>
