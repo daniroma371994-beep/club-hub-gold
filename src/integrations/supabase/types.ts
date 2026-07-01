@@ -606,6 +606,54 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_movements: {
+        Row: {
+          club_id: string
+          created_at: string
+          created_by: string | null
+          delta: number
+          id: string
+          notes: string | null
+          product_id: string
+          reason: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          created_by?: string | null
+          delta: number
+          id?: string
+          notes?: string | null
+          product_id: string
+          reason?: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          created_by?: string | null
+          delta?: number
+          id?: string
+          notes?: string | null
+          product_id?: string
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppressed_emails: {
         Row: {
           created_at: string
