@@ -106,7 +106,10 @@ function useDictation(onText: (t: string) => void, lang = "es-ES") {
     recRef.current = r;
     try {
       r.start();
-    } catch {}
+    } catch {
+      recRef.current = null;
+      if (!shouldListenRef.current) finalize();
+    }
   }
 
   function start() {
