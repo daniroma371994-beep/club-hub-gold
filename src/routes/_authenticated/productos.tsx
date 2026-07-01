@@ -910,6 +910,8 @@ function NuevoProducto({
       }
     })();
   }
+  submitRef.current = submit;
+
 
   if (cats.length === 0)
     return (
