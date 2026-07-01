@@ -324,36 +324,49 @@ function ProductosPage() {
 
   return (
     <SnoopLayout title="Productos" subtitle="Stock, categorías y altas">
-      <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
-        <div className="flex gap-2 flex-wrap">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`px-4 py-2 rounded-lg text-xs uppercase tracking-[0.2em] font-display border transition ${
-                tab === t.id
-                  ? "border-neon text-neon bg-neon/10 glow-neon-soft"
-                  : "border-border text-muted-foreground hover:text-neon hover:border-neon/40"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+      {/* Voice dictation bar (idéntico a Crear socio) */}
+      <div className="max-w-3xl mb-6 rounded-2xl border border-neon/30 bg-card/70 backdrop-blur p-4 flex items-center gap-4">
         <button
           type="button"
           onClick={pageDict.listening ? pageDict.stop : pageDict.start}
+          className={`h-14 w-14 shrink-0 rounded-full flex items-center justify-center transition
+            ${pageDict.listening
+              ? "bg-destructive text-destructive-foreground animate-pulse"
+              : "bg-gradient-neon text-primary-foreground glow-neon"}`}
           aria-label="Comando de voz"
-          title='Di "crear producto", "stock" o "crear categoría"'
-          className={`h-11 w-11 rounded-full border flex items-center justify-center transition ${
-            pageDict.listening
-              ? "border-neon text-neon bg-neon/10 glow-neon animate-pulse"
-              : "border-neon/40 text-neon hover:bg-neon/10"
-          }`}
         >
-          <Mic className="w-5 h-5" />
+          <Mic className="w-6 h-6" />
         </button>
+        <div className="flex-1 min-w-0">
+          <div className="text-[10px] uppercase tracking-[0.3em] text-neon-dim">Comando de voz</div>
+          {pageDict.listening ? (
+            <p className="text-sm text-destructive animate-pulse">● Escuchando… pulsa para parar</p>
+          ) : lastHeard ? (
+            <p className="text-sm text-muted-foreground italic truncate">"{lastHeard}"</p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Di: "crear producto Amnesia en flores stock 20 compra 5 venta 10 indica".
+            </p>
+          )}
+        </div>
       </div>
+
+      <div className="flex gap-2 flex-wrap mb-6">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`px-4 py-2 rounded-lg text-xs uppercase tracking-[0.2em] font-display border transition ${
+              tab === t.id
+                ? "border-neon text-neon bg-neon/10 glow-neon-soft"
+                : "border-border text-muted-foreground hover:text-neon hover:border-neon/40"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
 
 
       {loading ? (
