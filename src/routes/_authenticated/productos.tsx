@@ -63,33 +63,41 @@ function useDictation(onText: (t: string) => void, lang = "es-ES") {
     r.interimResults = true;
     r.continuous = true;
     r.maxAlternatives = 1;
+    // Per-instance finalized buffer to avoid re-appending when the browser
+    // replays the same result indices after a silent restart.
+    const instanceFinal: string[] = [];
     r.onresult = (e: any) => {
       let interimTxt = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
+      for (let i = 0; i < e.results.length; i++) {
         const res = e.results[i];
         const piece = String(res?.[0]?.transcript || "").trim();
         if (!piece) continue;
-        if (res.isFinal) finalRef.current = `${finalRef.current} ${piece}`.trim();
-        else interimTxt = `${interimTxt} ${piece}`.trim();
+        if (res.isFinal) {
+          // Only record each final index once per instance.
+          if (instanceFinal[i] !== piece) instanceFinal[i] = piece;
+        } else {
+          interimTxt = `${interimTxt} ${piece}`.trim();
+        }
       }
+      const instanceText = instanceFinal.filter(Boolean).join(" ").trim();
+      const base = finalRef.current ? finalRef.current + " " : "";
       interimRef.current = interimTxt;
-      setInterim(combinedText());
+      // Combined = previous instances' final + this instance's final + interim
+      const combined = (base + instanceText + " " + interimTxt).replace(/\s+/g, " ").trim();
+      setInterim(combined);
+      // Store current instance's final so a graceful onend can commit it
+      (r as any)._committed = instanceText;
     };
     r.onend = () => {
-      recRef.current = null;
-      if (shouldListenRef.current && !manualStopRef.current) {
-        // Chrome/mobile may end after the first word: restart silently and keep the transcript.
-        clearRestart();
-        restartTimerRef.current = window.setTimeout(() => {
-          if (!shouldListenRef.current) return;
-          try {
-            startRecognition(SR);
-          } catch {
-            finalize();
-          }
-        }, 120);
-        return;
+      const committed = (r as any)._committed || "";
+      if (committed) {
+        finalRef.current = (finalRef.current + " " + committed).trim();
       }
+      recRef.current = null;
+      // Do NOT auto-restart. Auto-restart on mobile causes the browser to
+      // replay the audio buffer and duplicate words infinitely. If the
+      // browser ended prematurely, the user will press mic again.
+      shouldListenRef.current = false;
       finalize();
     };
     r.onerror = (ev: any) => {
@@ -111,6 +119,7 @@ function useDictation(onText: (t: string) => void, lang = "es-ES") {
       if (!shouldListenRef.current) finalize();
     }
   }
+
 
   function start() {
     const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -509,7 +518,12 @@ function Stock({
   setSearch: (v: string) => void;
 }) {
   const [filter, setFilter] = useState<string>("all");
+  const [pendingAdj, setPendingAdj] = useState<
+    | { prod: Product; delta: number; newStock: number; raw: string }
+    | null
+  >(null);
   const dict = useDictation((t) => applyVoice(t));
+
   const q = search.trim().toLowerCase();
 
   function norm(s: string) {
@@ -569,25 +583,12 @@ function Stock({
         toast.error(`Stock insuficiente (${prod.stock}) para restar ${adjQty}`);
         return;
       }
-      const { error } = await supabase
-        .from("products")
-        .update({ stock: newStock })
-        .eq("id", prod.id);
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
-      await supabase.from("stock_movements").insert({
-        club_id: (prod as any).club_id,
-        product_id: prod.id,
-        delta,
-        reason: delta > 0 ? "voice_add" : "voice_remove",
-        notes: raw,
-      } as any);
-      toast.success(`${prod.name}: ${delta > 0 ? "+" : ""}${delta} → ${newStock}`);
-      onChange();
+      // Stage the change: user must confirm before we write it.
+      setPendingAdj({ prod, delta, newStock, raw });
+      toast.info(`Revisa y confirma: ${prod.name} ${delta > 0 ? "+" : ""}${delta}`);
       return;
     }
+
 
     // Strip filler verbs for category / search matching
     const cleaned = t
@@ -657,8 +658,62 @@ function Stock({
       </div>
     );
 
+  async function confirmPending() {
+    if (!pendingAdj) return;
+    const { prod, delta, newStock, raw } = pendingAdj;
+    const { error } = await supabase
+      .from("products")
+      .update({ stock: newStock })
+      .eq("id", prod.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    await supabase.from("stock_movements").insert({
+      club_id: (prod as any).club_id,
+      product_id: prod.id,
+      delta,
+      reason: delta > 0 ? "voice_add" : "voice_remove",
+      notes: raw,
+    } as any);
+    toast.success(`${prod.name}: ${delta > 0 ? "+" : ""}${delta} → ${newStock}`);
+    setPendingAdj(null);
+    onChange();
+  }
+
   return (
     <div className="space-y-6">
+      {pendingAdj && (
+        <div className="rounded-2xl border-2 border-neon bg-neon/10 p-4 flex flex-col sm:flex-row sm:items-center gap-3 glow-neon-soft">
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] uppercase tracking-[0.3em] text-neon-dim">Confirmar movimiento</div>
+            <div className="text-sm">
+              <strong className="text-neon">{pendingAdj.prod.name}</strong>: {pendingAdj.prod.stock} →{" "}
+              <strong>{pendingAdj.newStock}</strong>{" "}
+              <span className={pendingAdj.delta > 0 ? "text-neon" : "text-destructive"}>
+                ({pendingAdj.delta > 0 ? "+" : ""}
+                {pendingAdj.delta})
+              </span>
+            </div>
+            <div className="text-xs italic text-muted-foreground truncate">"{pendingAdj.raw}"</div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={confirmPending}
+              className="px-4 py-2 rounded-lg bg-gradient-neon text-primary-foreground text-xs uppercase tracking-widest font-display glow-neon"
+            >
+              Confirmar
+            </button>
+            <button
+              onClick={() => setPendingAdj(null)}
+              className="px-4 py-2 rounded-lg border border-border text-xs uppercase tracking-widest text-muted-foreground"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Search bar (works on all categories) */}
       <div className="flex items-center gap-2 bg-input/40 border border-border rounded-lg px-3 py-2 focus-within:border-neon">
         <Search className="w-4 h-4 text-muted-foreground" />
