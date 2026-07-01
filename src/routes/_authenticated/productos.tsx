@@ -814,15 +814,24 @@ function NuevoProducto({
   const [saving, setSaving] = useState(false);
   const cat = cats.find((c) => c.id === categoryId);
 
+  const submitRef = useRef<() => void>(() => {});
   useEffect(() => {
     if (!prefill) return;
-    if (prefill.category_id) setCategoryId(prefill.category_id);
-    if (prefill.name) setName(prefill.name);
-    if (prefill.stock) setStock(prefill.stock);
-    if (prefill.buy_price) setBuy(prefill.buy_price);
-    if (prefill.sell_price) setSell(prefill.sell_price);
-    if (prefill.strain) setStrain(prefill.strain);
+    const catId = prefill.category_id || "";
+    const nm = prefill.name || "";
+    const st = prefill.stock || 0;
+    const bp = prefill.buy_price || 0;
+    const sp = prefill.sell_price || 0;
+    const str = prefill.strain || "";
+    if (catId) setCategoryId(catId);
+    if (nm) setName(nm);
+    if (st) setStock(st);
+    if (bp) setBuy(bp);
+    if (sp) setSell(sp);
+    if (str) setStrain(str as Strain);
+    const shouldSubmit = prefill.autoSubmit && catId && nm && st > 0 && sp > 0;
     clearPrefill();
+    if (shouldSubmit) setTimeout(() => submitRef.current(), 80);
   }, [prefill]);
 
   // voice input for product name
