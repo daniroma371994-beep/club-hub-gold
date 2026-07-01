@@ -63,33 +63,41 @@ function useDictation(onText: (t: string) => void, lang = "es-ES") {
     r.interimResults = true;
     r.continuous = true;
     r.maxAlternatives = 1;
+    // Per-instance finalized buffer to avoid re-appending when the browser
+    // replays the same result indices after a silent restart.
+    const instanceFinal: string[] = [];
     r.onresult = (e: any) => {
       let interimTxt = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
+      for (let i = 0; i < e.results.length; i++) {
         const res = e.results[i];
         const piece = String(res?.[0]?.transcript || "").trim();
         if (!piece) continue;
-        if (res.isFinal) finalRef.current = `${finalRef.current} ${piece}`.trim();
-        else interimTxt = `${interimTxt} ${piece}`.trim();
+        if (res.isFinal) {
+          // Only record each final index once per instance.
+          if (instanceFinal[i] !== piece) instanceFinal[i] = piece;
+        } else {
+          interimTxt = `${interimTxt} ${piece}`.trim();
+        }
       }
+      const instanceText = instanceFinal.filter(Boolean).join(" ").trim();
+      const base = finalRef.current ? finalRef.current + " " : "";
       interimRef.current = interimTxt;
-      setInterim(combinedText());
+      // Combined = previous instances' final + this instance's final + interim
+      const combined = (base + instanceText + " " + interimTxt).replace(/\s+/g, " ").trim();
+      setInterim(combined);
+      // Store current instance's final so a graceful onend can commit it
+      (r as any)._committed = instanceText;
     };
     r.onend = () => {
-      recRef.current = null;
-      if (shouldListenRef.current && !manualStopRef.current) {
-        // Chrome/mobile may end after the first word: restart silently and keep the transcript.
-        clearRestart();
-        restartTimerRef.current = window.setTimeout(() => {
-          if (!shouldListenRef.current) return;
-          try {
-            startRecognition(SR);
-          } catch {
-            finalize();
-          }
-        }, 120);
-        return;
+      const committed = (r as any)._committed || "";
+      if (committed) {
+        finalRef.current = (finalRef.current + " " + committed).trim();
       }
+      recRef.current = null;
+      // Do NOT auto-restart. Auto-restart on mobile causes the browser to
+      // replay the audio buffer and duplicate words infinitely. If the
+      // browser ended prematurely, the user will press mic again.
+      shouldListenRef.current = false;
       finalize();
     };
     r.onerror = (ev: any) => {
@@ -111,6 +119,7 @@ function useDictation(onText: (t: string) => void, lang = "es-ES") {
       if (!shouldListenRef.current) finalize();
     }
   }
+
 
   function start() {
     const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
