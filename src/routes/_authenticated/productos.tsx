@@ -628,6 +628,7 @@ function Stock({
       .replace(/[.,;:!?]+$/g, "")
       .replace(/\b(stok)\b/g, "stock")
       .replace(/\b(stock)(?:\s+\1\b)+/g, "$1")
+      .replace(/\bstock\s+(?=(?:mas|menos|a[nñ]ad\w*|agreg\w*|sum\w*|quit\w*|rest\w*|sac\w*|remov\w*|\+|-))/g, "")
       .trim();
     if (!t) return;
 
@@ -678,8 +679,8 @@ function Stock({
       });
       const prod = target
         ? prods.find((p) => {
-        const n = norm(p.name);
-        return n === target || n.includes(target) || target.includes(n);
+            const n = norm(p.name);
+            return n === target || n.includes(target) || target.includes(n);
           })
         : visible.length === 1
           ? visible[0]
