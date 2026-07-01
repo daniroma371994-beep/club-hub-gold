@@ -419,13 +419,17 @@ function ProductosPage() {
               : "bg-gradient-neon text-primary-foreground glow-neon"}`}
           aria-label="Comando de voz"
         >
-          <Mic className="w-7 h-7 sm:w-6 sm:h-6" />
+          {pageDict.listening ? (
+            <Square className="w-7 h-7 sm:w-6 sm:h-6 fill-current" />
+          ) : (
+            <Mic className="w-7 h-7 sm:w-6 sm:h-6" />
+          )}
         </button>
         <div className="flex-1 min-w-0">
           <div className="text-[10px] uppercase tracking-[0.3em] text-neon-dim">Comando de voz</div>
           {pageDict.listening ? (
             <p className="text-sm text-destructive animate-pulse truncate">
-              ● Escuchando… {pageDict.interim && <span className="text-foreground/80 italic">"{pageDict.interim}"</span>}
+              ● Escuchando… pulsa stop cuando termines {pageDict.interim && <span className="text-foreground/80 italic">“{pageDict.interim}”</span>}
             </p>
           ) : lastHeard ? (
             <p className="text-sm text-muted-foreground italic truncate">"{lastHeard}"</p>
