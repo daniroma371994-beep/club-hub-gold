@@ -1028,12 +1028,16 @@ function NuevaCategoria({
   const [smokeable, setSmokeable] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const submitRef = useRef<() => void>(() => {});
   useEffect(() => {
     if (!prefill) return;
-    if (prefill.name) setName(prefill.name);
+    const nm = prefill.name || "";
+    if (nm) setName(nm);
     if (prefill.unit_type) setUnit(prefill.unit_type);
     if (typeof prefill.is_smokeable === "boolean") setSmokeable(prefill.is_smokeable);
+    const shouldSubmit = prefill.autoSubmit && nm.trim();
     clearPrefill();
+    if (shouldSubmit) setTimeout(() => submitRef.current(), 80);
   }, [prefill]);
 
   async function submit() {
