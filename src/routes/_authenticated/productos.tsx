@@ -634,13 +634,13 @@ function Stock({
 
     // --- Stock adjustment: "stock <nombre> añadir/quitar N", "más 10 gr amnesia", "amnesia +10"
     const adjRx =
-      /^(?:stock\s+)?(.+?)\s+(a[nñ]ad\w*|agreg\w*|sum\w*|mas|\+|quit\w*|rest\w*|menos|-|remov\w*|sac\w*)\s+(\d+(?:[.,]\d+)?)\s*(?:gr|g|gramos?|u|unidad(?:es)?)?$/i;
+      /^(?:stock\s+)?(.+?)\s+(a[nñ]ad\w*|agreg\w*|sum\w*|mas|\+|quit\w*|rest\w*|menos|-|remov\w*|sac\w*)\s+(\d+(?:[.,]\d+)?)\s*(?:gr|g|gramos?|u|unidad(?:es)?)?(?:\s+(?:gr|g|gramos?|u|unidad(?:es)?))*$/i;
     const addToRx =
-      /^(?:stock\s+)?(?:a[nñ]ad\w*|sum\w*|agreg\w*|met\w*|pon\w*|mas|\+)\s+(\d+(?:[.,]\d+)?)\s*(?:gr|g|gramos?|u|unidad(?:es)?)?(?:\s+(?:a|al|en|de|del))?\s*(.*)$/i;
+      /^(?:stock\s+)?(?:a[nñ]ad\w*|sum\w*|agreg\w*|met\w*|pon\w*|mas|\+)\s+(\d+(?:[.,]\d+)?)\s*(?:gr|g|gramos?|u|unidad(?:es)?)?(?:\s+(?:a|al|en|de|del))?\s*(.*?)(?:\s+(?:gr|g|gramos?|u|unidad(?:es)?))*$/i;
     const removeFromRx =
-      /^(?:stock\s+)?(?:quit\w*|rest\w*|sac\w*|remov\w*|menos|-)\s+(\d+(?:[.,]\d+)?)\s*(?:gr|g|gramos?|u|unidad(?:es)?)?(?:\s+(?:de|del|a|al|en))?\s*(.*)$/i;
+      /^(?:stock\s+)?(?:quit\w*|rest\w*|sac\w*|remov\w*|menos|-)\s+(\d+(?:[.,]\d+)?)\s*(?:gr|g|gramos?|u|unidad(?:es)?)?(?:\s+(?:de|del|a|al|en))?\s*(.*?)(?:\s+(?:gr|g|gramos?|u|unidad(?:es)?))*$/i;
     const qtyFirstRx =
-      /^(?:stock\s+)?(\d+(?:[.,]\d+)?)\s*(?:gr|g|gramos?|u|unidad(?:es)?)?\s+(mas|menos|a[nñ]ad\w*|agreg\w*|sum\w*|quit\w*|rest\w*|sac\w*|remov\w*|\+|-)\s*(.*)$/i;
+      /^(?:stock\s+)?(\d+(?:[.,]\d+)?)\s*(?:gr|g|gramos?|u|unidad(?:es)?)?\s+(mas|menos|a[nñ]ad\w*|agreg\w*|sum\w*|quit\w*|rest\w*|sac\w*|remov\w*|\+|-)\s*(.*?)(?:\s+(?:gr|g|gramos?|u|unidad(?:es)?))*$/i;
 
     let adjName = "";
     let adjSign = 0;
