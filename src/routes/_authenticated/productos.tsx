@@ -518,7 +518,12 @@ function Stock({
   setSearch: (v: string) => void;
 }) {
   const [filter, setFilter] = useState<string>("all");
+  const [pendingAdj, setPendingAdj] = useState<
+    | { prod: Product; delta: number; newStock: number; raw: string }
+    | null
+  >(null);
   const dict = useDictation((t) => applyVoice(t));
+
   const q = search.trim().toLowerCase();
 
   function norm(s: string) {
