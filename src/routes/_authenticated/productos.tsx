@@ -927,6 +927,7 @@ function ProductRow({ p, cat, onChange }: { p: Product; cat: Category; onChange:
   useEffect(() => setForm(p), [p]);
 
   async function save() {
+    const stockDelta = Number(form.stock || 0) - Number(p.stock || 0);
     const { error } = await supabase
       .from("products")
       .update({
@@ -939,6 +940,15 @@ function ProductRow({ p, cat, onChange }: { p: Product; cat: Category; onChange:
       })
       .eq("id", p.id);
     if (error) return toast.error(error.message);
+    if (stockDelta !== 0) {
+      await supabase.from("stock_movements").insert({
+        club_id: p.club_id,
+        product_id: p.id,
+        delta: stockDelta,
+        reason: stockDelta > 0 ? "manual_add" : "manual_remove",
+        notes: "Edición manual de stock",
+      } as any);
+    }
     toast.success("Producto actualizado");
     setEdit(false);
     onChange();
@@ -1200,6 +1210,15 @@ function NuevoProducto({
     if (error) {
       setSaving(false);
       return toast.error(error.message);
+    }
+    if (Number(stock) !== 0) {
+      await supabase.from("stock_movements").insert({
+        club_id: clubId,
+        product_id: inserted.id,
+        delta: Number(stock),
+        reason: "initial_stock",
+        notes: "Stock inicial al crear producto",
+      } as any);
     }
     toast.success("Producto creado · enriqueciendo con IA…");
     setName("");
