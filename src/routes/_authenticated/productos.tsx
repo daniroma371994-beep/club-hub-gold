@@ -299,14 +299,14 @@ function ProductosPage() {
         !!local.prod?.name &&
         local.prod?.stock > 0 &&
         local.prod?.sell_price > 0;
-      setPrefillProduct({ ...local.prod, autoSubmit: complete, _at: Date.now() });
+      setPrefillProduct({ ...local.prod, _at: Date.now() });
       setTab("nuevo");
-      toast.success(complete ? "Creando producto…" : "Producto pre-rellenado");
+      toast.success(complete ? "Producto listo para revisar" : "Producto pre-rellenado");
     } else if (local.action === "create_category") {
       const complete = !!local.cat?.name;
-      setPrefillCategory({ ...local.cat, autoSubmit: complete, _at: Date.now() });
+      setPrefillCategory({ ...local.cat, _at: Date.now() });
       setTab("categoria");
-      toast.success(complete ? "Creando categoría…" : "Categoría pre-rellenada");
+      toast.success(complete ? "Categoría lista para revisar" : "Categoría pre-rellenada");
     } else if (local.action === "search") {
       setTab("stock");
       setStockSearch(local.query || text);
@@ -334,7 +334,7 @@ function ProductosPage() {
           unit_type: cmd.unit_type || local.cat?.unit_type || "unit",
           is_smokeable: cmd.is_smokeable || local.cat?.is_smokeable || false,
         };
-        setPrefillCategory({ ...merged, autoSubmit: !!merged.name, _at: Date.now() });
+        setPrefillCategory({ ...merged, _at: Date.now() });
         setTab("categoria");
       } else if (cmd.action === "create_product") {
         const merged = {
@@ -345,9 +345,7 @@ function ProductosPage() {
           sell_price: cmd.sell_price || local.prod?.sell_price || 0,
           strain: cmd.strain || local.prod?.strain || "",
         };
-        const complete =
-          !!merged.category_id && !!merged.name && merged.stock > 0 && merged.sell_price > 0;
-        setPrefillProduct({ ...merged, autoSubmit: complete, _at: Date.now() });
+        setPrefillProduct({ ...merged, _at: Date.now() });
         setTab("nuevo");
       } else if (requestedTab && local.action === "none") {
         if (requestedTab === "nuevo")
@@ -912,7 +910,6 @@ function NuevoProducto({
   const [saving, setSaving] = useState(false);
   const cat = cats.find((c) => c.id === categoryId);
 
-  const submitRef = useRef<() => void>(() => {});
   useEffect(() => {
     if (!prefill) return;
     const catId = prefill.category_id || "";
@@ -927,9 +924,7 @@ function NuevoProducto({
     if (bp) setBuy(bp);
     if (sp) setSell(sp);
     if (str) setStrain(str as Strain);
-    const shouldSubmit = prefill.autoSubmit && catId && nm && st > 0 && sp > 0;
     clearPrefill();
-    if (shouldSubmit) setTimeout(() => submitRef.current(), 80);
   }, [prefill]);
 
   const nameDict = useDictation((t) => setName(t));
@@ -995,9 +990,6 @@ function NuevoProducto({
       }
     })();
   }
-  submitRef.current = submit;
-
-
   if (cats.length === 0)
     return (
       <div className="bg-card/60 border border-neon/20 rounded-2xl p-8 text-center">
@@ -1113,16 +1105,13 @@ function NuevaCategoria({
   const [smokeable, setSmokeable] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const submitRef = useRef<() => void>(() => {});
   useEffect(() => {
     if (!prefill) return;
     const nm = prefill.name || "";
     if (nm) setName(nm);
     if (prefill.unit_type) setUnit(prefill.unit_type);
     if (typeof prefill.is_smokeable === "boolean") setSmokeable(prefill.is_smokeable);
-    const shouldSubmit = prefill.autoSubmit && nm.trim();
     clearPrefill();
-    if (shouldSubmit) setTimeout(() => submitRef.current(), 80);
   }, [prefill]);
 
   async function submit() {
@@ -1148,9 +1137,6 @@ function NuevaCategoria({
     setSmokeable(false);
     onCreated();
   }
-  submitRef.current = submit;
-
-
   const ejemplos = ["Flores", "Hash", "Extracciones", "Bebidas", "Parafernalia", "Prerolled"];
 
   return (
