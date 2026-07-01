@@ -97,14 +97,122 @@ function ProductosPage() {
       .replace(/\b(crea|crear|creare|nuevo|nuovo|nueva|alta|a[nñ]adir|agregar|registrar)\b/gi, "")
       .replace(/\b(prod(?:u[cç]?t[oa]|ott[oi])|produvto|productos?)\b/gi, "")
       .replace(/\b(en|nel|nella|nello|categoria|categor[ií]a)\b.*$/i, "")
+      .replace(/\b(stock|compra|venta|precio|prezzo|indica|sativa|h[ií]brida|hibrida)\b.*$/i, "")
+      .replace(/\d+([.,]\d+)?/g, "")
       .replace(/[.,;:!?]+/g, " ")
       .replace(/\s+/g, " ")
       .trim();
   }
 
+  // Fast local parser: fills fields instantly without waiting for AI.
+  function localParse(text: string): {
+    action: "create_product" | "create_category" | "search" | "none";
+    prod?: any;
+    cat?: any;
+    query?: string;
+  } {
+    const t = text.trim();
+    const low = t.toLowerCase();
+    const norm = (s: string) =>
+      s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+    const isProd =
+      /\b(crea|crear|creare|nuevo|nuovo|nueva|alta|a[nñ]adir|agregar|registrar)\b[\s\S]{0,25}\b(prod(?:u[cç]?t[oa]|ott[oi])|produvto|productos?)\b/i.test(
+        low,
+      );
+    const isCat =
+      /\b(crea|crear|creare|nueva|nuova|alta|a[nñ]adir|agregar)\b[\s\S]{0,25}\b(categor[ií]a|categoria|categorie)\b/i.test(
+        low,
+      );
+
+    if (isProd) {
+      const num = (rx: RegExp) => {
+        const m = low.match(rx);
+        return m ? parseFloat(m[1].replace(",", ".")) : 0;
+      };
+      const stock = num(/\bstock\s+(\d+(?:[.,]\d+)?)/i);
+      const buy = num(/\b(?:compra|coste|costo)\s+(\d+(?:[.,]\d+)?)/i);
+      const sell = num(/\b(?:venta|precio|prezzo|vende|vendita)\s+(\d+(?:[.,]\d+)?)/i);
+      const strain = /\bindica\b/i.test(low)
+        ? "indica"
+        : /\bsativa\b/i.test(low)
+          ? "sativa"
+          : /\bh[ií]brida\b/i.test(low)
+            ? "hibrida"
+            : "";
+      let category_id = "";
+      const catM = low.match(/\ben\s+(?:categor[ií]a\s+)?([a-zá-úñ]+)/i);
+      if (catM) {
+        const guess = norm(catM[1]);
+        const found = cats.find((c) => norm(c.name).includes(guess));
+        if (found) category_id = found.id;
+      }
+      const name = cleanProductNameFromCommand(t);
+      return {
+        action: "create_product",
+        prod: {
+          category_id,
+          name,
+          stock,
+          buy_price: buy,
+          sell_price: sell,
+          strain,
+        },
+      };
+    }
+
+    if (isCat) {
+      const name = t
+        .replace(
+          /\b(crea|crear|creare|nueva|nuova|alta|a[nñ]adir|agregar)\b[\s\S]{0,25}\b(categor[ií]a|categoria|categorie)\b/i,
+          "",
+        )
+        .replace(/\b(de|para|con)\b/gi, "")
+        .replace(/\b(gramos?|gr|unidades?|fumables?)\b/gi, "")
+        .replace(/[.,;:!?]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      const unit_type = /\b(gramos?|gr)\b/i.test(low) ? "gr" : "unit";
+      const is_smokeable =
+        /\b(fumables?|flores?|hash|extracci|marihuana|cannabis)\b/i.test(low);
+      return {
+        action: "create_category",
+        cat: { name, unit_type, is_smokeable },
+      };
+    }
+
+    if (/\b(busca|buscar|buscame|encuentra|cerca|trova)\b/i.test(low)) {
+      const query = t
+        .replace(/\b(busca(?:me|r)?|encuentra|cerca(?:r|me)?|trova(?:mi)?)\b/gi, "")
+        .replace(/[.,;:!?]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      return { action: "search", query };
+    }
+
+    return { action: "none" };
+  }
+
   async function applyProductCommand(text: string, requestedTab?: TabId) {
     if (requestedTab === "nuevo" || requestedTab === "categoria" || requestedTab === "stock")
       setTab(requestedTab);
+
+    // 1) Fast local parse — fill fields immediately.
+    const local = localParse(text);
+    if (local.action === "create_product") {
+      setPrefillProduct(local.prod);
+      setTab("nuevo");
+      toast.success("Producto pre-rellenado");
+    } else if (local.action === "create_category") {
+      setPrefillCategory(local.cat);
+      setTab("categoria");
+      toast.success("Categoría pre-rellenada");
+    } else if (local.action === "search") {
+      setTab("stock");
+      setStockSearch(local.query || text);
+    }
+
+    // 2) AI refinement in background — improves category match / name.
     try {
       const cmd = await parseCmd({
         data: {
@@ -117,36 +225,38 @@ function ProductosPage() {
           })),
         },
       });
-      if (cmd.action === "search") {
+      if (cmd.action === "search" && local.action === "none") {
         setTab("stock");
         setStockSearch(cmd.query || text);
       } else if (cmd.action === "create_category") {
         setPrefillCategory({
-          name: cmd.category_name,
-          unit_type: cmd.unit_type || "unit",
-          is_smokeable: cmd.is_smokeable,
+          name: cmd.category_name || local.cat?.name || "",
+          unit_type: cmd.unit_type || local.cat?.unit_type || "unit",
+          is_smokeable: cmd.is_smokeable || local.cat?.is_smokeable || false,
         });
         setTab("categoria");
       } else if (cmd.action === "create_product") {
         setPrefillProduct({
-          category_id: cmd.category_id,
-          name: cmd.product_name || cleanProductNameFromCommand(text),
-          stock: cmd.stock,
-          buy_price: cmd.buy_price,
-          sell_price: cmd.sell_price,
-          strain: cmd.strain || "",
+          category_id: cmd.category_id || local.prod?.category_id || "",
+          name: cmd.product_name || local.prod?.name || cleanProductNameFromCommand(text),
+          stock: cmd.stock || local.prod?.stock || 0,
+          buy_price: cmd.buy_price || local.prod?.buy_price || 0,
+          sell_price: cmd.sell_price || local.prod?.sell_price || 0,
+          strain: cmd.strain || local.prod?.strain || "",
         });
         setTab("nuevo");
-      } else if (requestedTab) {
+      } else if (requestedTab && local.action === "none") {
         if (requestedTab === "nuevo")
           setPrefillProduct({ name: cleanProductNameFromCommand(text) });
         setTab(requestedTab);
       }
     } catch (e: any) {
-      if (requestedTab === "nuevo") {
-        setPrefillProduct({ name: cleanProductNameFromCommand(text) });
-        setTab("nuevo");
-      } else if (!requestedTab) toast.error(e?.message || "Error de voz");
+      if (local.action === "none") {
+        if (requestedTab === "nuevo") {
+          setPrefillProduct({ name: cleanProductNameFromCommand(text) });
+          setTab("nuevo");
+        } else if (!requestedTab) toast.error(e?.message || "Error de voz");
+      }
     }
   }
 
