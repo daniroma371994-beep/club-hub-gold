@@ -611,6 +611,10 @@ function Stock({
     | { prod: Product; delta: number; newStock: number; raw: string }
     | null
   >(null);
+  const [pendingChoice, setPendingChoice] = useState<
+    | { delta: number; raw: string; candidates: Product[] }
+    | null
+  >(null);
   const dict = useDictation((t) => applyVoice(t));
 
   const q = search.trim().toLowerCase();
@@ -686,6 +690,12 @@ function Stock({
           ? visible[0]
           : null;
       if (!prod) {
+        const delta = adjSign * adjQty;
+        if (!target && visible.length > 1) {
+          setPendingChoice({ delta, raw, candidates: visible.slice(0, 12) });
+          toast.info("Elige el producto y confirma el movimiento");
+          return;
+        }
         toast.error(target ? `Producto no encontrado: ${adjName}` : "Di también el nombre del producto");
         return;
       }
@@ -696,6 +706,7 @@ function Stock({
         return;
       }
       // Stage the change: user must confirm before we write it.
+      setPendingChoice(null);
       setPendingAdj({ prod, delta, newStock, raw });
       toast.info(`Revisa y confirma: ${prod.name} ${delta > 0 ? "+" : ""}${delta}`);
       return;
@@ -806,8 +817,55 @@ function Stock({
     onChange();
   }
 
+  function choosePendingProduct(prod: Product) {
+    if (!pendingChoice) return;
+    const newStock = Number(prod.stock) + pendingChoice.delta;
+    if (newStock < 0) {
+      toast.error(`Stock insuficiente (${prod.stock})`);
+      return;
+    }
+    setPendingAdj({ prod, delta: pendingChoice.delta, newStock, raw: pendingChoice.raw });
+    setPendingChoice(null);
+  }
+
   return (
     <div className="space-y-6">
+      {pendingChoice && (
+        <div className="rounded-2xl border-2 border-neon bg-neon/10 p-4 glow-neon-soft">
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.3em] text-neon-dim">Elige producto</div>
+              <div className="text-sm text-foreground">
+                Movimiento: <span className={pendingChoice.delta > 0 ? "text-neon" : "text-destructive"}>
+                  {pendingChoice.delta > 0 ? "+" : ""}{pendingChoice.delta}
+                </span>
+              </div>
+              <div className="text-xs italic text-muted-foreground truncate">"{pendingChoice.raw}"</div>
+            </div>
+            <button
+              onClick={() => setPendingChoice(null)}
+              className="px-3 py-1.5 rounded-lg border border-border text-xs uppercase tracking-widest text-muted-foreground"
+            >
+              Cancelar
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {pendingChoice.candidates.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => choosePendingProduct(p)}
+                className="text-left rounded-lg bg-input/40 border border-border px-3 py-2 hover:border-neon"
+              >
+                <div className="text-sm text-foreground truncate">{p.name}</div>
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                  Stock actual {Number(p.stock).toFixed(2)}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {pendingAdj && (
         <div className="rounded-2xl border-2 border-neon bg-neon/10 p-4 flex flex-col sm:flex-row sm:items-center gap-3 glow-neon-soft">
           <div className="flex-1 min-w-0">
