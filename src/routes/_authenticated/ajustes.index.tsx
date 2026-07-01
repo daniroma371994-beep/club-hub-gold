@@ -36,6 +36,7 @@ function AjustesIndex() {
         <Tile to="/ajustes/socios" icon={Users} title="Socios" text="Elige qué campos pedir al crear un socio y cuáles son obligatorios." />
         <Tile to="/ajustes/colaboradores" icon={ShieldCheck} title="Colaboradores" text="Crea cuentas con permisos específicos para tu equipo." />
         <Tile to="/ajustes/dispositivos" icon={Cable} title="Dispositivos" text="Conecta báscula, lector QR y tableta de firma." />
+        <Tile to="/ajustes/informes" icon={BarChart3} title="Informes" text="Gráficos de stock añadido, ventas y productos más vendidos." />
       </div>
     </SnoopLayout>
   );
