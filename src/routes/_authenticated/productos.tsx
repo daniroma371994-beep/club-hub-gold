@@ -519,19 +519,83 @@ function Stock({
       .replace(/[\u0300-\u036f]/g, "")
       .trim();
   }
-  function applyVoice(text: string) {
-    const t = norm(text)
+  async function applyVoice(text: string) {
+    const raw = text.trim();
+    const t = norm(raw)
       .replace(/[.,;:!?]+$/g, "")
       .trim();
     if (!t) return;
-    // Strip filler verbs
+
+    // --- Stock adjustment: "stock <nombre> añadir/quitar N (gr|u)" or "añade N a <nombre>"
+    const adjRx =
+      /^(?:stock\s+)?(.+?)\s+(a[nñ]ad[ei]r?|sumar?|mas|\+|quitar?|restar?|menos|-|remover)\s+(\d+(?:[.,]\d+)?)\s*(?:gr|gramos?|u|unidad(?:es)?)?$/i;
+    const addToRx =
+      /^(?:a[nñ]ad[ei]r?|suma(?:r)?|agrega(?:r)?|mete(?:r)?|pon(?:er)?)\s+(\d+(?:[.,]\d+)?)\s*(?:gr|gramos?|u|unidad(?:es)?)?\s+(?:a|al|en)\s+(.+)$/i;
+    const removeFromRx =
+      /^(?:quita(?:r)?|resta(?:r)?|saca(?:r)?|remover)\s+(\d+(?:[.,]\d+)?)\s*(?:gr|gramos?|u|unidad(?:es)?)?\s+(?:de|del|a)\s+(.+)$/i;
+
+    let adjName = "";
+    let adjSign = 0;
+    let adjQty = 0;
+    let m = t.match(adjRx);
+    if (m) {
+      adjName = m[1];
+      const op = m[2].toLowerCase();
+      adjSign = /a[nñ]ad|sumar|mas|\+/.test(op) ? 1 : -1;
+      adjQty = parseFloat(m[3].replace(",", "."));
+    } else if ((m = t.match(addToRx))) {
+      adjSign = 1;
+      adjQty = parseFloat(m[1].replace(",", "."));
+      adjName = m[2];
+    } else if ((m = t.match(removeFromRx))) {
+      adjSign = -1;
+      adjQty = parseFloat(m[1].replace(",", "."));
+      adjName = m[2];
+    }
+
+    if (adjName && adjQty > 0) {
+      const target = norm(adjName).replace(/^(el|la|los|las)\s+/, "").trim();
+      const prod = prods.find((p) => {
+        const n = norm(p.name);
+        return n === target || n.includes(target) || target.includes(n);
+      });
+      if (!prod) {
+        toast.error(`Producto no encontrado: ${adjName}`);
+        return;
+      }
+      const delta = adjSign * adjQty;
+      const newStock = Number(prod.stock) + delta;
+      if (newStock < 0) {
+        toast.error(`Stock insuficiente (${prod.stock}) para restar ${adjQty}`);
+        return;
+      }
+      const { error } = await supabase
+        .from("products")
+        .update({ stock: newStock })
+        .eq("id", prod.id);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      await supabase.from("stock_movements").insert({
+        club_id: (prod as any).club_id,
+        product_id: prod.id,
+        delta,
+        reason: delta > 0 ? "voice_add" : "voice_remove",
+        notes: raw,
+      } as any);
+      toast.success(`${prod.name}: ${delta > 0 ? "+" : ""}${delta} → ${newStock}`);
+      onChange();
+      return;
+    }
+
+    // Strip filler verbs for category / search matching
     const cleaned = t
       .replace(
-        /^(ver|mostrar|abre|abrir|categor[ií]a|filtra|filtrar|ir a|ve a|busca|buscar|buscame)\s+/i,
+        /^(ver|mostrar|abre|abrir|categor[ií]a|filtra|filtrar|ir a|ve a|busca|buscar|buscame|stock)\s+/i,
         "",
       )
       .trim();
-    // Try exact / contains match against categories first
     const match = cats.find((c) => {
       const n = norm(c.name);
       return n === cleaned || n.includes(cleaned) || cleaned.includes(n);
@@ -542,13 +606,11 @@ function Stock({
       toast.success(`Categoría: ${match.name}`);
       return;
     }
-    // Reserved word "todas"
     if (/^(todas|todo|todos|all)$/i.test(cleaned)) {
       setFilter("all");
       setSearch("");
       return;
     }
-    // Fallback: treat as product search across all
     setFilter("all");
     setSearch(cleaned);
   }
