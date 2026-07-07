@@ -22,6 +22,7 @@ import { Route as AuthenticatedSociIndexRouteImport } from './routes/_authentica
 import { Route as AuthenticatedAjustesIndexRouteImport } from './routes/_authenticated/ajustes.index'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as AuthenticatedSociNuovoRouteImport } from './routes/_authenticated/soci.nuovo'
+import { Route as AuthenticatedSociImportarRouteImport } from './routes/_authenticated/soci.importar'
 import { Route as AuthenticatedSociGestisciRouteImport } from './routes/_authenticated/soci.gestisci'
 import { Route as AuthenticatedSociIdRouteImport } from './routes/_authenticated/soci.$id'
 import { Route as AuthenticatedAjustesSociosRouteImport } from './routes/_authenticated/ajustes.socios'
@@ -99,6 +100,12 @@ const AuthenticatedSociNuovoRoute = AuthenticatedSociNuovoRouteImport.update({
   path: '/soci/nuovo',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSociImportarRoute =
+  AuthenticatedSociImportarRouteImport.update({
+    id: '/soci/importar',
+    path: '/soci/importar',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSociGestisciRoute =
   AuthenticatedSociGestisciRouteImport.update({
     id: '/soci/gestisci',
@@ -181,6 +188,7 @@ export interface FileRoutesByFullPath {
   '/ajustes/socios': typeof AuthenticatedAjustesSociosRoute
   '/soci/$id': typeof AuthenticatedSociIdRouteWithChildren
   '/soci/gestisci': typeof AuthenticatedSociGestisciRoute
+  '/soci/importar': typeof AuthenticatedSociImportarRoute
   '/soci/nuovo': typeof AuthenticatedSociNuovoRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/ajustes/': typeof AuthenticatedAjustesIndexRoute
@@ -206,6 +214,7 @@ export interface FileRoutesByTo {
   '/ajustes/socios': typeof AuthenticatedAjustesSociosRoute
   '/soci/$id': typeof AuthenticatedSociIdRouteWithChildren
   '/soci/gestisci': typeof AuthenticatedSociGestisciRoute
+  '/soci/importar': typeof AuthenticatedSociImportarRoute
   '/soci/nuovo': typeof AuthenticatedSociNuovoRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/ajustes': typeof AuthenticatedAjustesIndexRoute
@@ -233,6 +242,7 @@ export interface FileRoutesById {
   '/_authenticated/ajustes/socios': typeof AuthenticatedAjustesSociosRoute
   '/_authenticated/soci/$id': typeof AuthenticatedSociIdRouteWithChildren
   '/_authenticated/soci/gestisci': typeof AuthenticatedSociGestisciRoute
+  '/_authenticated/soci/importar': typeof AuthenticatedSociImportarRoute
   '/_authenticated/soci/nuovo': typeof AuthenticatedSociNuovoRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/_authenticated/ajustes/': typeof AuthenticatedAjustesIndexRoute
@@ -260,6 +270,7 @@ export interface FileRouteTypes {
     | '/ajustes/socios'
     | '/soci/$id'
     | '/soci/gestisci'
+    | '/soci/importar'
     | '/soci/nuovo'
     | '/lovable/email/suppression'
     | '/ajustes/'
@@ -285,6 +296,7 @@ export interface FileRouteTypes {
     | '/ajustes/socios'
     | '/soci/$id'
     | '/soci/gestisci'
+    | '/soci/importar'
     | '/soci/nuovo'
     | '/lovable/email/suppression'
     | '/ajustes'
@@ -311,6 +323,7 @@ export interface FileRouteTypes {
     | '/_authenticated/ajustes/socios'
     | '/_authenticated/soci/$id'
     | '/_authenticated/soci/gestisci'
+    | '/_authenticated/soci/importar'
     | '/_authenticated/soci/nuovo'
     | '/lovable/email/suppression'
     | '/_authenticated/ajustes/'
@@ -426,6 +439,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSociNuovoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/soci/importar': {
+      id: '/_authenticated/soci/importar'
+      path: '/soci/importar'
+      fullPath: '/soci/importar'
+      preLoaderRoute: typeof AuthenticatedSociImportarRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/soci/gestisci': {
       id: '/_authenticated/soci/gestisci'
       path: '/soci/gestisci'
@@ -529,6 +549,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAjustesSociosRoute: typeof AuthenticatedAjustesSociosRoute
   AuthenticatedSociIdRoute: typeof AuthenticatedSociIdRouteWithChildren
   AuthenticatedSociGestisciRoute: typeof AuthenticatedSociGestisciRoute
+  AuthenticatedSociImportarRoute: typeof AuthenticatedSociImportarRoute
   AuthenticatedSociNuovoRoute: typeof AuthenticatedSociNuovoRoute
   AuthenticatedAjustesIndexRoute: typeof AuthenticatedAjustesIndexRoute
   AuthenticatedSociIndexRoute: typeof AuthenticatedSociIndexRoute
@@ -547,6 +568,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAjustesSociosRoute: AuthenticatedAjustesSociosRoute,
   AuthenticatedSociIdRoute: AuthenticatedSociIdRouteWithChildren,
   AuthenticatedSociGestisciRoute: AuthenticatedSociGestisciRoute,
+  AuthenticatedSociImportarRoute: AuthenticatedSociImportarRoute,
   AuthenticatedSociNuovoRoute: AuthenticatedSociNuovoRoute,
   AuthenticatedAjustesIndexRoute: AuthenticatedAjustesIndexRoute,
   AuthenticatedSociIndexRoute: AuthenticatedSociIndexRoute,
