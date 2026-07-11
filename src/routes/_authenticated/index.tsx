@@ -80,16 +80,13 @@ function SnoopHome() {
             <ShieldCheck className="w-5 h-5" />
             <span className="text-xs uppercase tracking-[0.25em] font-display">Snoop Admin</span>
           </Link>
-          <Link to="/soci" className="flex items-center justify-center gap-2 px-4 py-5 rounded-xl border border-neon/30 bg-card/60 backdrop-blur text-foreground hover:bg-neon/10 transition">
-            <Building2 className="w-5 h-5 text-neon" />
-            <span className="text-xs uppercase tracking-[0.25em] font-display">Entrar a Medusa 23 (test)</span>
-          </Link>
         </div>
 
         <p className="mt-8 text-[11px] uppercase tracking-[0.3em] text-neon-dim">
-          Pulsa el menú ☰ para navegar
+          Solo super admin · Gestión de clubs
         </p>
       </div>
     </SnoopLayout>
   );
 }
+
