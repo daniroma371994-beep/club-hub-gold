@@ -11,11 +11,12 @@ type NavItem = { to: string; label: string; icon: any; show: (a: { isAdmin: bool
 const NAV: NavItem[] = [
   { to: "/", label: "Inicio", icon: Home, show: () => true },
   { to: "/snoop-admin", label: "Snoop Admin", icon: Shield, show: (a) => a.isSuperAdmin },
-  { to: "/soci", label: "Socios", icon: Users, show: () => true },
-  { to: "/productos", label: "Productos", icon: Package, show: () => true },
-  { to: "/caja", label: "Caja", icon: Banknote, show: () => true },
-  { to: "/ajustes", label: "Ajustes", icon: Settings, show: (a) => a.isAdmin },
+  { to: "/soci", label: "Socios", icon: Users, show: (a) => !a.isSuperAdmin },
+  { to: "/productos", label: "Productos", icon: Package, show: (a) => !a.isSuperAdmin },
+  { to: "/caja", label: "Caja", icon: Banknote, show: (a) => !a.isSuperAdmin },
+  { to: "/ajustes", label: "Ajustes", icon: Settings, show: (a) => a.isAdmin && !a.isSuperAdmin },
 ];
+
 
 export function SnoopLayout({ children, title, subtitle }: { children: ReactNode; title?: string; subtitle?: string }) {
   const { user, access, isAdmin, isSuperAdmin } = useAuth();
