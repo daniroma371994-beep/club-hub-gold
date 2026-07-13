@@ -48,6 +48,29 @@ function SocioDetail() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Partial<Member>>({});
   const [savingEdit, setSavingEdit] = useState(false);
+  const [resendingQr, setResendingQr] = useState(false);
+
+  async function resendQr() {
+    if (!member) return;
+    if (!member.email) return toast.error("Este socio no tiene email");
+    setResendingQr(true);
+    try {
+      const { data: club } = await supabase.from("clubs").select("name").eq("id", (member as any).club_id ?? "").maybeSingle();
+      const { sendMemberQrEmail } = await import("@/lib/member-qr");
+      await sendMemberQrEmail({
+        memberId: member.id,
+        memberNumber: member.member_number,
+        fullName: `${member.first_name} ${member.last_name}`.trim(),
+        email: member.email,
+        clubName: (club as any)?.name ?? "Club",
+      });
+      toast.success("QR reenviado por email");
+    } catch (e: any) {
+      toast.error(e.message ?? "No se pudo reenviar");
+    } finally {
+      setResendingQr(false);
+    }
+  }
 
   async function saveEdit() {
     if (!member) return;
