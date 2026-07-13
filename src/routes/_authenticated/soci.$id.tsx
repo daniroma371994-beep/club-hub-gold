@@ -278,6 +278,15 @@ function SocioDetail() {
             )}
             <div className="font-display text-neon tracking-[0.3em] mt-3">{member.member_number}</div>
             <p className="text-[10px] text-muted-foreground mt-1">Escanea el QR o dicta el número para abrir esta ficha.</p>
+            <button
+              type="button"
+              onClick={resendQr}
+              disabled={resendingQr || !member.email}
+              className="mt-4 w-full flex items-center justify-center gap-2 border border-neon/40 text-neon py-2 rounded-lg text-[11px] uppercase tracking-widest hover:bg-neon/10 disabled:opacity-50"
+              title={member.email ? "" : "Este socio no tiene email"}
+            >
+              <Mail className="w-3.5 h-3.5" /> {resendingQr ? "Enviando…" : "Reenviar QR por email"}
+            </button>
           </div>
 
           <button
