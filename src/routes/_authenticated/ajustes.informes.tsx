@@ -49,6 +49,7 @@ function InformesPage() {
   const [movs, setMovs] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [cats, setCats] = useState<any[]>([]);
+  const [checkIns, setCheckIns] = useState<any[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
@@ -57,19 +58,50 @@ function InformesPage() {
     const since = new Date(Date.now() - days * 86400000).toISOString();
     setDataLoading(true);
     (async () => {
-      const [oi, sm, pr, ct] = await Promise.all([
+      const [oi, sm, pr, ct, ci] = await Promise.all([
         supabase.from("order_items").select("*").gte("created_at", since),
         supabase.from("stock_movements").select("*").gte("created_at", since),
         supabase.from("products").select("id,name,stock,buy_price,sell_price,category_id"),
         supabase.from("product_categories").select("id,name,unit_type"),
+        supabase.from("check_ins").select("id,direction,created_at,member_id").gte("created_at", since),
       ]);
       setItems(oi.data ?? []);
       setMovs(sm.data ?? []);
       setProducts(pr.data ?? []);
       setCats(ct.data ?? []);
+      setCheckIns(ci.data ?? []);
       setDataLoading(false);
     })();
   }, [range, isAdmin]);
+
+  const accessStats = useMemo(() => {
+    const days = RANGES.find((r) => r.id === range)!.days;
+    const startToday = new Date(); startToday.setHours(0, 0, 0, 0);
+    const today = checkIns.filter((c) => new Date(c.created_at) >= startToday);
+    const inToday = today.filter((c) => c.direction === "in").length;
+    const outToday = today.filter((c) => c.direction === "out").length;
+    // Currently inside: last direction per member today
+    const lastPerMember = new Map<string, string>();
+    for (const c of [...today].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))) {
+      if (!lastPerMember.has(c.member_id)) lastPerMember.set(c.member_id, c.direction);
+    }
+    let insideNow = 0; lastPerMember.forEach((d) => { if (d === "in") insideNow++; });
+
+    // Daily series
+    const buckets = new Map<string, { day: string; entradas: number; salidas: number }>();
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 86400000);
+      const key = d.toISOString().slice(0, 10);
+      buckets.set(key, { day: key.slice(5), entradas: 0, salidas: 0 });
+    }
+    for (const c of checkIns) {
+      const key = String(c.created_at).slice(0, 10);
+      const b = buckets.get(key);
+      if (!b) continue;
+      if (c.direction === "in") b.entradas++; else b.salidas++;
+    }
+    return { inToday, outToday, insideNow, total: checkIns.length, daily: [...buckets.values()] };
+  }, [checkIns, range]);
 
   const stats = useMemo(() => {
     const revenue = items.reduce((s, i) => s + Number(i.line_total_cents || 0), 0) / 100;
