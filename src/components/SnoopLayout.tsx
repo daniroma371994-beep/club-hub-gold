@@ -12,6 +12,7 @@ const NAV: NavItem[] = [
   { to: "/", label: "Inicio", icon: Home, show: () => true },
   { to: "/snoop-admin", label: "Snoop Admin", icon: Shield, show: (a) => a.isSuperAdmin },
   { to: "/soci", label: "Socios", icon: Users, show: (a) => !a.isSuperAdmin },
+  { to: "/control-acceso", label: "Control acceso", icon: ScanLine, show: (a) => !a.isSuperAdmin },
   { to: "/productos", label: "Productos", icon: Package, show: (a) => !a.isSuperAdmin },
   { to: "/caja", label: "Caja", icon: Banknote, show: (a) => !a.isSuperAdmin },
   { to: "/ajustes", label: "Ajustes", icon: Settings, show: (a) => a.isAdmin && !a.isSuperAdmin },
