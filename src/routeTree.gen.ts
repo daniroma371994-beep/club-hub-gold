@@ -18,6 +18,7 @@ import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as AuthenticatedSnoopAdminRouteImport } from './routes/_authenticated/snoop-admin'
 import { Route as AuthenticatedProductosRouteImport } from './routes/_authenticated/productos'
+import { Route as AuthenticatedControlAccesoRouteImport } from './routes/_authenticated/control-acceso'
 import { Route as AuthenticatedCajaRouteImport } from './routes/_authenticated/caja'
 import { Route as AuthenticatedSociIndexRouteImport } from './routes/_authenticated/soci.index'
 import { Route as AuthenticatedAjustesIndexRouteImport } from './routes/_authenticated/ajustes.index'
@@ -81,6 +82,12 @@ const AuthenticatedProductosRoute = AuthenticatedProductosRouteImport.update({
   path: '/productos',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedControlAccesoRoute =
+  AuthenticatedControlAccesoRouteImport.update({
+    id: '/control-acceso',
+    path: '/control-acceso',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedCajaRoute = AuthenticatedCajaRouteImport.update({
   id: '/caja',
   path: '/caja',
@@ -191,6 +198,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/caja': typeof AuthenticatedCajaRoute
+  '/control-acceso': typeof AuthenticatedControlAccesoRoute
   '/productos': typeof AuthenticatedProductosRoute
   '/snoop-admin': typeof AuthenticatedSnoopAdminRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -218,6 +226,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/caja': typeof AuthenticatedCajaRoute
+  '/control-acceso': typeof AuthenticatedControlAccesoRoute
   '/productos': typeof AuthenticatedProductosRoute
   '/snoop-admin': typeof AuthenticatedSnoopAdminRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -248,6 +257,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/_authenticated/caja': typeof AuthenticatedCajaRoute
+  '/_authenticated/control-acceso': typeof AuthenticatedControlAccesoRoute
   '/_authenticated/productos': typeof AuthenticatedProductosRoute
   '/_authenticated/snoop-admin': typeof AuthenticatedSnoopAdminRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -279,6 +289,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/unsubscribe'
     | '/caja'
+    | '/control-acceso'
     | '/productos'
     | '/snoop-admin'
     | '/email/unsubscribe'
@@ -306,6 +317,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/unsubscribe'
     | '/caja'
+    | '/control-acceso'
     | '/productos'
     | '/snoop-admin'
     | '/email/unsubscribe'
@@ -335,6 +347,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/unsubscribe'
     | '/_authenticated/caja'
+    | '/_authenticated/control-acceso'
     | '/_authenticated/productos'
     | '/_authenticated/snoop-admin'
     | '/email/unsubscribe'
@@ -435,6 +448,13 @@ declare module '@tanstack/react-router' {
       path: '/productos'
       fullPath: '/productos'
       preLoaderRoute: typeof AuthenticatedProductosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/control-acceso': {
+      id: '/_authenticated/control-acceso'
+      path: '/control-acceso'
+      fullPath: '/control-acceso'
+      preLoaderRoute: typeof AuthenticatedControlAccesoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/caja': {
@@ -579,6 +599,7 @@ const AuthenticatedSociIdRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCajaRoute: typeof AuthenticatedCajaRoute
+  AuthenticatedControlAccesoRoute: typeof AuthenticatedControlAccesoRoute
   AuthenticatedProductosRoute: typeof AuthenticatedProductosRoute
   AuthenticatedSnoopAdminRoute: typeof AuthenticatedSnoopAdminRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
@@ -597,6 +618,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCajaRoute: AuthenticatedCajaRoute,
+  AuthenticatedControlAccesoRoute: AuthenticatedControlAccesoRoute,
   AuthenticatedProductosRoute: AuthenticatedProductosRoute,
   AuthenticatedSnoopAdminRoute: AuthenticatedSnoopAdminRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,

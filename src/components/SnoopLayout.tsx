@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Home, Users, Package, LogOut, Menu, X, Shield, Banknote, Settings } from "lucide-react";
+import { Home, Users, Package, LogOut, Menu, X, Shield, Banknote, Settings, ScanLine } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import logoAsset from "@/assets/snoop-logo.png.asset.json";
