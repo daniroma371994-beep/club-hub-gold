@@ -18,7 +18,7 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import { TrendingUp, TrendingDown, Euro, Package } from "lucide-react";
+import { TrendingUp, TrendingDown, Euro, Package, ArrowRight, ArrowLeft as ArrowLeftIcon, Users } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/ajustes/informes")({
   component: InformesPage,
