@@ -34,6 +34,7 @@ import { Route as AuthenticatedAjustesColaboradoresRouteImport } from './routes/
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
+import { Route as ApiPublicQrCodeRouteImport } from './routes/api/public/qr.$code'
 import { Route as AuthenticatedSociIdPedidoRouteImport } from './routes/_authenticated/soci.$id.pedido'
 
 const UnsubscribeRoute = UnsubscribeRouteImport.update({
@@ -171,6 +172,11 @@ const LovableEmailQueueProcessRoute =
     path: '/lovable/email/queue/process',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicQrCodeRoute = ApiPublicQrCodeRouteImport.update({
+  id: '/api/public/qr/$code',
+  path: '/api/public/qr/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedSociIdPedidoRoute =
   AuthenticatedSociIdPedidoRouteImport.update({
     id: '/pedido',
@@ -201,6 +207,7 @@ export interface FileRoutesByFullPath {
   '/ajustes/': typeof AuthenticatedAjustesIndexRoute
   '/soci/': typeof AuthenticatedSociIndexRoute
   '/soci/$id/pedido': typeof AuthenticatedSociIdPedidoRoute
+  '/api/public/qr/$code': typeof ApiPublicQrCodeRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
@@ -228,6 +235,7 @@ export interface FileRoutesByTo {
   '/ajustes': typeof AuthenticatedAjustesIndexRoute
   '/soci': typeof AuthenticatedSociIndexRoute
   '/soci/$id/pedido': typeof AuthenticatedSociIdPedidoRoute
+  '/api/public/qr/$code': typeof ApiPublicQrCodeRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
@@ -257,6 +265,7 @@ export interface FileRoutesById {
   '/_authenticated/ajustes/': typeof AuthenticatedAjustesIndexRoute
   '/_authenticated/soci/': typeof AuthenticatedSociIndexRoute
   '/_authenticated/soci/$id/pedido': typeof AuthenticatedSociIdPedidoRoute
+  '/api/public/qr/$code': typeof ApiPublicQrCodeRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
@@ -286,6 +295,7 @@ export interface FileRouteTypes {
     | '/ajustes/'
     | '/soci/'
     | '/soci/$id/pedido'
+    | '/api/public/qr/$code'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
@@ -313,6 +323,7 @@ export interface FileRouteTypes {
     | '/ajustes'
     | '/soci'
     | '/soci/$id/pedido'
+    | '/api/public/qr/$code'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
@@ -341,6 +352,7 @@ export interface FileRouteTypes {
     | '/_authenticated/ajustes/'
     | '/_authenticated/soci/'
     | '/_authenticated/soci/$id/pedido'
+    | '/api/public/qr/$code'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
@@ -354,6 +366,7 @@ export interface RootRouteChildren {
   UnsubscribeRoute: typeof UnsubscribeRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
+  ApiPublicQrCodeRoute: typeof ApiPublicQrCodeRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
   LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
   LovableEmailTransactionalSendRoute: typeof LovableEmailTransactionalSendRoute
@@ -536,6 +549,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/qr/$code': {
+      id: '/api/public/qr/$code'
+      path: '/api/public/qr/$code'
+      fullPath: '/api/public/qr/$code'
+      preLoaderRoute: typeof ApiPublicQrCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/soci/$id/pedido': {
       id: '/_authenticated/soci/$id/pedido'
       path: '/pedido'
@@ -605,6 +625,7 @@ const rootRouteChildren: RootRouteChildren = {
   UnsubscribeRoute: UnsubscribeRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
+  ApiPublicQrCodeRoute: ApiPublicQrCodeRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
   LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
   LovableEmailTransactionalSendRoute: LovableEmailTransactionalSendRoute,
