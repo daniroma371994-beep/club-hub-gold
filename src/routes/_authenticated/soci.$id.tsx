@@ -55,7 +55,8 @@ function SocioDetail() {
     if (!member.email) return toast.error("Este socio no tiene email");
     setResendingQr(true);
     try {
-      const { data: club } = await supabase.from("clubs").select("name").eq("id", (member as any).club_id ?? "").maybeSingle();
+      const { data: m2 } = await supabase.from("members").select("club_id").eq("id", member.id).maybeSingle();
+      const { data: club } = await supabase.from("clubs").select("name").eq("id", (m2 as any)?.club_id ?? "").maybeSingle();
       const { sendMemberQrEmail } = await import("@/lib/member-qr");
       await sendMemberQrEmail({
         memberId: member.id,
