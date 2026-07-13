@@ -308,6 +308,30 @@ function InformesPage() {
             />
           </div>
 
+          {/* Control de acceso */}
+          <div>
+            <h3 className="text-[11px] uppercase tracking-[0.3em] text-neon-dim mb-3">Control de acceso</h3>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+              <Kpi icon={Users} label="Dentro ahora" value={String(accessStats.insideNow)} tint="neon" />
+              <Kpi icon={ArrowRight} label="Entradas hoy" value={String(accessStats.inToday)} tint="neon" />
+              <Kpi icon={ArrowLeftIcon} label="Salidas hoy" value={String(accessStats.outToday)} tint="red" />
+              <Kpi icon={Users} label={`Total accesos (${range})`} value={String(accessStats.total)} tint="neon" />
+            </div>
+            <ChartCard title="Entradas y salidas por día">
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={accessStats.daily}>
+                  <CartesianGrid stroke="#333" strokeDasharray="3 3" />
+                  <XAxis dataKey="day" stroke="#888" fontSize={10} />
+                  <YAxis stroke="#888" fontSize={10} allowDecimals={false} />
+                  <Tooltip contentStyle={{ background: "#0a0a0a", border: "1px solid #39FF14" }} />
+                  <Legend />
+                  <Bar dataKey="entradas" fill={NEON} name="Entradas" />
+                  <Bar dataKey="salidas" fill={RED} name="Salidas" />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCard>
+          </div>
+
           {/* Ventas diarias */}
           <ChartCard title="Ingresos por día">
             <ResponsiveContainer width="100%" height={220}>
