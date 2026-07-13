@@ -357,7 +357,37 @@ function NewSocio() {
       });
       if (error) throw error;
 
-      toast.success("Socio creado correctamente");
+      // Send the QR carnet by email if the socio provided one
+      try {
+        if (form.email.trim()) {
+          const { data: created } = await supabase
+            .from("members")
+            .select("member_number")
+            .eq("id", memberId)
+            .maybeSingle();
+          const { data: club } = await supabase
+            .from("clubs")
+            .select("name")
+            .eq("id", clubId)
+            .maybeSingle();
+          const { sendMemberQrEmail } = await import("@/lib/member-qr");
+          await sendMemberQrEmail({
+            memberId,
+            memberNumber: (created as any)?.member_number ?? "",
+            fullName: `${form.first_name} ${form.last_name}`.trim(),
+            email: form.email.trim(),
+            clubName: (club as any)?.name ?? "Club",
+          });
+          toast.success("Socio creado — QR enviado por email");
+        } else {
+          toast.success("Socio creado (sin email: no se envió el QR)");
+        }
+      } catch (mailErr: any) {
+        console.error("qr email failed", mailErr);
+        toast.warning("Socio creado, pero el email del QR no se pudo enviar");
+      }
+
+      try { window.localStorage.removeItem("snoop:new-member-transcript"); } catch {}
       nav({ to: "/soci/gestisci" });
     } catch (e: any) {
       toast.error(e.message);
