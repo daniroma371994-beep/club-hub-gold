@@ -64,6 +64,48 @@ export type Database = {
           },
         ]
       }
+      check_ins: {
+        Row: {
+          club_id: string
+          created_at: string
+          direction: string
+          id: string
+          member_id: string
+          scanned_by: string | null
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          direction: string
+          id?: string
+          member_id: string
+          scanned_by?: string | null
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          direction?: string
+          id?: string
+          member_id?: string
+          scanned_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "check_ins_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "check_ins_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_member_field_config: {
         Row: {
           club_id: string

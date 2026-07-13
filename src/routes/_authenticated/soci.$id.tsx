@@ -3,7 +3,7 @@ import { SnoopLayout } from "@/components/SnoopLayout";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, RefreshCw, Trash2, FileCheck, ShoppingBag, QrCode, Pencil, Save, X } from "lucide-react";
+import { ArrowLeft, RefreshCw, Trash2, FileCheck, ShoppingBag, QrCode, Pencil, Save, X, Mail } from "lucide-react";
 import { expiryBadge, formatPrice, signedUrl } from "@/lib/snoop";
 import { useAuth } from "@/hooks/useAuth";
 import QRCode from "qrcode";
@@ -48,6 +48,30 @@ function SocioDetail() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Partial<Member>>({});
   const [savingEdit, setSavingEdit] = useState(false);
+  const [resendingQr, setResendingQr] = useState(false);
+
+  async function resendQr() {
+    if (!member) return;
+    if (!member.email) return toast.error("Este socio no tiene email");
+    setResendingQr(true);
+    try {
+      const { data: m2 } = await supabase.from("members").select("club_id").eq("id", member.id).maybeSingle();
+      const { data: club } = await supabase.from("clubs").select("name").eq("id", (m2 as any)?.club_id ?? "").maybeSingle();
+      const { sendMemberQrEmail } = await import("@/lib/member-qr");
+      await sendMemberQrEmail({
+        memberId: member.id,
+        memberNumber: member.member_number,
+        fullName: `${member.first_name} ${member.last_name}`.trim(),
+        email: member.email,
+        clubName: (club as any)?.name ?? "Club",
+      });
+      toast.success("QR reenviado por email");
+    } catch (e: any) {
+      toast.error(e.message ?? "No se pudo reenviar");
+    } finally {
+      setResendingQr(false);
+    }
+  }
 
   async function saveEdit() {
     if (!member) return;
@@ -254,6 +278,15 @@ function SocioDetail() {
             )}
             <div className="font-display text-neon tracking-[0.3em] mt-3">{member.member_number}</div>
             <p className="text-[10px] text-muted-foreground mt-1">Escanea el QR o dicta el número para abrir esta ficha.</p>
+            <button
+              type="button"
+              onClick={resendQr}
+              disabled={resendingQr || !member.email}
+              className="mt-4 w-full flex items-center justify-center gap-2 border border-neon/40 text-neon py-2 rounded-lg text-[11px] uppercase tracking-widest hover:bg-neon/10 disabled:opacity-50"
+              title={member.email ? "" : "Este socio no tiene email"}
+            >
+              <Mail className="w-3.5 h-3.5" /> {resendingQr ? "Enviando…" : "Reenviar QR por email"}
+            </button>
           </div>
 
           <button

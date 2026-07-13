@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react'
 import { template as welcomeUserTemplate } from './welcome-user'
+import { template as memberQrTemplate } from './member-qr'
 
 export interface TemplateEntry {
   component: ComponentType<any>
@@ -11,4 +12,5 @@ export interface TemplateEntry {
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'welcome-user': welcomeUserTemplate,
+  'member-qr': memberQrTemplate,
 }
