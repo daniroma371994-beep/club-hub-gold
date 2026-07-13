@@ -148,20 +148,17 @@ function NewSocio() {
   }, []);
 
   useEffect(() => {
-    const readTranscript = (value: string | null) => {
-      if (!value) return;
-      try {
-        const parsed = JSON.parse(value) as { text?: string };
-        if (parsed.text) applyTranscriptToForm(parsed.text);
-      } catch {
-        // Ignore malformed storage values.
-      }
-    };
+    // Ensure the form is empty when opening the page: drop any leftover transcript
+    // from a previous socio creation.
+    try { window.localStorage.removeItem("snoop:new-member-transcript"); } catch {}
     const onStorage = (event: StorageEvent) => {
-      if (event.key === "snoop:new-member-transcript") readTranscript(event.newValue);
+      if (event.key !== "snoop:new-member-transcript" || !event.newValue) return;
+      try {
+        const parsed = JSON.parse(event.newValue) as { text?: string };
+        if (parsed.text) applyTranscriptToForm(parsed.text);
+      } catch {}
     };
     window.addEventListener("storage", onStorage);
-    readTranscript(window.localStorage.getItem("snoop:new-member-transcript"));
     return () => window.removeEventListener("storage", onStorage);
   }, [plans]);
 
