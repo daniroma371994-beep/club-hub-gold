@@ -130,6 +130,11 @@ function NewSocio() {
   formRef.current = form;
   const transcribe = useServerFn(transcribeAudio);
   const extract = useServerFn(extractMemberFields);
+  const extractFromImages = useServerFn(extractMemberFieldsFromImages);
+
+  // Document scan (OCR of DNI / passport)
+  const [scanStatus, setScanStatus] = useState<"idle" | "scanning">("idle");
+  const [scanPreviews, setScanPreviews] = useState<string[]>([]);
 
   useEffect(() => {
     supabase.from("membership_plans").select("id,name,duration_days,price_cents").eq("active", true).order("sort_order")
