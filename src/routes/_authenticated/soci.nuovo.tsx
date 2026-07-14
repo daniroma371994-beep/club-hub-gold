@@ -257,7 +257,60 @@ function NewSocio() {
     }
   }
 
-  // --- Voice: dictate and auto-fill fields ---
+  // --- Document OCR: take up to 2 photos of the DNI / passport and auto-fill fields ---
+  async function scanDocuments(files: FileList | File[]) {
+    const list = Array.from(files).slice(0, 2);
+    if (list.length === 0) return;
+    setScanStatus("scanning");
+    try {
+      // Compress + convert each file
+      const compressed: Blob[] = [];
+      for (const f of list) compressed.push(await compressImage(f, 1600, 0.85));
+
+      // Preview URLs
+      const previews = await Promise.all(
+        compressed.map(
+          (b) =>
+            new Promise<string>((res) => {
+              const r = new FileReader();
+              r.onload = () => res(r.result as string);
+              r.readAsDataURL(b);
+            }),
+        ),
+      );
+      setScanPreviews(previews);
+
+      // Base64 payload for the AI Gateway
+      const images = await Promise.all(
+        compressed.map(async (b) => ({ base64: await blobToBase64(b), mimeType: "image/jpeg" })),
+      );
+
+      const { fields } = await extractFromImages({ data: { images } });
+
+      setForm((f) => ({
+        ...f,
+        first_name: fields.first_name || f.first_name,
+        last_name: fields.last_name || f.last_name,
+        birth_date: fields.birth_date || f.birth_date,
+        dni_number: (fields.dni_number || f.dni_number).toUpperCase(),
+        address: fields.address || f.address,
+        city: fields.city || f.city,
+        postal_code: fields.postal_code || f.postal_code,
+      }));
+
+      // Reuse the front photo (first image) as the required DNI photo
+      const front = compressed[0];
+      set("dni_file", new File([front], "dni.jpg", { type: "image/jpeg" }));
+      set("dni_preview", previews[0]);
+
+      toast.success("Datos rellenados desde el documento");
+    } catch (e: any) {
+      toast.error(e.message ?? "No se pudo leer el documento");
+    } finally {
+      setScanStatus("idle");
+    }
+  }
+
   async function startRec() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
