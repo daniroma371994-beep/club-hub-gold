@@ -481,10 +481,58 @@ function NewSocio() {
           {recStatus === "idle" && lastHeard && (
             <p className="text-sm text-muted-foreground italic truncate">"{lastHeard}"</p>
           )}
+      </div>
+
+      {/* Document scan (OCR): take 1-2 photos of the DNI, fields auto-fill */}
+      <div className="max-w-3xl mb-6 rounded-2xl border border-neon/30 bg-card/70 backdrop-blur p-4">
+        <div className="flex items-center gap-4">
+          <div className="h-14 w-14 shrink-0 rounded-full flex items-center justify-center bg-gradient-neon text-primary-foreground glow-neon">
+            {scanStatus === "scanning" ? <Loader2 className="w-5 h-5 animate-spin" /> : <ScanLine className="w-6 h-6" />}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] uppercase tracking-[0.3em] text-neon-dim">Escanear documento</div>
+            <p className="text-sm text-muted-foreground">
+              Haz 1 o 2 fotos del DNI (frente y reverso) y se rellenarán los campos automáticamente.
+            </p>
+          </div>
+          <label className="cursor-pointer shrink-0 text-[11px] uppercase tracking-widest px-4 py-2.5 rounded-full border border-neon/40 text-neon hover:bg-neon/10 flex items-center gap-2">
+            <Camera className="w-4 h-4" />
+            {scanStatus === "scanning" ? "Leyendo..." : scanPreviews.length ? "Volver a escanear" : "Escanear"}
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              multiple
+              className="hidden"
+              disabled={scanStatus === "scanning"}
+              onChange={(e) => {
+                if (e.target.files && e.target.files.length) scanDocuments(e.target.files);
+                e.target.value = "";
+              }}
+            />
+          </label>
         </div>
+        {scanPreviews.length > 0 && (
+          <div className="mt-3 flex gap-2">
+            {scanPreviews.map((src, i) => (
+              <div key={i} className="relative">
+                <img src={src} alt={`documento ${i + 1}`} className="h-20 rounded-md border border-neon/30 object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setScanPreviews((p) => p.filter((_, j) => j !== i))}
+                  className="absolute -top-1.5 -right-1.5 bg-card border border-neon/40 rounded-full p-0.5 text-neon-dim hover:text-neon"
+                  aria-label="Quitar"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="bg-card/60 border border-neon/20 rounded-2xl p-6 md:p-8 max-w-3xl backdrop-blur space-y-8">
+
         {/* Datos personales */}
         <section>
           <h3 className="text-[11px] uppercase tracking-[0.3em] text-neon mb-4">Datos del socio</h3>
