@@ -481,7 +481,10 @@ function NewSocio() {
           {recStatus === "idle" && lastHeard && (
             <p className="text-sm text-muted-foreground italic truncate">"{lastHeard}"</p>
           )}
+        </div>
       </div>
+
+
 
       {/* Document scan (OCR): take 1-2 photos of the DNI, fields auto-fill */}
       <div className="max-w-3xl mb-6 rounded-2xl border border-neon/30 bg-card/70 backdrop-blur p-4">
