@@ -241,6 +241,73 @@ Estado actual: ${JSON.stringify(data.current)}`;
     }
   });
 
+// ---------- OCR: extract fields from a photo of an ID document ----------
+const DniImagesInput = z.object({
+  images: z
+    .array(z.object({ base64: z.string().min(1), mimeType: z.string().min(1) }))
+    .min(1)
+    .max(2),
+});
+
+const DniFieldsSchema = z.object({
+  first_name: z.string(),
+  last_name: z.string(),
+  birth_date: z.string(),
+  dni_number: z.string(),
+  address: z.string(),
+  city: z.string(),
+  postal_code: z.string(),
+});
+
+export const extractMemberFieldsFromImages = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => DniImagesInput.parse(d))
+  .handler(async ({ data }) => {
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key) throw new Error("Missing LOVABLE_API_KEY");
+    const gateway = createLovableAiGatewayProvider(key);
+    const model = gateway("google/gemini-2.5-flash");
+
+    const system = `Eres un OCR para documentos de identidad (DNI/NIE español, pasaporte o similar).
+Extrae los datos que aparecen VISIBLES en las fotos y devuelve JSON.
+Reglas:
+- first_name: nombre de pila con capitalización correcta (ej. "María José").
+- last_name: apellidos completos con capitalización correcta (ej. "García Pérez").
+- birth_date: SIEMPRE en formato YYYY-MM-DD.
+- dni_number: número completo tal cual aparece, sin espacios, con la letra en mayúscula (ej. "12345678A").
+- address: dirección con calle y número, tal como figura en el reverso del DNI.
+- city: municipio / localidad de residencia.
+- postal_code: código postal (5 dígitos).
+- Si un campo NO se ve o no estás seguro, devuelve cadena vacía "".
+- Nunca inventes datos que no aparezcan en la imagen.`;
+
+    try {
+      const { object } = await generateObject({
+        model,
+        system,
+        schema: DniFieldsSchema,
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: "Extrae los datos del documento de identidad de estas fotos." },
+              ...data.images.map((img) => ({
+                type: "image" as const,
+                image: `data:${img.mimeType};base64,${img.base64}`,
+              })),
+            ],
+          },
+        ],
+      });
+      return { fields: object };
+    } catch (e: any) {
+      console.error("extractMemberFieldsFromImages failed:", e?.message);
+      throw new Error("No se pudieron leer los datos del documento.");
+    }
+  });
+
+
+
 // ---------- Agent ----------
 const AgentInput = z.object({
   transcript: z.string().min(1),

@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Camera, Check, Loader2, Mic, Square } from "lucide-react";
+import { Camera, Check, Loader2, Mic, ScanLine, Square, X } from "lucide-react";
 import { CONTRACT_TEXT_ES, CONTRACT_VERSION, compressImage, formatPrice, uploadToSnoopDocs } from "@/lib/snoop";
 import { SignaturePad, type SignaturePadHandle } from "@/components/SignaturePad";
-import { extractMemberFields, transcribeAudio } from "@/lib/voice-agent.functions";
+import { extractMemberFields, extractMemberFieldsFromImages, transcribeAudio } from "@/lib/voice-agent.functions";
 import { defaultFieldConfig, mergeFieldConfig, type FieldConfigMap } from "@/lib/member-fields";
 
 export const Route = createFileRoute("/_authenticated/soci/nuovo")({
@@ -130,6 +130,11 @@ function NewSocio() {
   formRef.current = form;
   const transcribe = useServerFn(transcribeAudio);
   const extract = useServerFn(extractMemberFields);
+  const extractFromImages = useServerFn(extractMemberFieldsFromImages);
+
+  // Document scan (OCR of DNI / passport)
+  const [scanStatus, setScanStatus] = useState<"idle" | "scanning">("idle");
+  const [scanPreviews, setScanPreviews] = useState<string[]>([]);
 
   useEffect(() => {
     supabase.from("membership_plans").select("id,name,duration_days,price_cents").eq("active", true).order("sort_order")
@@ -252,7 +257,60 @@ function NewSocio() {
     }
   }
 
-  // --- Voice: dictate and auto-fill fields ---
+  // --- Document OCR: take up to 2 photos of the DNI / passport and auto-fill fields ---
+  async function scanDocuments(files: FileList | File[]) {
+    const list = Array.from(files).slice(0, 2);
+    if (list.length === 0) return;
+    setScanStatus("scanning");
+    try {
+      // Compress + convert each file
+      const compressed: Blob[] = [];
+      for (const f of list) compressed.push(await compressImage(f, 1600, 0.85));
+
+      // Preview URLs
+      const previews = await Promise.all(
+        compressed.map(
+          (b) =>
+            new Promise<string>((res) => {
+              const r = new FileReader();
+              r.onload = () => res(r.result as string);
+              r.readAsDataURL(b);
+            }),
+        ),
+      );
+      setScanPreviews(previews);
+
+      // Base64 payload for the AI Gateway
+      const images = await Promise.all(
+        compressed.map(async (b) => ({ base64: await blobToBase64(b), mimeType: "image/jpeg" })),
+      );
+
+      const { fields } = await extractFromImages({ data: { images } });
+
+      setForm((f) => ({
+        ...f,
+        first_name: fields.first_name || f.first_name,
+        last_name: fields.last_name || f.last_name,
+        birth_date: fields.birth_date || f.birth_date,
+        dni_number: (fields.dni_number || f.dni_number).toUpperCase(),
+        address: fields.address || f.address,
+        city: fields.city || f.city,
+        postal_code: fields.postal_code || f.postal_code,
+      }));
+
+      // Reuse the front photo (first image) as the required DNI photo
+      const front = compressed[0];
+      set("dni_file", new File([front], "dni.jpg", { type: "image/jpeg" }));
+      set("dni_preview", previews[0]);
+
+      toast.success("Datos rellenados desde el documento");
+    } catch (e: any) {
+      toast.error(e.message ?? "No se pudo leer el documento");
+    } finally {
+      setScanStatus("idle");
+    }
+  }
+
   async function startRec() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -426,7 +484,58 @@ function NewSocio() {
         </div>
       </div>
 
+
+
+      {/* Document scan (OCR): take 1-2 photos of the DNI, fields auto-fill */}
+      <div className="max-w-3xl mb-6 rounded-2xl border border-neon/30 bg-card/70 backdrop-blur p-4">
+        <div className="flex items-center gap-4">
+          <div className="h-14 w-14 shrink-0 rounded-full flex items-center justify-center bg-gradient-neon text-primary-foreground glow-neon">
+            {scanStatus === "scanning" ? <Loader2 className="w-5 h-5 animate-spin" /> : <ScanLine className="w-6 h-6" />}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] uppercase tracking-[0.3em] text-neon-dim">Escanear documento</div>
+            <p className="text-sm text-muted-foreground">
+              Haz 1 o 2 fotos del DNI (frente y reverso) y se rellenarán los campos automáticamente.
+            </p>
+          </div>
+          <label className="cursor-pointer shrink-0 text-[11px] uppercase tracking-widest px-4 py-2.5 rounded-full border border-neon/40 text-neon hover:bg-neon/10 flex items-center gap-2">
+            <Camera className="w-4 h-4" />
+            {scanStatus === "scanning" ? "Leyendo..." : scanPreviews.length ? "Volver a escanear" : "Escanear"}
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              multiple
+              className="hidden"
+              disabled={scanStatus === "scanning"}
+              onChange={(e) => {
+                if (e.target.files && e.target.files.length) scanDocuments(e.target.files);
+                e.target.value = "";
+              }}
+            />
+          </label>
+        </div>
+        {scanPreviews.length > 0 && (
+          <div className="mt-3 flex gap-2">
+            {scanPreviews.map((src, i) => (
+              <div key={i} className="relative">
+                <img src={src} alt={`documento ${i + 1}`} className="h-20 rounded-md border border-neon/30 object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setScanPreviews((p) => p.filter((_, j) => j !== i))}
+                  className="absolute -top-1.5 -right-1.5 bg-card border border-neon/40 rounded-full p-0.5 text-neon-dim hover:text-neon"
+                  aria-label="Quitar"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="bg-card/60 border border-neon/20 rounded-2xl p-6 md:p-8 max-w-3xl backdrop-blur space-y-8">
+
         {/* Datos personales */}
         <section>
           <h3 className="text-[11px] uppercase tracking-[0.3em] text-neon mb-4">Datos del socio</h3>
