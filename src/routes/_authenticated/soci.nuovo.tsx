@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Camera, Check, Loader2, Mic, Square } from "lucide-react";
+import { Camera, Check, Loader2, Mic, ScanLine, Square, X } from "lucide-react";
 import { CONTRACT_TEXT_ES, CONTRACT_VERSION, compressImage, formatPrice, uploadToSnoopDocs } from "@/lib/snoop";
 import { SignaturePad, type SignaturePadHandle } from "@/components/SignaturePad";
-import { extractMemberFields, transcribeAudio } from "@/lib/voice-agent.functions";
+import { extractMemberFields, extractMemberFieldsFromImages, transcribeAudio } from "@/lib/voice-agent.functions";
 import { defaultFieldConfig, mergeFieldConfig, type FieldConfigMap } from "@/lib/member-fields";
 
 export const Route = createFileRoute("/_authenticated/soci/nuovo")({
