@@ -15,7 +15,7 @@ const EMAIL_SUBJECTS: Record<string, string> = {
   signup: 'Confirm your email',
   invite: "You've been invited",
   magiclink: 'Your login link',
-  recovery: 'Reset your password',
+  recovery: 'Restablecer tu contraseña',
   email_change: 'Confirm your new email',
   reauthentication: 'Your verification code',
 }
@@ -31,7 +31,7 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration
-const SITE_NAME = "Club Hub Gold"
+const SITE_NAME = "Snoop"
 const SENDER_DOMAIN = "notify.meduzamallorca.com"
 const ROOT_DOMAIN = "meduzamallorca.com"
 const FROM_DOMAIN = "notify.meduzamallorca.com"
