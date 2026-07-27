@@ -5,6 +5,7 @@ import logoAsset from "@/assets/snoop-logo.png.asset.json";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/reset-password")({
+  ssr: false,
   component: ResetPassword,
 });
 
@@ -17,6 +18,13 @@ function ResetPassword() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        if (!cancelled) { setReady(true); setErrorMsg(null); }
+      }
+    });
+
     (async () => {
       try {
         const url = new URL(window.location.href);
@@ -27,13 +35,31 @@ function ResetPassword() {
           return;
         }
 
+        const clean = () => window.history.replaceState({}, "", "/reset-password");
+
+        // Implicit flow: #access_token=...&refresh_token=...&type=recovery
+        const accessToken = hash.get("access_token");
+        const refreshToken = hash.get("refresh_token");
+        if (accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (error) { setErrorMsg(error.message); return; }
+          clean();
+          if (!cancelled) setReady(true);
+          return;
+        }
+
         // New Supabase format: ?token_hash=...&type=recovery
         const tokenHash = url.searchParams.get("token_hash");
-        const type = url.searchParams.get("type");
-        if (tokenHash && type === "recovery") {
+        const type = url.searchParams.get("type") || hash.get("type");
+        if (tokenHash) {
           const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: "recovery" });
           if (error) { setErrorMsg(error.message); return; }
-          window.history.replaceState({}, "", "/reset-password");
+          clean();
+          if (!cancelled) setReady(true);
+          return;
         }
 
         // PKCE flow: ?code=...
@@ -41,26 +67,29 @@ function ResetPassword() {
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) { setErrorMsg(error.message); return; }
-          window.history.replaceState({}, "", "/reset-password");
-        }
-
-        // Hash flow: #access_token=...&type=recovery -> client auto-handles
-        const { data } = await supabase.auth.getSession();
-        if (!data.session) {
-          setErrorMsg("Enlace inválido o caducado. Solicita un nuevo email de recuperación.");
+          clean();
+          if (!cancelled) setReady(true);
           return;
         }
-        setReady(true);
+
+        if (type === "recovery") clean();
+
+        // No token in the URL: wait a bit in case the client is still parsing it.
+        for (let i = 0; i < 12; i++) {
+          const { data } = await supabase.auth.getSession();
+          if (cancelled) return;
+          if (data.session) { setReady(true); return; }
+          await new Promise((r) => setTimeout(r, 250));
+        }
+        if (!cancelled) setErrorMsg("Enlace inválido o caducado. Solicita un nuevo email de recuperación.");
       } catch (e: any) {
-        setErrorMsg(e.message ?? "Error");
+        if (!cancelled) setErrorMsg(e.message ?? "Error");
       }
     })();
 
-    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") setReady(true);
-    });
-    return () => sub.subscription.unsubscribe();
+    return () => { cancelled = true; sub.subscription.unsubscribe(); };
   }, []);
+
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
