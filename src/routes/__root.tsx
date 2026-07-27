@@ -69,10 +69,26 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
+// Runs before hydration: recovery links that land anywhere but /reset-password
+// (Supabase falls back to the Site URL) must keep their tokens and be forwarded.
+const RECOVERY_REDIRECT = `(function(){try{
+  var l=window.location;
+  if(l.pathname==='/reset-password')return;
+  var h=l.hash.replace(/^#/,'');
+  var q=l.search.replace(/^\\?/,'');
+  var p=new URLSearchParams(h), s=new URLSearchParams(q);
+  var isRecovery=p.get('type')==='recovery'||s.get('type')==='recovery'||!!p.get('access_token')||!!s.get('token_hash')||!!s.get('code')&&s.get('type')==='recovery';
+  var hasErr=(p.get('error_code')||s.get('error_code'))&&(p.get('type')==='recovery'||s.get('type')==='recovery');
+  if(isRecovery||hasErr){l.replace('/reset-password'+l.search+l.hash);}
+}catch(e){}})();`;
+
 function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="es">
-      <head><HeadContent /></head>
+      <head>
+        <HeadContent />
+        <script dangerouslySetInnerHTML={{ __html: RECOVERY_REDIRECT }} />
+      </head>
       <body>
         {children}
         <Scripts />
