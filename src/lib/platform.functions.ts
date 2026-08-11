@@ -297,10 +297,13 @@ export const updateCollaboratorPermissions = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-export const sendCollaboratorPasswordReset = createServerFn({ method: "POST" })
+export const setCollaboratorPassword = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { role_id: string }) =>
-    z.object({ role_id: z.string().uuid() }).parse(input))
+  .inputValidator((input: { role_id: string; password: string }) =>
+    z.object({
+      role_id: z.string().uuid(),
+      password: z.string().min(8).max(72),
+    }).parse(input))
   .handler(async ({ data, context }) => {
     await assertClubAdmin(context);
     const clubId = await currentClubId(context);
@@ -314,18 +317,11 @@ export const sendCollaboratorPasswordReset = createServerFn({ method: "POST" })
     if (!role) throw new Error("Cuenta no encontrada");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: account, error: accountError } = await supabaseAdmin.auth.admin.getUserById(role.user_id);
-    if (accountError) throw accountError;
-    const recipient = account.user?.email;
-    if (!recipient) throw new Error("La cuenta no tiene un email válido");
-
-    const req = (await import("@tanstack/react-start/server")).getRequest();
-    const origin = new URL(req.url).origin;
-    const { error } = await supabaseAdmin.auth.resetPasswordForEmail(recipient, {
-      redirectTo: `${origin}/reset-password`,
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(role.user_id, {
+      password: data.password,
     });
     if (error) throw error;
-    return { ok: true, email: recipient };
+    return { ok: true };
   });
 
 export const deleteCollaborator = createServerFn({ method: "POST" })
