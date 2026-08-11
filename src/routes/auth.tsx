@@ -5,6 +5,17 @@ import logoAsset from "@/assets/snoop-logo.png.asset.json";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
+  ssr: false,
+  head: () => ({
+    meta: [
+      { title: "Acceso | SNOOP" },
+      { name: "description", content: "Accede a la gestión de tu club con SNOOP." },
+      { property: "og:title", content: "Acceso | SNOOP" },
+      { property: "og:description", content: "Accede a la gestión de tu club con SNOOP." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: AuthPage,
 });
 
@@ -49,12 +60,17 @@ function AuthPage() {
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: { data: { full_name: name }, emailRedirectTo: window.location.origin },
         });
         if (error) throw error;
+        if (!data.session) {
+          toast.success("Cuenta creada. Revisa tu email para confirmarla.");
+          setMode("signin");
+          return;
+        }
         toast.success("Cuenta creada. Entrando...");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });

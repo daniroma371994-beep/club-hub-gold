@@ -6,6 +6,16 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/reset-password")({
   ssr: false,
+  head: () => ({
+    meta: [
+      { title: "Cambiar contraseña | SNOOP" },
+      { name: "description", content: "Crea una nueva contraseña segura para tu cuenta SNOOP." },
+      { property: "og:title", content: "Cambiar contraseña | SNOOP" },
+      { property: "og:description", content: "Crea una nueva contraseña segura para tu cuenta SNOOP." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: ResetPassword,
 });
 
@@ -20,7 +30,7 @@ function ResetPassword() {
   useEffect(() => {
     let cancelled = false;
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+      if (event === "PASSWORD_RECOVERY") {
         if (!cancelled) { setReady(true); setErrorMsg(null); }
       }
     });
@@ -72,7 +82,11 @@ function ResetPassword() {
           return;
         }
 
-        if (type === "recovery") clean();
+        if (type === "recovery") {
+          clean();
+          const { data } = await supabase.auth.getSession();
+          if (data.session && !cancelled) { setReady(true); return; }
+        }
 
         // No token in the URL: wait a bit in case the client is still parsing it.
         for (let i = 0; i < 12; i++) {
@@ -96,10 +110,14 @@ function ResetPassword() {
     if (pw !== pw2) return toast.error("Las contraseñas no coinciden");
     setLoading(true);
     try {
+      if (pw.length < 8) {
+        toast.error("La contraseña debe tener al menos 8 caracteres");
+        return;
+      }
       const { error } = await supabase.auth.updateUser({ password: pw });
       if (error) throw error;
       toast.success("Contraseña actualizada");
-      nav({ to: "/soci" });
+      nav({ to: "/" });
     } catch (e: any) { toast.error(e.message); }
     finally { setLoading(false); }
   }
@@ -120,9 +138,9 @@ function ResetPassword() {
           <form onSubmit={submit} className="bg-card/80 backdrop-blur border border-neon/30 rounded-2xl p-8 space-y-4 glow-neon-soft">
             <h2 className="font-display text-xl text-neon">Nueva contraseña</h2>
             {!ready && <p className="text-xs text-muted-foreground">Validando enlace…</p>}
-            <input required type="password" minLength={6} placeholder="Nueva contraseña" value={pw} onChange={(e)=>setPw(e.target.value)}
+            <input required type="password" minLength={8} autoComplete="new-password" placeholder="Nueva contraseña (mínimo 8 caracteres)" value={pw} onChange={(e)=>setPw(e.target.value)}
               className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm focus:border-neon outline-none" />
-            <input required type="password" minLength={6} placeholder="Repite contraseña" value={pw2} onChange={(e)=>setPw2(e.target.value)}
+            <input required type="password" minLength={8} autoComplete="new-password" placeholder="Repite contraseña" value={pw2} onChange={(e)=>setPw2(e.target.value)}
               className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm focus:border-neon outline-none" />
             <button disabled={loading || !ready} className="w-full bg-gradient-neon text-primary-foreground py-3 rounded-lg font-display font-semibold uppercase tracking-[0.25em] text-sm disabled:opacity-50 glow-neon">
               {loading ? "..." : "Actualizar"}

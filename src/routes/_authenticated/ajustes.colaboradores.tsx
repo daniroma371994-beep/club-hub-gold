@@ -4,10 +4,21 @@ import { SnoopLayout } from "@/components/SnoopLayout";
 import { useAuth } from "@/hooks/useAuth";
 import {
   listCollaborators, createCollaborator, updateCollaboratorPermissions, deleteCollaborator,
+  sendCollaboratorPasswordReset,
 } from "@/lib/platform.functions";
-import { Plus, Trash2, Save, Loader2 } from "lucide-react";
+import { Plus, Trash2, Save, Loader2, KeyRound } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/ajustes/colaboradores")({
+  head: () => ({
+    meta: [
+      { title: "Colaboradores | SNOOP" },
+      { name: "description", content: "Gestión de colaboradores y acceso a SNOOP." },
+      { property: "og:title", content: "Colaboradores | SNOOP" },
+      { property: "og:description", content: "Gestión de colaboradores y acceso a SNOOP." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: ColaboradoresPage,
 });
 
@@ -75,6 +86,14 @@ function ColaboradoresPage() {
     } catch (e: any) { setErr(e.message); }
   }
 
+  async function onResetPassword(role_id: string) {
+    setErr(null); setMsg(null);
+    try {
+      const result = await sendCollaboratorPasswordReset({ data: { role_id } });
+      setMsg(`Email para cambiar la contraseña enviado a ${result.email}`);
+    } catch (e: any) { setErr(e.message); }
+  }
+
   if (loading || !isAdmin) {
     return <SnoopLayout><div className="p-8 text-muted-foreground">Cargando…</div></SnoopLayout>;
   }
@@ -110,7 +129,7 @@ function ColaboradoresPage() {
         <h3 className="font-display text-sm tracking-[0.25em] uppercase text-neon-dim mb-3">Tu equipo ({list.length})</h3>
         <div className="grid gap-3">
           {list.map((row) => (
-            <CollabRow key={row.id} row={row} onSave={onSavePerms} onDelete={onDelete} />
+            <CollabRow key={row.id} row={row} onSave={onSavePerms} onDelete={onDelete} onResetPassword={onResetPassword} />
           ))}
           {list.length === 0 && <div className="text-sm text-muted-foreground">Aún no hay colaboradores.</div>}
         </div>
@@ -119,8 +138,9 @@ function ColaboradoresPage() {
   );
 }
 
-function CollabRow({ row, onSave, onDelete }: { row: any; onSave: (id: string, p: Perm[]) => Promise<void>; onDelete: (id: string) => Promise<void> }) {
+function CollabRow({ row, onSave, onDelete, onResetPassword }: { row: any; onSave: (id: string, p: Perm[]) => Promise<void>; onDelete: (id: string) => Promise<void>; onResetPassword: (id: string) => Promise<void> }) {
   const [perms, setPerms] = useState<Perm[]>(row.permissions ?? []);
+  const [resetting, setResetting] = useState(false);
   const isAdminRow = row.role === "admin";
   const dirty = JSON.stringify([...(row.permissions ?? [])].sort()) !== JSON.stringify([...perms].sort());
 
@@ -132,11 +152,23 @@ function CollabRow({ row, onSave, onDelete }: { row: any; onSave: (id: string, p
           <div className="text-[11px] text-muted-foreground truncate">{row.email}</div>
           <div className="text-[10px] uppercase tracking-widest text-neon-dim mt-1">{row.role}</div>
         </div>
-        {!isAdminRow && (
-          <button onClick={() => onDelete(row.id)} className="p-2 rounded-md border border-red-500/30 text-red-300 hover:bg-red-500/10" title="Eliminar">
-            <Trash2 className="w-4 h-4" />
+        <div className="flex shrink-0 gap-2">
+          <button
+            type="button"
+            disabled={resetting}
+            onClick={async () => { setResetting(true); try { await onResetPassword(row.id); } finally { setResetting(false); } }}
+            className="p-2 rounded-md border border-neon/30 text-neon hover:bg-neon/10 disabled:opacity-50"
+            title="Inviare email per cambiare password"
+            aria-label={`Inviare cambio password a ${row.full_name ?? row.email}`}
+          >
+            {resetting ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
           </button>
-        )}
+          {!isAdminRow && (
+            <button onClick={() => onDelete(row.id)} className="p-2 rounded-md border border-red-500/30 text-red-300 hover:bg-red-500/10" title="Eliminar">
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {!isAdminRow && (
