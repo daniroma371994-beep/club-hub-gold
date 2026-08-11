@@ -1,10 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { SnoopLayout } from "@/components/SnoopLayout";
 import { useAuth } from "@/hooks/useAuth";
 import {
   listCollaborators, createCollaborator, updateCollaboratorPermissions, deleteCollaborator,
-  sendCollaboratorPasswordReset,
+  setCollaboratorPassword,
 } from "@/lib/platform.functions";
 import { Plus, Trash2, Save, Loader2, KeyRound } from "lucide-react";
 
@@ -43,6 +44,7 @@ function ColaboradoresPage() {
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [perms, setPerms] = useState<Perm[]>(["manage_members", "use_cash"]);
+  const changePassword = useServerFn(setCollaboratorPassword);
 
   useEffect(() => { if (!loading && !isAdmin) nav({ to: "/" }); }, [loading, isAdmin, nav]);
 
@@ -86,11 +88,11 @@ function ColaboradoresPage() {
     } catch (e: any) { setErr(e.message); }
   }
 
-  async function onResetPassword(role_id: string) {
+  async function onSetPassword(role_id: string, password: string) {
     setErr(null); setMsg(null);
     try {
-      const result = await sendCollaboratorPasswordReset({ data: { role_id } });
-      setMsg(`Email para cambiar la contraseña enviado a ${result.email}`);
+      await changePassword({ data: { role_id, password } });
+      setMsg("Contraseña cambiada correctamente");
     } catch (e: any) { setErr(e.message); }
   }
 
@@ -129,7 +131,7 @@ function ColaboradoresPage() {
         <h3 className="font-display text-sm tracking-[0.25em] uppercase text-neon-dim mb-3">Tu equipo ({list.length})</h3>
         <div className="grid gap-3">
           {list.map((row) => (
-            <CollabRow key={row.id} row={row} onSave={onSavePerms} onDelete={onDelete} onResetPassword={onResetPassword} />
+            <CollabRow key={row.id} row={row} onSave={onSavePerms} onDelete={onDelete} onSetPassword={onSetPassword} />
           ))}
           {list.length === 0 && <div className="text-sm text-muted-foreground">Aún no hay colaboradores.</div>}
         </div>
@@ -138,9 +140,12 @@ function ColaboradoresPage() {
   );
 }
 
-function CollabRow({ row, onSave, onDelete, onResetPassword }: { row: any; onSave: (id: string, p: Perm[]) => Promise<void>; onDelete: (id: string) => Promise<void>; onResetPassword: (id: string) => Promise<void> }) {
+function CollabRow({ row, onSave, onDelete, onSetPassword }: { row: any; onSave: (id: string, p: Perm[]) => Promise<void>; onDelete: (id: string) => Promise<void>; onSetPassword: (id: string, password: string) => Promise<void> }) {
   const [perms, setPerms] = useState<Perm[]>(row.permissions ?? []);
   const [resetting, setResetting] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
   const isAdminRow = row.role === "admin";
   const dirty = JSON.stringify([...(row.permissions ?? [])].sort()) !== JSON.stringify([...perms].sort());
 
@@ -156,10 +161,10 @@ function CollabRow({ row, onSave, onDelete, onResetPassword }: { row: any; onSav
           <button
             type="button"
             disabled={resetting}
-            onClick={async () => { setResetting(true); try { await onResetPassword(row.id); } finally { setResetting(false); } }}
+            onClick={() => { setPasswordOpen((open) => !open); setPassword(""); setPasswordConfirm(""); }}
             className="p-2 rounded-md border border-neon/30 text-neon hover:bg-neon/10 disabled:opacity-50"
-            title="Inviare email per cambiare password"
-            aria-label={`Inviare cambio password a ${row.full_name ?? row.email}`}
+            title="Cambiar contraseña"
+            aria-label={`Cambiar contraseña de ${row.full_name ?? row.email}`}
           >
             {resetting ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
           </button>
@@ -170,6 +175,66 @@ function CollabRow({ row, onSave, onDelete, onResetPassword }: { row: any; onSav
           )}
         </div>
       </div>
+
+      {passwordOpen && (
+        <form
+          className="mt-4 grid gap-3 border-t border-neon/15 pt-4"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            if (password !== passwordConfirm) return;
+            setResetting(true);
+            try {
+              await onSetPassword(row.id, password);
+              setPasswordOpen(false);
+              setPassword("");
+              setPasswordConfirm("");
+            } finally { setResetting(false); }
+          }}
+        >
+          <div className="text-xs font-display uppercase tracking-widest text-neon">Nueva contraseña</div>
+          <input
+            required
+            type="password"
+            minLength={8}
+            maxLength={72}
+            autoComplete="new-password"
+            placeholder="Mínimo 8 caracteres"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            className="w-full bg-input border border-neon/25 rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:border-neon"
+          />
+          <input
+            required
+            type="password"
+            minLength={8}
+            maxLength={72}
+            autoComplete="new-password"
+            placeholder="Repite la nueva contraseña"
+            value={passwordConfirm}
+            onChange={(event) => setPasswordConfirm(event.target.value)}
+            className="w-full bg-input border border-neon/25 rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:border-neon"
+          />
+          {passwordConfirm && password !== passwordConfirm && (
+            <p className="text-xs text-destructive">Las contraseñas no coinciden.</p>
+          )}
+          <div className="flex gap-2">
+            <button
+              disabled={resetting || password.length < 8 || password !== passwordConfirm}
+              className="flex-1 inline-flex items-center justify-center gap-2 rounded-md bg-neon px-3 py-2 text-xs font-semibold uppercase tracking-widest text-background disabled:opacity-50"
+            >
+              {resetting ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+              Guardar contraseña
+            </button>
+            <button
+              type="button"
+              onClick={() => setPasswordOpen(false)}
+              className="rounded-md border border-border px-3 py-2 text-xs text-muted-foreground"
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      )}
 
       {!isAdminRow && (
         <>
